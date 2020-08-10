@@ -10,6 +10,7 @@ variables:
   POSTGRES_PASSWORD: "vmq_test_password"
   POSTGRES_HOST_AUTH_METHOD: trust
   MYSQL_DATABASE: "vmq_test_database"
+  MYSQL_ALLOW_EMPTY_PASSWORD: "yes"
 
 stages:
   - test
