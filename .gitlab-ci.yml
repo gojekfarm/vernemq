@@ -1,8 +1,16 @@
 image: "erlang"
 
 services:
-  - postgres:9.2-alpine
-  - mysql:5.6
+  - name: postgres:9.2-alpine
+    alias: localhost
+  - name: mysql:5.6
+    alias: localhost
+  - name: redis
+    alias: localhost
+  - name: memcached
+    alias: localhost
+  - name: mongo
+    alias: localhost
 
 variables:
   POSTGRES_DB: vmq_test_database
