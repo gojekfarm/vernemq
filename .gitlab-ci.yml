@@ -1,0 +1,17 @@
+image: "erlang"
+
+stages:
+  - test
+
+.job_template: &erlang_setup
+  before_script:
+    - apt-get update -y && apt-get install -y libsnappy-dev
+
+test:
+  stage: test
+  <<: *erlang_setup
+  before_script:
+    - epmd -daemon
+  script:
+    - ./rebar3 as all_tests do dialyzer, eunit, ct
+  allow_failure: false
