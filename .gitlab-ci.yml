@@ -17,7 +17,7 @@ stages:
 
 .job_template: &erlang_setup
   before_script:
-    - apt-get update -y && apt-get install -y libsnappy-dev mysql-client
+    - apt-get update -y && apt-get install -y libsnappy-dev default-mysql-client
     - mysql --host=mysql -e "CREATE USER 'vmq_test_user' IDENTIFIED BY 'vmq_test_password';" -uroot
     - mysql --host=mysql -e "GRANT ALL PRIVILEGES ON * . * TO 'vmq_test_user';" -uroot
     - epmd -daemon
