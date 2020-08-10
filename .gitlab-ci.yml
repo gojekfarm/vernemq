@@ -1,17 +1,29 @@
 image: "erlang"
 
+services:
+  - postgres:9.2-alpine
+  - mysql:5.6
+
+variables:
+  POSTGRES_DB: vmq_test_database
+  POSTGRES_USER: vmq_test_user
+  POSTGRES_PASSWORD: "vmq_test_password"
+  POSTGRES_HOST_AUTH_METHOD: trust
+  MYSQL_DATABASE: "vmq_test_database"
+
 stages:
   - test
 
 .job_template: &erlang_setup
   before_script:
     - apt-get update -y && apt-get install -y libsnappy-dev
+    - mysql -e "CREATE USER 'vmq_test_user' IDENTIFIED BY 'vmq_test_password';" -uroot
+    - mysql -e "GRANT ALL PRIVILEGES ON * . * TO 'vmq_test_user';" -uroot
+    - epmd -daemon
 
 test:
   stage: test
   <<: *erlang_setup
-  before_script:
-    - epmd -daemon
   script:
     - ./rebar3 as all_tests do dialyzer, eunit, ct
   allow_failure: false
