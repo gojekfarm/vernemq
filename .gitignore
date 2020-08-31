@@ -11,3 +11,5 @@ vars/dev*_vars.config
 .ropeproject
 *~
 TAGS
+
+docker/vernemq.tar.gz
