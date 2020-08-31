@@ -1,16 +1,17 @@
 image: "erlang"
 
 services:
-  - name: postgres:9.2-alpine
-    alias: localhost
-  - name: mysql:5.6
-    alias: localhost
-  - name: redis
-    alias: localhost
-  - name: memcached
-    alias: localhost
-  - name: mongo
-    alias: localhost
+  - postgres:9.2-alpine
+  - mysql:5.6
+  - redis
+  - memcached
+  - mongo
+
+cache:
+  key: ${CI_COMMIT_REF_SLUG}
+  paths:
+    - plts
+    - plts_base
 
 variables:
   POSTGRES_DB: vmq_test_database
@@ -22,17 +23,28 @@ variables:
 
 stages:
   - test
+  - release
 
-.job_template: &erlang_setup
+test:
+  stage: test
   before_script:
     - apt-get update -y && apt-get install -y libsnappy-dev default-mysql-client
     - mysql -e "CREATE USER 'vmq_test_user' IDENTIFIED BY 'vmq_test_password';" -uroot
     - mysql -e "GRANT ALL PRIVILEGES ON * . * TO 'vmq_test_user';" -uroot
     - epmd -daemon
-
-test:
-  stage: test
-  <<: *erlang_setup
   script:
     - ./rebar3 as all_tests do dialyzer, eunit, ct
-  allow_failure: false
+
+docker-release:
+  stage: release
+  script:
+    - >
+      docker build
+      -t artifactory-gojek.golabs.io:6555/$CI_PROJECT_NAME:latest
+      -t artifactory-gojek.golabs.io:6555/$CI_PROJECT_NAME:$CI_COMMIT_SHORT_SHA
+      -f docker/Dockerfile .
+    - docker push artifactory-gojek.golabs.io:6555/$CI_PROJECT_NAME:latest
+    - docker push artifactory-gojek.golabs.io:6555/$CI_PROJECT_NAME:$CI_COMMIT_SHORT_SHA
+  tags:
+    - docker
+    - docker_artifactory
