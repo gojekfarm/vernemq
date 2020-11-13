@@ -12,4 +12,6 @@ vars/dev*_vars.config
 *~
 TAGS
 
+plts/
+plts_base/
 docker/vernemq.tar.gz
