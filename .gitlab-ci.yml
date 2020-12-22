@@ -37,6 +37,10 @@ test:
 
 docker-release:
   stage: release
+  only:
+    - /^(\d+\.)?(\d+\.)?(\*|\d+)$/
+  except:
+    - branches
   script:
     - >
       docker build
