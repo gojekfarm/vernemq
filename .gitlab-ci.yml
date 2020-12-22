@@ -41,6 +41,8 @@ docker-release:
     - /^(\d+\.)?(\d+\.)?(\*|\d+)$/
   except:
     - branches
+  needs:
+    - test
   script:
     - >
       docker build
