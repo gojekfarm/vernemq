@@ -1,4 +1,4 @@
-image: "erlang"
+image: "erlang:23.0"
 
 services:
   - postgres:9.2-alpine
@@ -24,6 +24,7 @@ variables:
 stages:
   - test
   - release
+  - feature-release
 
 test:
   stage: test
@@ -54,3 +55,19 @@ docker-release:
   tags:
     - docker
     - docker_artifactory
+
+feature-release:
+  stage: feature-release
+  only:
+    - /.*feature.*/
+  needs:
+    - test
+  script:
+    - >
+      docker build
+      -t artifactory-gojek.golabs.io:6555/$CI_PROJECT_NAME:$CI_COMMIT_SHORT_SHA
+      -f docker/Dockerfile .
+    - docker push artifactory-gojek.golabs.io:6555/$CI_PROJECT_NAME:$CI_COMMIT_SHORT_SHA
+  tags:
+      - docker
+      - docker_artifactory
