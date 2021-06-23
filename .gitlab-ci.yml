@@ -39,7 +39,7 @@ test:
 docker-release:
   stage: release
   only:
-    - /^(\d+\.)?(\d+\.)?(\*|\d+)$/
+    - /^(?P<major>\d+\.)?(?P<minor>\d+\.)?(?P<patch>\*|\d+)(?:-(?P<mod>(?:0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*)(?:\.(?:0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*))*))?$/
   except:
     - branches
   needs:
