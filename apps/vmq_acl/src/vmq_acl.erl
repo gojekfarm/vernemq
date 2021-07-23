@@ -38,8 +38,6 @@
 -define(TABLES, [
                  vmq_acl_read_pattern,
                  vmq_acl_write_pattern,
-                 vmq_acl_read_regex,
-                 vmq_acl_write_regex,
                  vmq_acl_read_all,
                  vmq_acl_write_all,
                  vmq_acl_read_user,
@@ -172,16 +170,6 @@ parse_acl_line({F, <<"pattern ", Topic/binary>>}, User) ->
     in(read, pattern, Topic),
     in(write, pattern, Topic),
     parse_acl_line(F(F,read), User);
-parse_acl_line({F, <<"regex read ", Topic/binary>>}, User) ->
-  insert_regex(read, regex, string:trim(Topic)),
-  parse_acl_line(F(F,read), User);
-parse_acl_line({F, <<"regex write ", Topic/binary>>}, User) ->
-  insert_regex(write, regex, string:trim(Topic)),
-  parse_acl_line(F(F,read), User);
-parse_acl_line({F, <<"regex ", Topic/binary>>}, User) ->
-  insert_regex(read, regex, string:trim(Topic)),
-  insert_regex(write, regex, string:trim(Topic)),
-  parse_acl_line(F(F,read), User);
 parse_acl_line({F, <<"\n">>}, User) ->
     parse_acl_line(F(F,read), User);
 parse_acl_line({F, eof}, _User) ->
@@ -195,7 +183,7 @@ check(Type, [Word|_] = Topic, User, SubscriberId) when is_binary(Word) ->
         false ->
             case check_user_acl(Type, User, Topic) of
                 true -> true;
-                false -> check_pattern_acl(Type, Topic, User, SubscriberId) or check_regex_acl(Type, Topic, User, SubscriberId)
+                false -> check_pattern_acl(Type, Topic, User, SubscriberId)
             end
     end.
 
@@ -214,31 +202,6 @@ check_pattern_acl(Type, TIn, User, SubscriberId) ->
                                     T = topic(User, SubscriberId, P),
                                     match(TIn, T)
                             end).
-
-check_regex_acl(Type, TIn, User, SubscriberId) ->
-  {Tbl, _} = t(Type, regex, TIn),
-  Val = iterate_until_true(Tbl, fun(P) ->
-    T = replace_pattern(User, SubscriberId, P),
-    match_regex(vmq_topic:unword(TIn), T)
-                          end),
-  error_logger:warning_msg("check_regex_acl returned: ~p", [Val]),
-  Val.
-
-replace_pattern(User, {MP, ClientId}, Topic) ->
-  Ur = re:replace(Topic, "%u", User, [global, {return, list}]),
-  Cr = re:replace(Ur, "%c", ClientId, [global, {return, list}]),
-  Mr = re:replace(Cr, "%m", MP, [global, {return, list}]),
-  error_logger:warning_msg("replace_pattern returned: ~p", [Mr]),
-  Mr.
-
-match_regex(TIn, T) ->
-  Result = re:run(TIn, T),
-  case re:run(TIn, T) of
-    {match, _} ->
-      error_logger:warning_msg("match_regex returned: ~p for TIn: ~p , T: ~p", [Result, TIn, T]),
-      true;
-    nomatch -> false
-end.
 
 topic(User, {MP, ClientId}, Topic) ->
     subst(list_to_binary(MP), User, ClientId, Topic, []).
@@ -264,11 +227,6 @@ in(Type, User, Topic) when is_binary(Topic) ->
             error_logger:warning_msg("can't validate ~p acl topic ~p for user ~p due to ~p", [Type, STopic, User, Reason])
     end.
 
-insert_regex(Type, User, Topic) when is_binary(Topic) ->
-    {Tbl, Obj} = t(Type, User, Topic),
-    ets:insert(Tbl, Obj),
-    error_logger:warning_msg("Inserting topic: ~p user: ~p Type: ~p Table ~p", [Topic, User, Type, Tbl]).
-
 validate(Topic) ->
     vmq_topic:validate_topic(subscribe, Topic).
 
@@ -276,8 +234,6 @@ t(read, all, Topic) -> {vmq_acl_read_all, {Topic, 1}};
 t(write, all, Topic) ->  {vmq_acl_write_all, {Topic, 1}};
 t(read, pattern, Topic) ->  {vmq_acl_read_pattern, {Topic, 1}};
 t(write, pattern, Topic) -> {vmq_acl_write_pattern, {Topic, 1}};
-t(read, regex, Topic) -> {vmq_acl_read_regex, {Topic, 1}};
-t(write, regex, Topic) -> {vmq_acl_write_regex, {Topic, 1}};
 t(read, User, Topic) -> {vmq_acl_read_user, {{User, Topic}, 1}};
 t(write, User, Topic) -> {vmq_acl_write_user, {{User, Topic}, 1}}.
 
