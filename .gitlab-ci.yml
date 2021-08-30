@@ -35,6 +35,8 @@ test:
     - epmd -daemon
   script:
     - ./rebar3 as all_tests do dialyzer, eunit, ct
+  except:
+    - /.*feature.*/
 
 docker-release:
   stage: release
@@ -60,8 +62,6 @@ feature-release:
   stage: feature-release
   only:
     - /.*feature.*/
-  needs:
-    - test
   script:
     - >
       docker build
