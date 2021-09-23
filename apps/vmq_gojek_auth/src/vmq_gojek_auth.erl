@@ -49,6 +49,7 @@
 -define(USER_SUP, <<"%u">>).
 -define(CLIENT_SUP, <<"%c">>).
 -define(MOUNTPOINT_SUP, <<"%m">>).
+-define(PROFILE_ID_SUP, <<"%p">>).
 
 -ifdef(TEST).
 -include_lib("eunit/include/eunit.hrl").
@@ -87,7 +88,7 @@ auth_on_subscribe(User, SubscriberId, [{Topic, _Qos}|Rest]) ->
   if D ->
         next;
      true ->
-        case check(read, Topic, getUsername(User), SubscriberId) of
+        case check(read, Topic, get_username(User), SubscriberId) of
             true ->
                 auth_on_subscribe(User, SubscriberId, Rest);
             false ->
@@ -100,7 +101,7 @@ auth_on_publish(User, SubscriberId, _, Topic, _, _) ->
   if D ->
         next;
      true ->
-          case check(write, Topic, getUsername(User), SubscriberId) of
+          case check(write, Topic, get_username(User), SubscriberId) of
               true ->
                   ok;
               false ->
@@ -133,14 +134,14 @@ auth_on_register({_IpAddr, _Port} = Peer, {_MountPoint, _ClientId} = SubscriberI
     true ->
         {Result, Claims} = verify(Password, ?SecretKey),
         if
-          Result =:= ok -> checkRID(Claims, getUsername(UserName));
+          Result =:= ok -> check_rid(Claims, get_username(UserName));
         %else block
           true -> {error, invalid_signature}
         end
   end.
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-%%% Internal
+%%% Internal+
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 init() ->
     lists:foreach(fun(T) ->
@@ -252,6 +253,8 @@ subst(MP, User, ClientId, [C|Rest], Acc) when C == ?CLIENT_SUP ->
     subst(MP, User, ClientId, Rest, [ClientId|Acc]);
 subst(MP, User, ClientId, [M|Rest], Acc) when M == ?MOUNTPOINT_SUP ->
     subst(MP, User, ClientId, Rest, [MP|Acc]);
+subst(MP, User, ClientID, [P|Rest], Acc) when P == ?PROFILE_ID_SUP ->
+    subst(MP, User, ClientID, Rest, [get_profile_id(ClientID)|Acc]);
 subst(MP, User, ClientId, [W|Rest], Acc) ->
     subst(MP, User, ClientId, Rest, [W|Acc]);
 subst(_, _, _, [], Acc) -> lists:reverse(Acc).
@@ -346,7 +349,7 @@ verify(Password, SecretKey) ->
     error:Error -> {error, invalid_signature}
   end.
 
-checkRID(Claims, UserName) ->
+check_rid(Claims, UserName) ->
   case maps:find(rid, Claims) of
     {ok, Value} ->
       if Value =:= UserName -> ok;
@@ -356,8 +359,12 @@ checkRID(Claims, UserName) ->
     error -> error
   end.
 
-getUsername(Username) ->
+get_username(Username) ->
   string:nth_lexeme(Username, 1, ":").
+
+get_profile_id(ClientID) ->
+  io:format(string:nth_lexeme(ClientID, 2, ":")),
+  string:nth_lexeme(ClientID, 2, ":").
 
 -ifdef(TEST).
 %%%%%%%%%%%%%
@@ -389,6 +396,7 @@ simple_acl(_) ->
            <<"topic x/y/z/#\n">>,
            <<"# some patterns\n">>,
            <<"pattern read %m/%u/%c\n">>,
+           <<"pattern read example/%p\n">>,
            <<"pattern write %m/%u/%c\n">>
           ],
     load_from_list(ACL),
@@ -396,13 +404,17 @@ simple_acl(_) ->
     , ?_assertEqual([[{[<<"a">>, <<"b">>, <<"c">>], 1}]], ets:match(vmq_gojek_auth_acl_write_all, '$1'))
     , ?_assertEqual([[{{<<"test">>, [<<"x">>, <<"y">>, <<"z">>, <<"#">>]}, 1}]], ets:match(vmq_gojek_auth_acl_read_user, '$1'))
     , ?_assertEqual([[{{<<"test">>, [<<"x">>, <<"y">>, <<"z">>, <<"#">>]}, 1}]], ets:match(vmq_gojek_auth_acl_write_user, '$1'))
-    , ?_assertEqual([[{[<<"%m">>, <<"%u">>, <<"%c">>], 1}]], ets:match(vmq_gojek_auth_acl_read_pattern, '$1'))
+    , ?_assertEqual([[{[<<"%m">>, <<"%u">>, <<"%c">>], 1}],  [{[<<"example">>,<<"%p">>],1}]], ets:match(vmq_gojek_auth_acl_read_pattern, '$1'))
     , ?_assertEqual([[{[<<"%m">>, <<"%u">>, <<"%c">>], 1}]], ets:match(vmq_gojek_auth_acl_write_pattern, '$1'))
     %% positive auth_on_subscribe
     , ?_assertEqual(ok, auth_on_subscribe(<<"test">>, {"", <<"my-client-id">>},
                                           [{[<<"a">>, <<"b">>, <<"c">>], 0}
                                            ,{[<<"x">>, <<"y">>, <<"z">>, <<"#">>], 0}
                                            ,{[<<"">>, <<"test">>, <<"my-client-id">>], 0}]))
+      , ?_assertEqual(ok, auth_on_subscribe(<<"test">>, {"", <<"my-client-id:profile-id">>},
+        [{[<<"a">>, <<"b">>, <<"c">>], 0}
+          ,{[<<"x">>, <<"y">>, <<"z">>, <<"#">>], 0}
+          ,{[<<"example">>, <<"profile-id">>], 0}]))
       ,
       %% colon separated username
       ?_assertEqual(ok, auth_on_subscribe(<<"test:123:123:345">>, {"", <<"my-client-id">>},
