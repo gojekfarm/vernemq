@@ -15,3 +15,5 @@ TAGS
 plts/
 plts_base/
 docker/vernemq.tar.gz
+
+vernemq.iml
