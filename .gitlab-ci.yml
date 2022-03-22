@@ -28,13 +28,21 @@ stages:
 
 test:
   stage: test
+  variables:
+    RETRY_SPEC_DIR_REL_PATH: /_build/all_tests+test/logs
   before_script:
-    - apt-get update -y && apt-get install -y libsnappy-dev default-mysql-client
+    - apt-get update -y && apt-get install -y libsnappy-dev default-mysql-client pcregrep
+    - mkdir -p $CI_PROJECT_DIR$RETRY_SPEC_DIR_REL_PATH
     - mysql --host=mysql -e "CREATE USER 'vmq_test_user' IDENTIFIED BY 'vmq_test_password';" -uroot
     - mysql --host=mysql -e "GRANT ALL PRIVILEGES ON * . * TO 'vmq_test_user';" -uroot
     - epmd -daemon
   script:
-    - ./rebar3 as all_tests do dialyzer, eunit, ct
+    - ./rebar3 as all_tests do dialyzer, eunit, ct ||
+      (echo -e "\nContents of retry.spec\n" &&
+      cat $CI_PROJECT_DIR$RETRY_SPEC_DIR_REL_PATH/retry.spec &&
+      echo -e "\nRetry suites:" &&
+      echo $(pcregrep -o2 -o3 --om-separator="/" -M "^{(cases|groups),\"(.+)\",[^\w]*(\w+),(.|\n)*?\.$" $CI_PROJECT_DIR$RETRY_SPEC_DIR_REL_PATH/retry.spec | paste -s -d, -) &&
+      ./rebar3 ct --suite=$(pcregrep -o2 -o3 --om-separator="/" -M "^{(cases|groups),\"(.+)\",[^\w]*(\w+),(.|\n)*?\.$" $CI_PROJECT_DIR$RETRY_SPEC_DIR_REL_PATH/retry.spec | paste -s -d, -))
   except:
     - /.*feature.*/
 
