@@ -6,6 +6,8 @@ services:
   - redis
   - memcached
   - mongo
+  - name: bitnami/redis-sentinel
+    alias: redis-sentinel
 
 cache:
   key: ${CI_COMMIT_REF_SLUG}
@@ -14,6 +16,7 @@ cache:
     - plts_base
 
 variables:
+  FF_NETWORK_PER_BUILD: 1
   POSTGRES_DB: vmq_test_database
   POSTGRES_USER: vmq_test_user
   POSTGRES_PASSWORD: "vmq_test_password"
