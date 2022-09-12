@@ -52,25 +52,23 @@ end_per_testcase(_, Config) ->
 all() ->
     case ?run_all_tests of
         true ->
-            [mysql_test,
-             postgres_test,
-             mongodb_test,
-             redis_test,
-             http_test,
-             kv_test,
-             json_test,
-             bcrypt_test,
-             logger_test,
-             memcached_test,
-             auth_cache_test];
+          [postgres_test,
+            redis_test,
+            http_test,
+            kv_test,
+            json_test,
+            bcrypt_test,
+            logger_test,
+            memcached_test,
+            auth_cache_test];
         _ ->
-            [http_test,
-             kv_test,
-             json_test,
-             bcrypt_test,
-             logger_test,
-             auth_cache_test,
-             vmq_api_test]
+          [http_test,
+          kv_test,
+          json_test,
+          bcrypt_test,
+          logger_test,
+          auth_cache_test,
+          vmq_api_test]
     end.
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%

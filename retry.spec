@@ -1,0 +1,20 @@
+{groups,"/vernemq/apps/vmq_server/test",vmq_subscribe_SUITE,
+        {mqttv5_reg_redis_trie,[]},
+        {cases,[subscribe_illegal_opt]}}.
+{groups,"/vernemq/apps/vmq_server/test",vmq_subscribe_SUITE,
+         {mqttv5,[]},
+        {cases,[subscribe_illegal_opt]}}.
+{groups,"/vernemq/apps/vmq_server/test",vmq_mqtt5_SUITE,
+         {mqtt_reg_redis_trie,[]},
+         {cases,[uname_no_password_success,reauthenticate_server_rejects,
+                 change_subscriber_id,enhanced_auth_server_rejects,
+                 uname_password_denied,password_no_uname_success,
+                 uname_password_success]}}.
+{groups,"/vernemq/apps/vmq_server/test",vmq_mqtt5_SUITE,
+         {mqtt,[]},
+         {cases,[password_no_uname_success,uname_no_password_success,
+                uname_password_denied,reauthenticate_server_rejects,
+                 uname_password_success,change_subscriber_id,
+                enhanced_auth_server_rejects]}}.
+{cases,"/vernemq/apps/vmq_diversity/test",vmq_diversity_provider_SUITE,
+        [mongodb_test]}.
