@@ -50,6 +50,7 @@ end_per_testcase(_, Config) ->
 -endif.
 
 all() ->
+  %% ToDo: add my-sql and mongo tests
     case ?run_all_tests of
         true ->
           [postgres_test,
@@ -62,13 +63,13 @@ all() ->
             memcached_test,
             auth_cache_test];
         _ ->
-          [http_test,
-          kv_test,
-          json_test,
-          bcrypt_test,
-          logger_test,
-          auth_cache_test,
-          vmq_api_test]
+           [http_test,
+            kv_test,
+            json_test,
+            bcrypt_test,
+            logger_test,
+            auth_cache_test,
+            vmq_api_test]
     end.
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
