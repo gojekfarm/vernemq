@@ -70,7 +70,6 @@
 start() ->
     {ok, _} = application:ensure_all_started(vmq_gojek_auth),
     vmq_gojek_auth_cli:register(),
-    insert_regex(),
     ok.
 
 stop() ->
@@ -164,6 +163,7 @@ auth_on_register({_IpAddr, _Port} = Peer, {_MountPoint, _ClientId} = SubscriberI
 %%% Internal+
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 init() ->
+    insert_regex(),
     lists:foreach(fun(T) ->
                           case lists:member(T, ets:all()) of
                               true -> ok;
@@ -328,11 +328,12 @@ parse_topic(Topic) ->
 parse_tokens([], Acc) ->
     Acc;
 parse_tokens([<<"%", A/binary>> |Words], Acc) ->
-    case re:run(A, lists:nth(1, ets:lookup(?REGEX_TABLE, re_pattern)), [{capture,all_but_first,binary}]) of
-        {match,L} ->
-            parse_tokens(Words, [{lists:nth(1, L), lists:nth(2, L), binary_to_integer(lists:nth(3, L))}|Acc]);
+    L = ets:lookup(?REGEX_TABLE, re_pattern),
+    case re:run(A, lists:nth(1, L), [{capture,all_but_first,binary}]) of
+      {match, X} ->
+            parse_tokens(Words, [{lists:nth(1, X), lists:nth(2, X), binary_to_integer(lists:nth(3, X))}|Acc]);
         _ ->
-            error_logger:warning_msg("can't validate ACL topic due to topic not formatted appropriately"),
+            error_logger:warning_msg("can't validate ACL topic due to topic not formatted appropriately ~p ~p", [A, Words]),
             []
     end;
 parse_tokens([Word|Words], Acc) ->
@@ -429,9 +430,14 @@ is_complex_topic_whitelisted(Topic) ->
     end.
 
 insert_regex() ->
-  ets:new(?REGEX_TABLE, ?TABLE_OPTS),
-  {ok, MP} = re:compile(?ARGS_EXTRACT_REGEX),
-  ets:insert(?REGEX_TABLE, MP).
+  case lists:member(?REGEX_TABLE, ets:all()) of
+    true -> ok;
+    false ->
+      error_logger:warning_msg("insert_regex called"),
+      ets:new(?REGEX_TABLE, ?TABLE_OPTS),
+      {ok, MP} = re:compile(?ARGS_EXTRACT_REGEX),
+      ets:insert(?REGEX_TABLE, MP)
+end.
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%% Helpers for jwt authentication
