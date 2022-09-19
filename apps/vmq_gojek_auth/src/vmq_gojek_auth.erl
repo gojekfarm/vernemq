@@ -433,7 +433,6 @@ insert_regex() ->
   case lists:member(?REGEX_TABLE, ets:all()) of
     true -> ok;
     false ->
-      error_logger:warning_msg("insert_regex called"),
       ets:new(?REGEX_TABLE, ?TABLE_OPTS),
       {ok, MP} = re:compile(?ARGS_EXTRACT_REGEX),
       ets:insert(?REGEX_TABLE, MP)
