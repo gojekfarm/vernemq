@@ -41,49 +41,49 @@ end_per_testcase(_, Config) ->
 
 auth_on_register_test(_) ->
   ok = application:set_env(vmq_enhanced_auth, secret_key, "test-key"),
-  ok = application:set_env(vmq_gojek_auth, enable_jwt_auth, true),
+  ok = application:set_env(vmq_enhanced_auth, enable_jwt_auth, true),
 
   %When username contains no colons
   Password = jwerl:sign([{rid, <<"username">>}], hs256, <<"test-key">>),
-  ok = vmq_gojek_auth:auth_on_register({"",""}, {"",""}, <<"username">>, Password, false),
-  application:unset_env(vmq_gojek_auth, secret_key),
-  application:unset_env(vmq_gojek_auth, enable_jwt_auth).
+  ok = vmq_enhanced_auth:auth_on_register({"",""}, {"",""}, <<"username">>, Password, false),
+  application:unset_env(vmq_enhanced_auth, secret_key),
+  application:unset_env(vmq_enhanced_auth, enable_jwt_auth).
 
 auth_on_register_rid_absent_test(_) ->
-  ok = application:set_env(vmq_gojek_auth, secret_key, "test-key"),
-  ok = application:set_env(vmq_gojek_auth, enable_jwt_auth, true),
+  ok = application:set_env(vmq_enhanced_auth, secret_key, "test-key"),
+  ok = application:set_env(vmq_enhanced_auth, enable_jwt_auth, true),
 
   %When rid is not present in claims
   Password = jwerl:sign([{norid, <<"username">>}], hs256, <<"test-key">>),
-  error = vmq_gojek_auth:auth_on_register({"",""}, {"",""}, "username", Password, false),
-  application:unset_env(vmq_gojek_auth, secret_key),
-  application:unset_env(vmq_gojek_auth, enable_jwt_auth).
+  error = vmq_enhanced_auth:auth_on_register({"",""}, {"",""}, "username", Password, false),
+  application:unset_env(vmq_enhanced_auth, secret_key),
+  application:unset_env(vmq_enhanced_auth, enable_jwt_auth).
 
 auth_on_register_rid_different_test(_) ->
-  ok = application:set_env(vmq_gojek_auth, secret_key, "test-key"),
-  ok = application:set_env(vmq_gojek_auth, enable_jwt_auth, true),
+  ok = application:set_env(vmq_enhanced_auth, secret_key, "test-key"),
+  ok = application:set_env(vmq_enhanced_auth, enable_jwt_auth, true),
 
   %When rid in claims is different from username
   Password = jwerl:sign([{rid, <<"different_username">>}], hs256, <<"test-key">>),
-  error = vmq_gojek_auth:auth_on_register({"",""}, {"",""}, <<"username">>, Password, false),
-  application:unset_env(vmq_gojek_auth, secret_key),
-  application:unset_env(vmq_gojek_auth, enable_jwt_auth).
+  error = vmq_enhanced_auth:auth_on_register({"",""}, {"",""}, <<"username">>, Password, false),
+  application:unset_env(vmq_enhanced_auth, secret_key),
+  application:unset_env(vmq_enhanced_auth, enable_jwt_auth).
 
 auth_on_register_unparsable_token_test(_) ->
-  ok = application:set_env(vmq_gojek_auth, secret_key, "test-key"),
-  ok = application:set_env(vmq_gojek_auth, enable_jwt_auth, true),
+  ok = application:set_env(vmq_enhanced_auth, secret_key, "test-key"),
+  ok = application:set_env(vmq_enhanced_auth, enable_jwt_auth, true),
 
   %When password is not jwt from username
-  {error, invalid_signature} = vmq_gojek_auth:auth_on_register({"",""}, {"",""}, <<"username">>, <<"Password">>, false),
-  application:unset_env(vmq_gojek_auth, secret_key),
-  application:unset_env(vmq_gojek_auth, enable_jwt_auth).
+  {error, invalid_signature} = vmq_enhanced_auth:auth_on_register({"",""}, {"",""}, <<"username">>, <<"Password">>, false),
+  application:unset_env(vmq_enhanced_auth, secret_key),
+  application:unset_env(vmq_enhanced_auth, enable_jwt_auth).
 
 auth_on_register_disabled_test(_) ->
-  ok = application:set_env(vmq_gojek_auth, secret_key, "test-key"),
-  ok = application:set_env(vmq_gojek_auth, enable_jwt_auth, false),
+  ok = application:set_env(vmq_enhanced_auth, secret_key, "test-key"),
+  ok = application:set_env(vmq_enhanced_auth, enable_jwt_auth, false),
 
   %When username contains no colons
   Password = jwerl:sign([{rid, <<"username">>}], hs256, <<"test-key">>),
-  next = vmq_gojek_auth:auth_on_register({"",""}, {"",""}, <<"username">>, Password, false),
-  application:unset_env(vmq_gojek_auth, secret_key),
-  application:unset_env(vmq_gojek_auth, enable_jwt_auth).
+  next = vmq_enhanced_auth:auth_on_register({"",""}, {"",""}, <<"username">>, Password, false),
+  application:unset_env(vmq_enhanced_auth, secret_key),
+  application:unset_env(vmq_enhanced_auth, enable_jwt_auth).

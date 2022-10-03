@@ -1,6 +1,6 @@
 {application, vmq_enhanced_auth,
  [
-  {description, "Gojek specific auth plugin for VerneMQ"},
+  {description, "enhanced auth plugin for VerneMQ"},
   {vsn, git},
   {registered, []},
   {applications, [
