@@ -12,7 +12,7 @@
 %% See the License for the specific language governing permissions and
 %% limitations under the License.
 
--module(vmq_gojek_auth).
+-module(vmq_enhanced_auth).
 -behaviour(auth_on_register_hook).
 -behaviour(auth_on_subscribe_hook).
 -behaviour(auth_on_publish_hook).
@@ -38,13 +38,13 @@
 
 -define(INIT_ACL, {[],[],[],[],[],[]}).
 -define(TABLES, [
-                 vmq_gojek_auth_acl_read_pattern,
-                 vmq_gojek_auth_acl_write_pattern,
-                 vmq_gojek_auth_acl_read_all,
-                 vmq_gojek_auth_acl_write_all,
-                 vmq_gojek_auth_acl_read_user,
-                 vmq_gojek_auth_acl_write_user,
-                 vmq_gojek_auth_acl_read_token,
+                 vmq_enhanced_auth_acl_read_pattern,
+                 vmq_enhanced_auth_acl_write_pattern,
+                 vmq_enhanced_auth_acl_read_all,
+                 vmq_enhanced_auth_acl_write_all,
+                 vmq_enhanced_auth_acl_read_user,
+                 vmq_enhanced_auth_acl_write_user,
+                 vmq_enhanced_auth_acl_read_token,
                  vmq_gojek_auth_acl_write_token
                 ]).
 -define(ARGS_EXTRACT_REGEX, "\\(\s*(u|c)\s*,\s*(:|-|\\|)\s*,\s*([0-9]+)\s*\\)").

@@ -1,4 +1,4 @@
--module(vmq_gojek_auth_SUITE).
+-module(vmq_enhanced_auth_SUITE).
 
 %% API
 -export([
@@ -40,7 +40,7 @@ end_per_testcase(_, Config) ->
   Config.
 
 auth_on_register_test(_) ->
-  ok = application:set_env(vmq_gojek_auth, secret_key, "test-key"),
+  ok = application:set_env(vmq_enhanced_auth, secret_key, "test-key"),
   ok = application:set_env(vmq_gojek_auth, enable_jwt_auth, true),
 
   %When username contains no colons
