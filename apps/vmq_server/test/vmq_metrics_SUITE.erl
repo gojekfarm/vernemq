@@ -26,12 +26,8 @@ end_per_suite(_Config) ->
     _Config.
 
 init_per_testcase(_Case, Config) ->
-    case proplists:get_value(vmq_md, Config) of
-        #{group := vmq_reg_redis_trie, tc := _} ->
-            vmq_test_utils:setup(vmq_reg_redis_trie),
-            eredis:q(whereis(redis_client), ["FLUSHDB"]);
-        _ -> vmq_test_utils:setup(vmq_reg_trie)
-    end,
+    vmq_test_utils:setup(),
+    eredis:q(whereis(redis_client), ["FLUSHDB"]),
     enable_on_subscribe(),
     vmq_server_cmd:set_config(allow_anonymous, true),
     vmq_server_cmd:set_config(graphite_interval, 100),
@@ -53,8 +49,7 @@ end_per_testcase(_, Config) ->
 
 all() ->
     [
-        {group, vmq_reg_redis_trie},
-        {group, vmq_reg_trie}
+        {group, mqtt}
     ].
 
 groups() ->
@@ -65,8 +60,7 @@ groups() ->
      simple_prometheus_test,
      simple_cli_test],
     [
-        {vmq_reg_redis_trie, [], Tests},
-        {vmq_reg_trie, [], Tests}
+        {mqtt, [], Tests}
     ].
 
 simple_systree_test(Cfg) ->
@@ -220,11 +214,7 @@ sample_subscribe(Cfg) ->
     Subscribe = packet:gen_subscribe(53, SubTopic, 0),
     Suback = packet:gen_suback(53, 0),
     {ok, CT} = vmq_topic:validate_topic(subscribe, list_to_binary(SubTopic)),
-    case proplists:get_value(vmq_md, Cfg) of
-        #{group := vmq_reg_redis_trie, tc := _} ->
-            vmq_reg_redis_trie:add_complex_topics([CT]);
-        _ -> ok
-    end,
+    vmq_reg_redis_trie:add_complex_topics([CT]),
     {ok, SubSocket} = packet:do_client_connect(Connect, Connack, []),
     ok = gen_tcp:send(SubSocket, Subscribe),
     ok = packet:expect_packet(SubSocket, "suback", Suback),
@@ -238,11 +228,7 @@ histogram_systree_test(Cfg, Suffix, Val) ->
     Subscribe = packet:gen_subscribe(53, Topic, 0),
     Suback = packet:gen_suback(53, 0),
     {ok, CT} = vmq_topic:validate_topic(subscribe, list_to_binary(Topic)),
-    case proplists:get_value(vmq_md, Cfg) of
-        #{group := vmq_reg_redis_trie, tc := _} ->
-            vmq_reg_redis_trie:add_complex_topics([CT]);
-        _ -> ok
-    end,
+    vmq_reg_redis_trie:add_complex_topics([CT]),
     {ok, SubSocket} = packet:do_client_connect(Connect, Connack, []),
     ok = gen_tcp:send(SubSocket, Subscribe),
     ok = packet:expect_packet(SubSocket, "suback", Suback),

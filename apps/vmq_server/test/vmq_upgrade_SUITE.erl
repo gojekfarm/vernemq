@@ -21,7 +21,8 @@ end_per_suite(_Config) ->
     _Config.
 
 init_per_testcase(_Case, Config) ->
-    vmq_test_utils:setup(vmq_reg_trie),
+    vmq_test_utils:setup(),
+    eredis:q(whereis(redis_client), ["FLUSHDB"]),
     Config.
 
 end_per_testcase(_, Config) ->
@@ -45,7 +46,7 @@ v0_to_v1_subscriber_format_test(_) ->
               V1Subs = [{node(), false, [{Topic, 1}]}],
               C2 = V1Subs == vmq_reg:subscriptions_for_subscriber_id(SubscriberId),
               %% routing index must be updated
-              C3 = [{SubscriberId, 1}] == vmq_reg_view:fold(vmq_reg_trie, SubscriberId, Topic,
+              C3 = [{SubscriberId, 1}] == vmq_reg_view:fold(vmq_reg_redis_trie, SubscriberId, Topic,
                                                             fun(V, _, Acc) -> [V|Acc] end, []),
               C1 and C2 and C3
       end,
