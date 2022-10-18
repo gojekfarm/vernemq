@@ -16,6 +16,7 @@ end_per_suite(_Config) ->
 
 init_per_group(_, Config) ->
     vmq_test_utils:setup(),
+    eredis:q(whereis(redis_client), ["FLUSHDB"]),
     enable_on_subscribe(),
     enable_on_publish(),
     vmq_server_cmd:set_config(allow_anonymous, true),
@@ -43,7 +44,7 @@ all() ->
         {group, mqtt}
     ].
 
-filtering_works(Config) ->
+filtering_works(_Config) ->
     Connect = packet:gen_connect("vmq-info-client", [{keepalive,60},{clean_session, false}]),
     Connack = packet:gen_connack(0),
     Subscribe = packet:gen_subscribe(1, [{"some/topic/1", 0},

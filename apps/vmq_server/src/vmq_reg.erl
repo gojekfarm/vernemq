@@ -18,7 +18,7 @@
 
 -import(vmq_subscriber, [check_format/1]).
 
--dialyzer({no_match, [subscribe_op/3, maybe_remap_subscriber/3, subscriptions_for_subscriber_id/2]}).
+-dialyzer({no_match, [subscribe_op/3, maybe_remap_subscriber/3]}).
 
 %% API
 -export([
@@ -455,16 +455,15 @@ publish_fold_fun({{_,_} = SubscriberId, SubInfo}, _FromClientId, #publish_fold_a
             ok = vmq_queue:enqueue(QPid, {deliver, QoS, Msg2}),
             Acc#publish_fold_acc{local_matches= N + 1}
     end;
-publish_fold_fun({Node, SubscriberId, SubInfo}, _FromClientId, #publish_fold_acc{local_matches=LN,
-                                                                                   remote_matches=RN,
-                                                                                   msg=Msg} = Acc) ->
-    V1 = vmq_util:ts(),
-    ok = vmq_redis_queue:enqueue(Node, SubscriberId, SubInfo, Msg),
-    vmq_metrics:pretimed_measurement({?MODULE, main_queue_enqueue}, vmq_util:ts() - V1),
-    case node() of
-        Node -> Acc#publish_fold_acc{local_matches= LN + 1};
-        _ -> Acc#publish_fold_acc{local_matches= RN + 1}
-    end;
+publish_fold_fun({Node, SubscriberId, SubInfo}, _FromClientId, #publish_fold_acc{local_matches =N,
+                                                                                 msg=Msg} = Acc)
+    when Node == node() ->
+    enqueue_msg({SubscriberId, SubInfo}, Msg),
+    Acc#publish_fold_acc{local_matches= N + 1};
+publish_fold_fun({Node, SubscriberId, SubInfo}, _FromClientId, #publish_fold_acc{remote_matches=RN,
+                                                                                 msg=Msg} = Acc) ->
+    vmq_redis_queue:enqueue(Node, SubscriberId, SubInfo, Msg),
+    Acc#publish_fold_acc{local_matches= RN + 1};
 publish_fold_fun({_Node, _Group, SubscriberId, #{no_local := true}}, SubscriberId, Acc) ->
     %% Publisher is the same as subscriber, discard.
     Acc;
@@ -577,24 +576,6 @@ maybe_delete_expired({Ts, _}, MP, Topic) ->
     end.
 
 subscriptions_for_subscriber_id(SubscriberId) ->
-    subscriptions_for_subscriber_id(?DefaultRegView, SubscriberId).
-
-subscriptions_for_subscriber_id(vmq_reg_redis_trie, {MP, ClientId} = _SubscriberId) ->
-    case vmq_redis:query(redis_client, [?FCALL,
-                                   ?FETCH_SUBSCRIBER,
-                                   0,
-                                   MP,
-                                   ClientId], ?FCALL, ?FETCH_SUBSCRIBER) of
-        {ok, []} -> [];
-        {ok, [NodeBinary, CS, TopicsWithQoSBinary]} ->
-            CleanSession = case CS of
-                <<"1">> -> true;
-                undefined -> false
-            end,
-            TopicsWithQoS = [{vmq_topic:word(Topic), binary_to_term(QoS)} || [Topic, QoS] <- TopicsWithQoSBinary],
-            check_format([{binary_to_atom(NodeBinary), CleanSession, TopicsWithQoS}])
-    end;
-subscriptions_for_subscriber_id(_, SubscriberId) ->
     Default = [],
     vmq_subscriber_db:read(SubscriberId, Default).
 

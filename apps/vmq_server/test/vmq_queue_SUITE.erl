@@ -53,7 +53,7 @@ end_per_testcase(_, Config) ->
 
 all() ->
     [
-        {group, mqtt}
+        {group, vmq_reg_redis_trie}
     ].
 
 groups() ->
@@ -69,7 +69,7 @@ groups() ->
      queue_force_disconnect_cleanup_test
     ],
     [
-        {mqtt, [], Tests}
+        {vmq_reg_redis_trie, [], Tests}
     ].
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
