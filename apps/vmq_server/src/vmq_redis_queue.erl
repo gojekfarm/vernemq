@@ -41,9 +41,8 @@ enqueue(Node, SubscriberId, SubInfo, Msg) ->
                                               [{node, Node}, {redis_client, RedisClient}]},
                                               binary_to_integer(MainQueueSize)),
             ok;
-        _ -> ok
-    end,
-    ok.
+        {error, _} = Res -> Res
+    end.
 
 %%%===================================================================
 %%% Supervisor callbacks
@@ -51,10 +50,6 @@ enqueue(Node, SubscriberId, SubInfo, Msg) ->
 init([RedisShard]) ->
     {ok, init_state(RedisShard, #state{})}.
 init_state(RedisShard, State) ->
-    case State#state.timer of
-        undefined -> undefined;
-        TRef -> erlang:cancel_timer(TRef)
-    end,
     Interval = application:get_env(vmq_server, redis_queue_sleep_interval, 0),
     NTRef = erlang:send_after(Interval, self(), poll_redis_main_queue),
     State#state{shard=RedisShard, interval=Interval, timer=NTRef}.

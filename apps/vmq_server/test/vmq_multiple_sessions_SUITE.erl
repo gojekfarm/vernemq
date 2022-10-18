@@ -48,7 +48,7 @@ groups() ->
         [multiple_sessions_test,
      multiple_balanced_sessions_test],
     [
-        {vmq_reg_trie, [], Tests}
+        {mqtt, [], Tests}
     ].
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%

@@ -63,8 +63,8 @@ groups() ->
         {mqtt, [], Tests}
     ].
 
-simple_systree_test(Cfg) ->
-    Socket = sample_subscribe(Cfg),
+simple_systree_test(_Cfg) ->
+    Socket = sample_subscribe(),
     SysTopic = "$SYS/"++ atom_to_list(node()) ++ "/mqtt/subscribe/received",
     Publish = packet:gen_publish(SysTopic, 0, <<"1">>, []),
     ok = packet:expect_packet(Socket, "publish", Publish),
@@ -78,13 +78,13 @@ histogram_systree_test(Cfg) ->
     histogram_systree_test(Cfg, "/bucket/1000", 8),
     histogram_systree_test(Cfg, "/bucket/inf", 10).
 
-simple_graphite_test(Cfg) ->
+simple_graphite_test(_Cfg) ->
     vmq_server_cmd:set_config(graphite_enabled, true),
     vmq_server_cmd:set_config(graphite_host, "localhost"),
     vmq_server_cmd:set_config(graphite_interval, 1000),
     vmq_server_cmd:set_config(graphite_include_labels, false),
     % ensure we have a subscription that we can count later on
-    SubSocket = sample_subscribe(Cfg),
+    SubSocket = sample_subscribe(),
     {ok, LSocket} = gen_tcp:listen(2003, [binary, {packet, raw},
                                           {active, false},
                                           {reuseaddr, true}]),
@@ -142,14 +142,14 @@ recv_data(Socket, Want0) ->
             end
     end.
 
-simple_prometheus_test(Cfg) ->
+simple_prometheus_test(_Cfg) ->
     %% we have to setup the listener here, because vmq_test_utils is overriding
     %% the default set in vmq_server.app.src
     vmq_server_cmd:listener_start(8888, [{http, true},
                                          {config_mod, vmq_metrics_http},
                                          {config_fun, routes}]),
     application:ensure_all_started(inets),
-    SubSocket = sample_subscribe(Cfg),
+    SubSocket = sample_subscribe(),
     {ok, {_Status, _Headers, Body}} = httpc:request("http://localhost:8888/metrics"),
     Lines = re:split(Body, "\n"),
     Node = atom_to_list(node()),
@@ -178,8 +178,8 @@ simple_prometheus_test(Cfg) ->
 
     gen_tcp:close(SubSocket).
 
-simple_cli_test(Cfg) ->
-    SubSocket = sample_subscribe(Cfg),
+simple_cli_test(_Cfg) ->
+    SubSocket = sample_subscribe(),
     {ok, [{text, Text}]} = vmq_server_cmd:metrics(),
     Lines = re:split(Text, "\n", [{return, list}]),
     true = lists:member("counter.mqtt_subscribe_received = 1", Lines),
@@ -206,7 +206,7 @@ disable_on_subscribe() ->
 
 hook_auth_on_subscribe(_, _, _) -> ok.
 
-sample_subscribe(Cfg) ->
+sample_subscribe() ->
     %% let the metrics system do some increments
     SubTopic = "$SYS/+/mqtt/subscribe/received",
     Connect = packet:gen_connect("metrics-test", [{keepalive,60}]),
@@ -220,7 +220,7 @@ sample_subscribe(Cfg) ->
     ok = packet:expect_packet(SubSocket, "suback", Suback),
     SubSocket.
 
-histogram_systree_test(Cfg, Suffix, Val) ->
+histogram_systree_test(_Cfg, Suffix, Val) ->
     %% let the metrics system do some increments
     Connect = packet:gen_connect("hist-test", [{keepalive,60}]),
     Connack = packet:gen_connack(0),

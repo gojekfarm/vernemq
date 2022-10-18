@@ -60,7 +60,7 @@ groups() ->
      modify_props_on_deliver_m5
     ],
     [
-     {mqtt, [shuffle, parallel], ConnectTests},
+     {mqtt, [shuffle, parallel], ConnectTests}
     ].
 
 connack_error_with_reason_string(Cfg) ->
