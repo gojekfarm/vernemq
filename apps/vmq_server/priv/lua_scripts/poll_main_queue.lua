@@ -11,7 +11,7 @@ local function poll_main_queue(KEYS, ARGV)
 
     local Res = {}
     Res = redis.call('BLMPOP', 10, 1, mainQueue,  'RIGHT', 'COUNT', maxMsgCount)
-    if Res == nil then
+    if Res == nil or Res == false then
         return nil
     end
 
