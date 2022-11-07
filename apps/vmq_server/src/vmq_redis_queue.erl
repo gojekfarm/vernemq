@@ -28,10 +28,11 @@ start_link(RegName, RedisNode) ->
 enqueue(Node, SubscriberId, SubInfo, Msg) ->
     SIdBin = term_to_binary(SubscriberId),
     RedisClient = gen_redis_producer_client(SIdBin),
+    MainQueueKey = "mainQueue" ++ "::" ++ atom_to_list(Node),
     case vmq_redis:query(RedisClient, [?FCALL,
                                        ?ENQUEUE_MSG,
-                                       0,
-                                       Node,
+                                       1,
+                                       MainQueueKey,
                                        SIdBin,
                                        term_to_binary({SubInfo, Msg})
                                       ], ?FCALL, ?ENQUEUE_MSG) of
