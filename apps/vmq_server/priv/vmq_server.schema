@@ -9,7 +9,7 @@
 %% tuples of redis shards used for message passing.
 {mapping,
     "redis_queue_shard_endpoints",
-    "vmq_server.redis_queue_cluster_endpoints", [{default, "[{\"127.0.0.1\", 6379}]"}, {datatype, string}]}.
+    "vmq_server.redis_queue_shard_endpoints", [{default, "[{\"127.0.0.1\", 6379}]"}, {datatype, string}]}.
 
 %% @doc This option specifies the number of worker processes per redis shard
 %% that will poll their main queues in message passing redis shard for new messages.
