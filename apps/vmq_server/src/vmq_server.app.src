@@ -19,7 +19,8 @@
                   jsx,
                   gen_server2,
                   stdout_formatter,
-                  eredis
+                  eredis,
+                  throttle
                  ]},
   {mod, { vmq_server_app, []}},
   {env, [
@@ -109,7 +110,7 @@
       %{graphite_prefix, ""}
 
       % Systree
-      {systree_enabled, true}
+      {systree_enabled, true},
       %{systree_interval, 20000},
       %{systree_prefix, [<<"$SYS">>, NodenameBinary]},
       %{systree_mountpoint, ""},
@@ -117,6 +118,7 @@
       %{systree_retain, false},
       %{systree_reg_view, vmq_reg_trie},
 
+      {max_conns_per_second, -1}
       ]} % end env
 
 

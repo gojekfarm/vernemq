@@ -312,6 +312,7 @@ init([]) ->
     process_flag(trap_exit, true),
     Env = vmq_config:get_all_env(vmq_server),
     _ = configure_listeners(Env, []),
+    init_throttle(),
     {ok, #state{}}.
 
 %%--------------------------------------------------------------------
@@ -424,3 +425,12 @@ maybe_proxy(true, Type, Opts) ->
     cowboy_router:compile(
         [{'_', [{"/mqtt", vmq_websocket, [{proxy_header, true}|[{type, Type}|default_session_opts(Opts)]]}]}
         ]).
+
+init_throttle() ->
+    Conns_per_second = vmq_config:get_env(max_conns_per_second),
+    lager:error("throttle conf: ~p", [Conns_per_second]),
+    case Conns_per_second of
+        -1 -> ok;
+        _ ->
+            throttle:setup(connection_rate_limit, Conns_per_second, per_second)
+    end.

@@ -1575,6 +1575,13 @@
                                                                             hidden
                                                                            ]}.
 
+%% @doc Sets the connection_rate_limit.
+{mapping, "max_conns_per_second", "vmq_server.max_conns_per_second", [
+                                                              {default, -1},
+                                                              {datatype, integer},
+                                                              hidden
+                                                              ]}.
+
 {mapping, "plumtree.directory", "plumtree.plumtree_data_dir", [
                                              {default, "{{platform_data_dir}}/meta"},
                                              {datatype, directory},

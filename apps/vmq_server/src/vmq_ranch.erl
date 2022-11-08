@@ -39,8 +39,14 @@
 
 %% API.
 start_link(Ref, _Socket, Transport, Opts) ->
-    Pid = proc_lib:spawn_link(?MODULE, init, [Ref, self(), Transport, Opts]),
-    {ok, Pid}.
+    case throttle:check(connection_rate_limit, Ref) of
+        {limit_exceeded, _, TR} ->
+            lager:warning("Connection rate limit exceeded, time remaining: ~p Listener: ~p", [TR, Ref]),
+            ok;
+        _ ->
+            Pid = proc_lib:spawn_link(?MODULE, init, [Ref, self(), Transport, Opts]),
+            {ok, Pid}
+    end.
 
 
 init(Ref, Parent, Transport, Opts) ->
