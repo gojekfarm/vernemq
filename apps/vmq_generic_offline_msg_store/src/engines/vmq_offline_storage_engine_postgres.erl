@@ -26,7 +26,13 @@
 
 % API
 open(Opts) ->
-    epgsql:connect(Opts).
+    case epgsql:connect(Opts) of
+        {ok, _} = OkResponse -> OkResponse;
+        {error, Reason} ->
+            lager:error("Error connecting db: ~p", [Reason]),
+            timer:sleep(2000),
+            open(Opts)
+    end.
 
 write(Client, SIdB, MsgRef, MsgB, Timeout) ->
     equery(Client,
@@ -68,17 +74,25 @@ equery(C, SQL, Parameters, Timeout) ->
             TypedParameters = lists:zip(Types, Parameters),
             Ref1 = epgsqla:equery(C, S, TypedParameters),
             receive
-                {C, Ref1, Result} -> Result
+                {C, Ref1, Result} ->
+                    epgsql:sync(C),
+                    Result
             after Timeout ->
                 ok = epgsql:cancel(C),
                 receive
-                    {C, Ref1, Result} -> Result
+                    {C, Ref1, Result} ->
+                        epgsql:sync(C),
+                        Result
                 end
             end;
-        {C, Ref0, Result} -> Result
+        {C, Ref0, Result} ->
+            epgsql:sync(C),
+            Result
     after Timeout ->
         ok = epgsql:cancel(C),
         receive
-            {C, Ref0, Result} -> Result
+            {C, Ref0, Result} ->
+                epgsql:sync(C),
+                Result
         end
     end.
