@@ -1076,6 +1076,7 @@ queue_insert(
     Size >= Max
 ->
     on_message_drop_hook(SId, MsgOrRef, queue_full),
+    sample_log(1, "Message dropped for subscriber_id: ~p due to ~p", [SId, queue_full]),
     vmq_metrics:incr_queue_drop(),
     maybe_offline_delete(SId, MsgOrRef),
     Q#queue{drop = Drop + 1};
@@ -1090,6 +1091,7 @@ queue_insert(
 ->
     {{value, OldMsgOrRef}, NewQueue} = queue:out(Queue),
     on_message_drop_hook(SId, OldMsgOrRef, queue_full),
+    sample_log(1, "Message dropped for subscriber_id: ~p due to ~p", [SId, queue_full]),
     vmq_metrics:incr_queue_drop(),
     maybe_offline_delete(SId, OldMsgOrRef),
     Q#queue{
@@ -1432,6 +1434,7 @@ maybe_expire_msg(
     case vmq_time:is_past(ExpiryTS) of
         true ->
             on_message_drop_hook(SId, D, expired),
+            sample_log(1, "Message dropped for subscriber_id: ~p due to ~p", [SId, expired]),
             vmq_metrics:incr_queue_msg_expired(1),
             expired;
         Remaining ->
@@ -1448,3 +1451,9 @@ to_internal(Msg) ->
 
 to_external(#deliver{qos = QoS, msg = Msg}) ->
     {deliver, QoS, Msg}.
+
+sample_log(Threshold, Log, Params) ->
+    case rand:uniform(100) =< Threshold of
+        true -> lager:error(Log, Params);
+        _ -> ok
+    end.
