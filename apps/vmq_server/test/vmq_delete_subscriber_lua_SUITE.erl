@@ -15,7 +15,6 @@ end_per_suite(_Config) ->
 
 init_per_testcase(_Case, Config) ->
     vmq_test_utils:setup(),
-    eredis:q(whereis(redis_client), ["FLUSHDB"]),
     Config.
 
 end_per_testcase(_, Config) ->

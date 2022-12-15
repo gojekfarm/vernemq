@@ -32,7 +32,6 @@ end_per_suite(_Config) ->
 
 init_per_testcase(Case, Config) ->
     vmq_test_utils:setup(),
-    eredis:q(whereis(redis_client), ["FLUSHDB"]),
     case {lists:member(Case, all_no_auth()),
           lists:member(Case, all_cert_auth()),
           lists:member(Case, all_cert_auth_revoked()),

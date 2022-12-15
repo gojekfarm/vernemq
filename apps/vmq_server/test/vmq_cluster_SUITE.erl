@@ -70,7 +70,7 @@ init_per_testcase(Case, Config) ->
                                          [P, []]),
                       %% allow all
                       ok = rpc:call(Node, vmq_auth, register_hooks, []),
-                      rpc:call(Node, vmq_subscriber_db, flushdb, []),
+                      rpc:call(Node, vmq_subscriber_db, flushall, []),
                       {Node, P}
               end, [{test1, 18883},
                     {test2, 18884},

@@ -15,22 +15,18 @@ end_per_suite(_Config) ->
 
 init_per_group(mqtts, Config) ->
     vmq_test_utils:setup(),
-    eredis:q(whereis(redis_client), ["FLUSHDB"]),
     Config1 = [{type, tcp},{port, 1889}, {address, "127.0.0.1"}|Config],
     start_listener(Config1);
 init_per_group(mqttws, Config) ->
     vmq_test_utils:setup(),
-    eredis:q(whereis(redis_client), ["FLUSHDB"]),
     Config1 = [{type, ws},{port, 1890}, {address, "127.0.0.1"}|Config],
     start_listener(Config1);
 init_per_group(mqttv4, Config) ->
     vmq_test_utils:setup(),
-    eredis:q(whereis(redis_client), ["FLUSHDB"]),
     Config1 = [{type, tcp},{port, 1888}, {address, "127.0.0.1"}|Config],
     [{protover, 4}|start_listener(Config1)];
 init_per_group(mqttv5, Config) ->
     vmq_test_utils:setup(),
-    eredis:q(whereis(redis_client), ["FLUSHDB"]),
     Config1 = [{type, tcp},{port, 1887}, {address, "127.0.0.1"}|Config],
     [{protover, 5}|start_listener(Config1)].
 

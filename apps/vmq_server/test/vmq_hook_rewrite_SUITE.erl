@@ -8,7 +8,6 @@
 %% ===================================================================
 init_per_suite(_Config) ->
     vmq_test_utils:setup(),
-    eredis:q(whereis(redis_client), ["FLUSHDB"]),
     cover:start(),
     _Config.
 

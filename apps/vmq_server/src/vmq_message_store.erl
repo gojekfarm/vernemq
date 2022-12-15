@@ -58,8 +58,7 @@ write(SubscriberId, Msg) ->
     vmq_util:timed_measurement({?MODULE, write}, ?MODULE, write_with_retry, [SubscriberId, Msg, ?NR_OF_RETRIES]).
 write_with_retry(SubscriberId, Msg, N) when N >= 0 ->
     case vmq_plugin:only(msg_store_write, [SubscriberId, Msg]) of
-        {ok, Count} ->
-            vmq_metrics:incr_stored_offline_messages(Count);
+        {ok, _Count} -> ok;
         {error, no_matching_hook_found} = ErrRes -> ErrRes;
         {error, Err} ->
             lager:error("Error: ~p", [Err]),
@@ -77,6 +76,7 @@ read_with_retry(SubscriberId, MsgRef, N) when N >= 0 ->
     case vmq_plugin:only(msg_store_read, [SubscriberId, MsgRef]) of
         {ok, _} = OkRes -> OkRes;
         {error, no_matching_hook_found} = ErrRes -> ErrRes;
+        {error, not_supported} = ErrRes -> ErrRes;
         {error, Err} ->
             lager:error("Error: ~p", [Err]),
             vmq_metrics:incr_msg_store_ops_error(read),
@@ -91,8 +91,7 @@ delete(SubscriberId) ->
     vmq_util:timed_measurement({?MODULE, delete_all}, ?MODULE, delete_all_with_retry, [SubscriberId, ?NR_OF_RETRIES]).
 delete_all_with_retry(SubscriberId, N) when N >= 0 ->
     case vmq_plugin:only(msg_store_delete, [SubscriberId]) of
-        {ok, Count} ->
-            vmq_metrics:incr_removed_offline_messages(Count);
+        {ok, _Count} -> ok;
         {error, no_matching_hook_found} = ErrRes -> ErrRes;
         {error, Err} ->
             lager:error("Error: ~p", [Err]),
@@ -108,8 +107,7 @@ delete(SubscriberId, MsgRef) ->
     vmq_util:timed_measurement({?MODULE, delete}, ?MODULE, delete_with_retry, [SubscriberId, MsgRef, ?NR_OF_RETRIES]).
 delete_with_retry(SubscriberId, MsgRef, N) when N >= 0 ->
     case vmq_plugin:only(msg_store_delete, [SubscriberId, MsgRef]) of
-        {ok, Count} ->
-            vmq_metrics:incr_removed_offline_messages(Count);
+        {ok, _Count} -> ok;
         {error, no_matching_hook_found} = ErrRes -> ErrRes;
         {error, Err} ->
             lager:error("Error: ~p", [Err]),

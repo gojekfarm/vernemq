@@ -26,12 +26,29 @@
 
 % API
 open(Opts) ->
+    Username = case proplists:get_value(username, Opts, undefined) of
+                   undefined -> undefined;
+                   User when is_atom(User) -> atom_to_list(User)
+               end,
+    Password = case proplists:get_value(password, Opts, undefined) of
+                   undefined -> undefined;
+                   Pass when is_atom(Pass) -> atom_to_list(Pass)
+               end,
+    ConnectOpts = [{host, proplists:get_value(host, Opts, "localhost")},
+                   {port, proplists:get_value(port, Opts, 5432)},
+                   {username, Username},
+                   {password, Password},
+                   {database, proplists:get_value(database, Opts, "vmq_test_database")},
+                   {timeout, proplists:get_value(connect_timeout, Opts, 5000)}
+    ],
+    open_(ConnectOpts).
+open_(Opts) ->
     case epgsql:connect(Opts) of
         {ok, _} = OkResponse -> OkResponse;
         {error, Reason} ->
             lager:error("Error connecting db: ~p", [Reason]),
             timer:sleep(2000),
-            open(Opts)
+            open_(Opts)
     end.
 
 write(Client, SIdB, MsgRef, MsgB, Timeout) ->

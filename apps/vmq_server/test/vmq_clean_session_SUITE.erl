@@ -18,7 +18,6 @@ end_per_suite(_Config) ->
 
 init_per_testcase(_Case, Config) ->
     vmq_test_utils:setup(),
-    eredis:q(whereis(redis_client), ["FLUSHDB"]),
     vmq_server_cmd:set_config(allow_anonymous, true),
     vmq_server_cmd:set_config(retry_interval, 10),
     vmq_server_cmd:set_config(max_client_id_size, 1000),

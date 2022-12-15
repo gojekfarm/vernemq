@@ -2,7 +2,7 @@
 %% ex: ft=erlang
 
 {mapping, "offline_message_store_engine", "vmq_generic_offline_msg_store.msg_store_engine",
-    [{default, vmq_offline_storage_engine_postgres},
+    [{default, vmq_offline_storage_engine_redis},
      {datatype, atom}
     ]}.
 
@@ -12,26 +12,26 @@
     ]}.
 
 {mapping, "offline_message_store_opts.port", "vmq_generic_offline_msg_store.msg_store_opts.port",
-    [{default, 5432},
+    [{default, 6379},
      {datatype, integer}
     ]}.
 
 {mapping, "offline_message_store_opts.username", "vmq_generic_offline_msg_store.msg_store_opts.username",
-    [{default, "vmq_test_user"},
-     {datatype, string}
+    [{default, undefined},
+     {datatype, atom}
     ]}.
 
 {mapping, "offline_message_store_opts.password", "vmq_generic_offline_msg_store.msg_store_opts.password",
-    [{default, "vmq_test_password"},
-     {datatype, string}
+    [{default, undefined},
+     {datatype, atom}
     ]}.
 
 {mapping, "offline_message_store_opts.database", "vmq_generic_offline_msg_store.msg_store_opts.database",
-    [{default, "vmq_test_database"},
+    [{default, "2"},
      {datatype, string}
     ]}.
 
-{mapping, "offline_message_store_opts.connection_timeout", "vmq_generic_offline_msg_store.msg_store_opts.timeout",
+{mapping, "offline_message_store_opts.connect_timeout", "vmq_generic_offline_msg_store.msg_store_opts.connect_timeout",
     [{default, 4000},
      {datatype, integer}
     ]}.

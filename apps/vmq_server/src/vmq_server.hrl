@@ -63,6 +63,13 @@
 -define(DELETE_COMPLEX_TOPICS_OPERATION, delete_complex_topics).
 -define(ENQUEUE_MSG, enqueue_msg).
 -define(POLL_MAIN_QUEUE, poll_main_queue).
+-define(RPUSH, rpush).
+-define(DEL, del).
+-define(FIND, find).
+-define(LPOP, lpop).
+-define(MSG_STORE_WRITE, msg_store_write).
+-define(MSG_STORE_DELETE, msg_store_delete).
+-define(MSG_STORE_FIND, msg_store_find).
 
 -define(PRODUCER, "producer").
 -define(CONSUMER, "consumer").
