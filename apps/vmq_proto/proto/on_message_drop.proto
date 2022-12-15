@@ -1,0 +1,23 @@
+syntax = "proto3";
+
+import "google/protobuf/timestamp.proto";
+
+option go_package = "source.golabs.io/courier/apis-go/eventssidecar/v1";
+
+package eventssidecar.v1;
+
+enum Reason {
+  EXPIRED = 0;
+  QUEUE_FULL = 1;
+  MAX_PACKET_SIZE_EXCEEDED = 2;
+}
+
+message OnMessageDrop {
+  google.protobuf.Timestamp timestamp = 1;
+  string client_id = 2;
+  string mountpoint = 3;
+  string topic = 5;
+  bytes payload = 6;
+  int32 qos = 7;
+  Reason reason = 8;
+}
