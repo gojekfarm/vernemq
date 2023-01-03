@@ -167,21 +167,21 @@ filtering_works(_Config) ->
     %% [#{client_id := <<"vmq-info-client">>, msg_ref := MsgRef}] =
     %%     execute(["vmq-admin", "session", "show", "--client_id", "--msg_ref=" ++ binary_to_list(MsgRef)]),
 
-%%    [#{client_id := <<"vmq-info-client">>, msg_qos := 1}] =
-%%        execute(["vmq-admin", "session", "show", "--msg_qos=1",
-%%                 "--client_id", "--msg_qos"]),
+    [#{client_id := <<"vmq-info-client">>, msg_qos := 1}] =
+        execute(["vmq-admin", "session", "show", "--msg_qos=1",
+                 "--client_id", "--msg_qos"]),
 
-%%    [#{client_id := <<"vmq-info-client">>, routing_key := <<"with/wildcard/qos1">>}] =
-%%        execute(["vmq-admin", "session", "show", "--routing_key=with/wildcard/qos1",
-%%                 "--client_id", "--routing_key"]),
-%%
-%%    [#{client_id := <<"vmq-info-client">>, dup := false}] =
-%%        execute(["vmq-admin", "session", "show", "--dup=false",
-%%                 "--client_id", "--dup"]),
-%%
-%%    [#{client_id := <<"vmq-info-client">>, payload := <<"thepayload">>}] =
-%%        execute(["vmq-admin", "session", "show", "--payload=thepayload",
-%%                 "--client_id", "--payload"]),
+    [#{client_id := <<"vmq-info-client">>, routing_key := <<"with/wildcard/qos1">>}] =
+        execute(["vmq-admin", "session", "show", "--routing_key=with/wildcard/qos1",
+                 "--client_id", "--routing_key"]),
+
+    [#{client_id := <<"vmq-info-client">>, dup := false}] =
+        execute(["vmq-admin", "session", "show", "--dup=false",
+                 "--client_id", "--dup"]),
+
+    [#{client_id := <<"vmq-info-client">>, payload := <<"thepayload">>}] =
+        execute(["vmq-admin", "session", "show", "--payload=thepayload",
+                 "--client_id", "--payload"]),
     ok = gen_tcp:send(PubSocket, Disconnect),
     ok = gen_tcp:close(PubSocket).
 
