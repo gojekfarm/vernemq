@@ -1,6 +1,7 @@
 -module(vmq_test_utils).
 -export([setup/0,
          teardown/0,
+         teardown/1,
          reset_tables/0,
          maybe_start_distribution/1,
          get_suite_rand_seed/0,
@@ -48,6 +49,12 @@ random_port() ->
     10000 + (erlang:phash2(node()) rem 10000).
 
 teardown() ->
+    teardown(true).
+teardown(ClearRedis) ->
+    case ClearRedis of
+        true -> eredis:q(whereis(redis_client), ["FLUSHALL"]);
+        _ -> ok
+    end,
     disable_all_plugins(),
     vmq_metrics:reset_counters(),
     vmq_server:stop(),

@@ -32,14 +32,26 @@ end_per_group(_Group, _Config) ->
 
 init_per_testcase(_Case, Config) ->
     StorageEngine = proplists:get_value(engine, Config),
+    Opts = case StorageEngine of
+               vmq_offline_storage_engine_postgres ->
+                   [
+                      {username, vmq_test_user},
+                      {password, vmq_test_password},
+                      {database, "vmq_test_database"},
+                      {host, "localhost"},
+                      {port, 5432}
+                   ];
+               vmq_offline_storage_engine_redis ->
+                   {ok, _} = vmq_metrics:start_link(),
+                   [
+                       {database, "2"},
+                       {host, "[\"localhost\"]"},
+                       {port, 26379}
+                   ]
+           end,
     application:load(vmq_generic_offline_msg_store),
     application:set_env(vmq_generic_offline_msg_store, msg_store_engine, StorageEngine),
-    application:set_env(vmq_generic_offline_msg_store, msg_store_opts, [{username, "vmq_test_user"},
-                                                                        {password, "vmq_test_password"},
-                                                                        {database, "vmq_test_database"},
-                                                                        {host, "localhost"},
-                                                                        {port, 5432}
-                                                                       ]),
+    application:set_env(vmq_generic_offline_msg_store, msg_store_opts, Opts),
     application:ensure_all_started(vmq_generic_offline_msg_store),
     Config.
 
@@ -49,12 +61,14 @@ end_per_testcase(_, Config) ->
 
 all() ->
     [
-     {group, vmq_offline_storage_engine_postgres}
+     {group, vmq_offline_storage_engine_postgres},
+     {group, vmq_offline_storage_engine_redis}
     ].
 
 groups() ->
     [
-     {vmq_offline_storage_engine_postgres, [], [insert_delete_test]}
+     {vmq_offline_storage_engine_postgres, [], [insert_delete_test]},
+     {vmq_offline_storage_engine_redis, [], [insert_delete_test]}
     ].
 
 
@@ -71,8 +85,8 @@ insert_delete_test(Config) ->
 
     {1000, [#deliver{msg = Msg} | _]} = store_summary(SId), %% find
 
-    {ok, 1} = vmq_generic_offline_msg_store:msg_store_delete(SId, Msg#vmq_msg.msg_ref), %% delete
-    {ok, 999} = vmq_generic_offline_msg_store:msg_store_delete(SId), %% delete all
+    {ok, _} = vmq_generic_offline_msg_store:msg_store_delete(SId, Msg#vmq_msg.msg_ref), %% delete
+    {ok, _} = vmq_generic_offline_msg_store:msg_store_delete(SId), %% delete all
 
     {0, []} = store_summary(SId), %% find
     Config.
@@ -90,7 +104,7 @@ generate_msgs(N, Acc) ->
     generate_msgs(N - 1, [Msg|Acc]).
 
 store_msgs(SId, [Msg|Rest]) ->
-    {ok, 1} = vmq_generic_offline_msg_store:msg_store_write(SId, Msg),
+    {ok, _} = vmq_generic_offline_msg_store:msg_store_write(SId, Msg),
     store_msgs(SId, Rest);
 store_msgs(_, []) -> ok.
 

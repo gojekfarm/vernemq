@@ -27,7 +27,6 @@ end_per_suite(_Config) ->
 
 init_per_group(mqttv4, Config) ->
     vmq_test_utils:setup(),
-    eredis:q(whereis(redis_client), ["FLUSHDB"]),
     vmq_server_cmd:set_config(allow_anonymous, true),
     vmq_server_cmd:set_config(max_last_will_delay, "1h"),
     vmq_server_cmd:set_config(retry_interval, 10),
@@ -35,7 +34,6 @@ init_per_group(mqttv4, Config) ->
     [{protover, 4}|Config];
 init_per_group(mqttv5, Config) ->
     vmq_test_utils:setup(),
-    eredis:q(whereis(redis_client), ["FLUSHDB"]),
     vmq_server_cmd:set_config(allow_anonymous, true),
     vmq_server_cmd:set_config(max_last_will_delay, "1h"),
     vmq_server_cmd:set_config(retry_interval, 10),

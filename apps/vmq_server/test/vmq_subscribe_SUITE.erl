@@ -17,7 +17,6 @@ end_per_suite(_Config) ->
 
 init_per_group(_Group, _Config) ->
     vmq_test_utils:setup(),
-    eredis:q(whereis(redis_client), ["FLUSHDB"]),
     vmq_server_cmd:listener_start(1888, [{allowed_protocol_versions, "3,4,5,131"}]),
     enable_on_subscribe(),
     enable_on_publish(),

@@ -129,4 +129,3 @@
 -define(READ, read).
 -define(DELETE_ALL, delete_all).
 -define(DELETE, delete).
--define(FIND, find).

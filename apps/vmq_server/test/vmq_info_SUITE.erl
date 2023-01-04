@@ -16,7 +16,6 @@ end_per_suite(_Config) ->
 
 init_per_group(_, Config) ->
     vmq_test_utils:setup(),
-    eredis:q(whereis(redis_client), ["FLUSHDB"]),
     enable_on_subscribe(),
     enable_on_publish(),
     vmq_server_cmd:set_config(allow_anonymous, true),

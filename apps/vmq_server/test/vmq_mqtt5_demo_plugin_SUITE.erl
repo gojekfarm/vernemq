@@ -15,7 +15,6 @@ end_per_suite(_Config) ->
 
 init_per_group(_Group, _Config) ->
     vmq_test_utils:setup(),
-    eredis:q(whereis(redis_client), ["FLUSHDB"]),
     vmq_server_cmd:listener_start(1888, [{allowed_protocol_versions, "5"}]),
     ok = vmq_plugin_mgr:enable_plugin(vmq_mqtt5_demo_plugin),
     _Config.

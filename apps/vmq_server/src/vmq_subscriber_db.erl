@@ -20,7 +20,7 @@
          fold/2,
          delete/1,
          subscribe_db_events/0,
-         flushdb/0]).
+         flushall/0]).
 
 -import(vmq_subscriber, [check_format/1]).
 
@@ -28,8 +28,8 @@
 -define(TOMBSTONE, '$deleted').
 -define(DefaultRegView, application:get_env(vmq_server, default_reg_view, vmq_reg_redis_trie)).
 
-flushdb() ->
-    eredis:q(whereis(redis_client), ["FLUSHDB"]),
+flushall() ->
+    eredis:q(whereis(redis_client), ["FLUSHALL"]),
     ok.
 
 -spec store(subscriber_id(), vmq_subscriber:subs()) -> ok.

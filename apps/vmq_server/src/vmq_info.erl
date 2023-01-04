@@ -176,8 +176,9 @@ message_ref_row_init(Row) ->
     SubscriberId = {maps:get('__mountpoint', Row), maps:get(client_id, Row)},
     case vmq_message_store:find(SubscriberId) of
         {ok, Msgs} ->
-            lists:foldl(fun(#deliver{msg=#vmq_msg{msg_ref=MsgRef}}, Acc) ->
-                                [maps:merge(Row, #{'__msg_ref' => MsgRef,
+            lists:foldl(fun(#deliver{msg=#vmq_msg{msg_ref=MsgRef}=Msg}, Acc) ->
+                                [maps:merge(Row, #{'vmq_msg' => Msg,
+                                                   '__msg_ref' => MsgRef,
                                                    'msg_ref' => list_to_binary(base64:encode_to_string(MsgRef))})|Acc]
                         end, [], Msgs);
         {error, _} ->
@@ -185,12 +186,8 @@ message_ref_row_init(Row) ->
     end.
 
 message_row_init(Row) ->
-    SubscriberId = {maps:get('__mountpoint', Row), maps:get(client_id, Row)},
-    MsgRef = maps:get('__msg_ref', Row),
-    case vmq_message_store:read(SubscriberId, MsgRef) of
-        {ok, #vmq_msg{msg_ref=MsgRef, qos=QoS,
-                      dup=Dup, routing_key=RoutingKey,
-                      payload=Payload}} ->
+    case maps:get('vmq_msg', Row) of
+        #vmq_msg{qos=QoS, dup=Dup, routing_key=RoutingKey, payload=Payload} ->
             [maps:merge(Row, #{msg_qos => QoS,
                                routing_key => iolist_to_binary(vmq_topic:unword(RoutingKey)),
                                dup => Dup,

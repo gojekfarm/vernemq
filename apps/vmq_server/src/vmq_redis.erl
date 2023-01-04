@@ -4,12 +4,20 @@
 -include("vmq_server.hrl").
 
 %% API
--export([query/4, pipelined_query/3]).
+-export([query/4, query/5, pipelined_query/3]).
+
+-define(TIMEOUT, 5000).
 
 query(Client, QueryCmd, Cmd, Operation) ->
+    query(Client, QueryCmd, Cmd, Operation, ?TIMEOUT).
+query(Client, QueryCmd, Cmd, Operation, Timeout) ->
     vmq_metrics:incr_redis_cmd({Cmd, Operation}),
     V1 = vmq_util:ts(),
-    Result = case eredis:q(whereis(Client), QueryCmd) of
+    Pid = case Client of
+              C when is_pid(Client) -> C;
+              Named -> whereis(Named)
+          end,
+    Result = case eredis:q(Pid, QueryCmd, Timeout) of
                  {error, <<"ERR stale_request">>} = Res when Cmd == ?FCALL ->
                      vmq_metrics:incr_redis_stale_cmd({Cmd, Operation}),
                      lager:error("Cannot ~p due to staleness", [Cmd]),
