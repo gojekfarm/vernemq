@@ -235,7 +235,7 @@ online({enqueue, Msg}, State) ->
     _ = vmq_metrics:incr_queue_in(),
     {next_state, online, insert(Msg, State)};
 online(Event, State) ->
-    lager:error("got unknown event in online state ~p", [Event]),
+    lager:debug("got unknown event in online state ~p", [Event]),
     {next_state, online, State}.
 
 online({set_opts, SessionPid, Opts}, _From, #state{opts=OldOpts} = State) ->
@@ -282,7 +282,7 @@ online({terminate, Reason}, From, State)
     {next_state, state_change(termination, online, wait_for_offline),
         State#state{waiting_call={{terminate, Reason}, From}}};
 online(Event, _From, State) ->
-    lager:error("got unknown sync event in online state ~p", [Event]),
+    lager:debug("got unknown sync event in online state ~p", [Event]),
     {reply, {error, online}, State}.
 
 wait_for_offline({enqueue, Msg}, State) ->
@@ -445,7 +445,7 @@ offline(init_offline_queue, #state{id=SId} = State) ->
             _ = vmq_metrics:incr_queue_initialized_from_storage(),
             {next_state, offline, maybe_set_expiry_timer(State)};
         {error, Reason} ->
-            lager:error("can't initialize queue from offline storage due to ~p, retry in 1 sec", [Reason]),
+            lager:debug("can't initialize queue from offline storage due to ~p, retry in 1 sec", [Reason]),
             gen_fsm:send_event_after(1000, init_offline_queue),
             {next_state, offline, State}
     end;
@@ -475,7 +475,7 @@ offline(publish_last_will, State) ->
     State1 = unset_will_timer(publish_last_will(State)),
     {next_state, offline, State1};
 offline(Event, State) ->
-    lager:error("got unknown event in offline state ~p", [Event]),
+    lager:debug("got unknown event in offline state ~p", [Event]),
     {next_state, offline, State}.
 offline({add_session, SessionPid, Opts}, _From, State) ->
     ReturnOpts = #{initial_msg_id => State#state.initial_msg_id},
@@ -498,7 +498,7 @@ offline({cleanup, _Reason}, _From, #state{id=SId, offline=#queue{queue=Q}} = Sta
 offline({terminate, _Reason}, _From, State) ->
     {stop, normal, ok, State};
 offline(Event, _From, State) ->
-    lager:error("got unknown sync event in offline state ~p", [Event]),
+    lager:debug("got unknown sync event in offline state ~p", [Event]),
     {reply, {error, offline}, offline, State}.
 
 %%%===================================================================

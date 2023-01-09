@@ -28,7 +28,7 @@ query(Client, QueryCmd, Cmd, Operation, Timeout) ->
                      Res;
                  {error, Reason} ->
                      vmq_metrics:incr_redis_cmd_err({Cmd, Operation}),
-                     lager:error("Cannot ~p due to ~p", [Cmd, Reason]),
+                     lager:debug("Cannot ~p due to ~p", [Cmd, Reason]),
                      {error, Reason};
                  {ok, undefined} ->
                      vmq_metrics:incr_redis_cmd_miss({Cmd, Operation}),
@@ -51,13 +51,13 @@ pipelined_query(Client, QueryList, Operation) ->
     V1 = vmq_util:ts(),
     Result = case eredis:qp(whereis(Client), QueryList) of
                  {error, no_connection} ->
-                     lager:error("No connection with Redis"),
+                     lager:debug("No connection with Redis"),
                      {error, no_connection};
                  Res -> Res
              end,
     IsErrPresent = lists:foldl(fun ({ok, _}, Acc) -> Acc;
         ({error, Reason}, _Acc) ->
-            lager:error("Cannot ~p due to ~p", [PipelinedCmd, Reason]),
+            lager:debug("Cannot ~p due to ~p", [PipelinedCmd, Reason]),
             true
                                end, false, Result),
     if IsErrPresent -> vmq_metrics:incr_redis_cmd_err({?PIPELINE, Operation});

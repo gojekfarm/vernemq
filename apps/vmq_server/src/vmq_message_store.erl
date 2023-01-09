@@ -61,7 +61,7 @@ write_with_retry(SubscriberId, Msg, N) when N >= 0 ->
         {ok, _Count} -> ok;
         {error, no_matching_hook_found} = ErrRes -> ErrRes;
         {error, Err} ->
-            lager:error("Error: ~p", [Err]),
+            lager:debug("Error: ~p", [Err]),
             vmq_metrics:incr_msg_store_ops_error(write),
             timer:sleep(?RETRY_INTERVAL),
             write_with_retry(SubscriberId, Msg, N-1)
@@ -78,7 +78,7 @@ read_with_retry(SubscriberId, MsgRef, N) when N >= 0 ->
         {error, no_matching_hook_found} = ErrRes -> ErrRes;
         {error, not_supported} = ErrRes -> ErrRes;
         {error, Err} ->
-            lager:error("Error: ~p", [Err]),
+            lager:debug("Error: ~p", [Err]),
             vmq_metrics:incr_msg_store_ops_error(read),
             timer:sleep(?RETRY_INTERVAL),
             read_with_retry(SubscriberId, MsgRef, N-1)
@@ -94,7 +94,7 @@ delete_all_with_retry(SubscriberId, N) when N >= 0 ->
         {ok, _Count} -> ok;
         {error, no_matching_hook_found} = ErrRes -> ErrRes;
         {error, Err} ->
-            lager:error("Error: ~p", [Err]),
+            lager:debug("Error: ~p", [Err]),
             vmq_metrics:incr_msg_store_ops_error(delete_all),
             timer:sleep(?RETRY_INTERVAL),
             delete_all_with_retry(SubscriberId, N-1)
@@ -110,7 +110,7 @@ delete_with_retry(SubscriberId, MsgRef, N) when N >= 0 ->
         {ok, _Count} -> ok;
         {error, no_matching_hook_found} = ErrRes -> ErrRes;
         {error, Err} ->
-            lager:error("Error: ~p", [Err]),
+            lager:debug("Error: ~p", [Err]),
             vmq_metrics:incr_msg_store_ops_error(delete),
             timer:sleep(?RETRY_INTERVAL),
             delete_with_retry(SubscriberId, MsgRef, N-1)
@@ -126,7 +126,7 @@ find_with_retry(SubscriberId, N) when N >= 0 ->
         {ok, _} = OkRes -> OkRes;
         {error, no_matching_hook_found} = ErrRes -> ErrRes;
         {error, Err} ->
-            lager:error("Error: ~p", [Err]),
+            lager:debug("Error: ~p", [Err]),
             vmq_metrics:incr_msg_store_ops_error(find),
             timer:sleep(?RETRY_INTERVAL),
             find_with_retry(SubscriberId, N-1)

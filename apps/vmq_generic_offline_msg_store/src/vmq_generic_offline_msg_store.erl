@@ -118,14 +118,9 @@ handle_cast(_Request, State) ->
 %%--------------------------------------------------------------------
 handle_info({'EXIT', _, _},
             #state{engine_module=EngineModule, options=Opts}) ->
-    case apply(EngineModule, open, [Opts]) of
-        {ok, EngineState} ->
-            {noreply, #state{engine=EngineState}};
-        {error, Reason} ->
-            {stop, Reason}
-    end;
+    reconnect(EngineModule, Opts);
 handle_info(Info, State) ->
-    lager:info("Unknown info: ~p", [Info]),
+    lager:debug("Unknown info: ~p", [Info]),
     {noreply, State}.
 
 %%--------------------------------------------------------------------
@@ -157,6 +152,16 @@ code_change(_OldVsn, State, _Extra) ->
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
+reconnect(EngineModule, Opts) ->
+    case apply(EngineModule, open, [Opts]) of
+        {ok, EngineState} ->
+            {noreply, #state{engine=EngineState}};
+        {error, Reason} ->
+            lager:debug("Reconnection Error: ~p", [Reason]),
+            timer:sleep(2000),
+            reconnect(EngineModule, Opts)
+    end.
+
 safe_call(Request) ->
     try gen_server:call(?MODULE, Request) catch Error:Reason -> {error, {Error, Reason}} end.
 
