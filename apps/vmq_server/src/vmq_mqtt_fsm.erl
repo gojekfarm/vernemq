@@ -555,11 +555,19 @@ check_user(#mqtt_connect{username=User, password=Password, properties=Properties
             case auth_on_register(Password, State#state{username=User}) of
                 {ok, QueueOpts, #state{peer=Peer, subscriber_id=SubscriberId, clean_session=CleanSession,
                                        cap_settings=CAPSettings, def_opts=DOpts} = State1} ->
+                    case SubscriberId of
+                        {[], <<"mqttx_902aee04">>} -> lager:error("Starting registration process");
+                        _ -> ok
+                    end,
                     CoordinateRegs = maps:get(coordinate_registrations, DOpts, ?COORDINATE_REGISTRATIONS),
                     case vmq_reg:register_subscriber(CAPSettings#cap_settings.allow_register, CoordinateRegs, SubscriberId, CleanSession, QueueOpts) of
                         {ok, #{session_present := SessionPresent,
                                initial_msg_id := MsgId,
                                queue_pid := QPid}} ->
+                            case SubscriberId of
+                                {[], <<"mqttx_902aee04">>} -> lager:error("Registration process completed! Returning Connack");
+                                _ -> ok
+                            end,
                             monitor(process, QPid),
                             _ = vmq_plugin:all(on_register, [Peer, SubscriberId,
                                                              State1#state.username, Properties]),

@@ -678,6 +678,10 @@ allowed_state(FsmState, AllowedStates) ->
 
 add_session_(SessionPid, Opts, #state{id=SId, offline=Offline,
                                       sessions=Sessions, opts=OldOpts} = State) ->
+    case SId of
+        {[], <<"mqttx_902aee04">>} -> lager:error("~p: Inside add_session_!", [SId]);
+        _ -> ok
+    end,
     #{max_online_messages := MaxOnlineMessages,
       max_offline_messages := MaxOfflineMsgs,
       queue_deliver_mode := DeliverMode,
@@ -688,6 +692,10 @@ add_session_(SessionPid, Opts, #state{id=SId, offline=Offline,
     NewSessions =
     case maps:get(SessionPid, Sessions, not_found) of
         not_found ->
+            case SId of
+                {[], <<"mqttx_902aee04">>} -> lager:error("~p: No current session!", [SId]);
+                _ -> ok
+            end,
             _ = vmq_plugin:all(on_client_wakeup, [SId]),
             monitor(process, SessionPid),
             maps:put(SessionPid,
@@ -698,7 +706,15 @@ add_session_(SessionPid, Opts, #state{id=SId, offline=Offline,
         _ ->
             Sessions
     end,
+    case SId of
+        {[], <<"mqttx_902aee04">>} -> lager:error("~p: Deleting offline messages from message store!", [SId]);
+        _ -> ok
+    end,
     vmq_message_store:delete(SId),
+    case SId of
+        {[], <<"mqttx_902aee04">>} -> lager:error("~p: Msg store delete operation completed!", [SId]);
+        _ -> ok
+    end,
     insert_from_queue(Offline#queue{type=QueueType},
                       State#state{
                         deliver_mode=DeliverMode,

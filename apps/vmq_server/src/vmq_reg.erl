@@ -174,11 +174,29 @@ register_subscriber(AllowRegister, CoordinateRegs, SubscriberId, StartClean, #{a
     case {Netsplit, AllowRegister, CoordinateRegs} of
         {false, _, true} ->
             %% no netsplit, but coordinated registrations required.
-            vmq_reg_sync:sync(SubscriberId,
+            case SubscriberId of
+                {[], <<"mqttx_902aee04">>} -> lager:error("~p: Calling vmq_reg_sync:sync", [SubscriberId]);
+                _ -> ok
+            end,
+            Result = vmq_reg_sync:sync(SubscriberId,
                               fun() ->
-                                      register_subscriber_(SessionPid, SubscriberId, StartClean,
-                                                          QueueOpts, ?NR_OF_REG_RETRIES)
-                              end, 60000);
+                                      case SubscriberId of
+                                          {[], <<"mqttx_902aee04">>} -> lager:error("~p: Inside reg_sync! Calling register_subscriber_!", [SubscriberId]);
+                                          _ -> ok
+                                      end,
+                                      Res = register_subscriber_(SessionPid, SubscriberId, StartClean,
+                                                          QueueOpts, ?NR_OF_REG_RETRIES),
+                                      case SubscriberId of
+                                          {[], <<"mqttx_902aee04">>} -> lager:error("~p: register_subscriber_ complete", [SubscriberId]);
+                                          _ -> ok
+                                      end,
+                                      Res
+                              end, 60000),
+            case SubscriberId of
+                {[], <<"mqttx_902aee04">>} -> lager:error("~p: vmq_reg_sync:sync complete!", [SubscriberId]);
+                _ -> ok
+            end,
+            Result;
         {true, false, _} ->
             %% netsplit, registrations during netsplits not allowed.
             {error, not_ready};
@@ -207,6 +225,10 @@ register_subscriber_(SessionPid, SubscriberId, StartClean, QueueOpts, N) ->
 register_subscriber_(_, _, _, _, 0, Reason) ->
     {error, Reason};
 register_subscriber_(SessionPid, SubscriberId, StartClean, QueueOpts, N, Reason) ->
+    case SubscriberId of
+        {[], <<"mqttx_902aee04">>} -> lager:error("~p: Inside register_subscriber_,Starting Queue", [SubscriberId]);
+        _ -> ok
+    end,
     % wont create new queue in case it already exists
     {ok, QueuePresent, QPid} =
     case vmq_queue_sup_sup:start_queue(SubscriberId) of
@@ -216,8 +238,16 @@ register_subscriber_(SessionPid, SubscriberId, StartClean, QueueOpts, N, Reason)
             vmq_queue_sup_sup:start_queue(SubscriberId);
         Ret -> Ret
     end,
+    case SubscriberId of
+        {[], <<"mqttx_902aee04">>} -> lager:error("~p: Queue Process started!", [SubscriberId]);
+        _ -> ok
+    end,
     case vmq_queue:info(QPid) of
         #{statename := drain} ->
+            case SubscriberId of
+                {[], <<"mqttx_902aee04">>} -> lager:error("~p: Drain state!", [SubscriberId]);
+                _ -> ok
+            end,
             %% queue is draining it's offline queue to a different
             %% remote queue. This can happen if a client hops around
             %% different nodes very frequently... adjust load balancing!!
@@ -229,14 +259,30 @@ register_subscriber_(SessionPid, SubscriberId, StartClean, QueueOpts, N, Reason)
             %% remap subscriber... enabling that new messages will
             %% eventually reach the new queue.  Remapping triggers
             %% remote nodes to initiate queue migration
+            case SubscriberId of
+                {[], <<"mqttx_902aee04">>} -> lager:error("~p: Remaping subscriber!", [SubscriberId]);
+                _ -> ok
+            end,
             {SubscriptionsPresent, UpdatedSubs, ChangedNodes}
                 = maybe_remap_subscriber(?DefaultRegView, SubscriberId, StartClean),
+            case SubscriberId of
+                {[], <<"mqttx_902aee04">>} -> lager:error("~p: Remaping done!", [SubscriberId]);
+                _ -> ok
+            end,
+            case SubscriberId of
+                {[], <<"mqttx_902aee04">>} -> lager:error("~p: Initiating offline Queue!", [SubscriberId]);
+                _ -> ok
+            end,
             case {SubscriptionsPresent, QueuePresent, ChangedNodes} of
                 {true, false, []} ->
                     vmq_queue:init_offline_queue(QPid);
                 {true, _, [OldNode]} ->
                     rpc:call(OldNode, vmq_reg_mgr, handle_new_sub_event, [SubscriberId, UpdatedSubs]),
                     vmq_queue:init_offline_queue(QPid);
+                _ -> ok
+            end,
+            case SubscriberId of
+                {[], <<"mqttx_902aee04">>} -> lager:error("~p: Queue init done!", [SubscriberId]);
                 _ -> ok
             end,
             SessionPresent1 = SubscriptionsPresent or QueuePresent,
@@ -278,9 +324,21 @@ register_subscriber_(SessionPid, SubscriberId, StartClean, QueueOpts, N, Reason)
                                               end
                                       end
                               end,
+                        case SubscriberId of
+                            {[], <<"mqttx_902aee04">>} -> lager:error("~p: calling block_until!", [SubscriberId]);
+                            _ -> ok
+                        end,
                         block_until(SubscriberId, UpdatedSubs, ChangedNodes, Fun),
+                        case SubscriberId of
+                            {[], <<"mqttx_902aee04">>} -> lager:error("~p: block_until called!", [SubscriberId]);
+                            _ -> ok
+                        end,
                         SessionPresent1
                 end,
+            case SubscriberId of
+                {[], <<"mqttx_902aee04">>} -> lager:error("~p: Adding session!", [SubscriberId]);
+                _ -> ok
+            end,
             case catch vmq_queue:add_session(QPid, SessionPid, QueueOpts) of
                 {'EXIT', {normal, _}} ->
                     %% queue went down in the meantime, retry
@@ -302,6 +360,10 @@ register_subscriber_(SessionPid, SubscriberId, StartClean, QueueOpts, N, Reason)
                     timer:sleep(100),
                     register_subscriber_(SessionPid, SubscriberId, StartClean, QueueOpts, N -1, register_subscriber_retry_exhausted);
                 {ok, Opts} ->
+                    case SubscriberId of
+                        {[], <<"mqttx_902aee04">>} -> lager:error("~p: session added!", [SubscriberId]);
+                        _ -> ok
+                    end,
                     {ok, Opts#{session_present => SessionPresent2,
                                queue_pid => QPid}};
                 _ ->
