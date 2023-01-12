@@ -26,6 +26,10 @@ query(Client, QueryCmd, Cmd, Operation, Timeout) ->
                      vmq_metrics:incr_unauth_redis_cmd({Cmd, Operation}),
                      lager:error("Cannot ~p as client is connected on different node", [Cmd]),
                      Res;
+                 {error, no_connection} ->
+                     vmq_metrics:incr_redis_cmd_err({Cmd, Operation}),
+                     lager:debug("Cannot ~p due to ~p", [Cmd, no_connection]),
+                     {error, no_connection};
                  {error, Reason} ->
                      vmq_metrics:incr_redis_cmd_err({Cmd, Operation}),
                      lager:error("Cannot ~p due to ~p", [Cmd, Reason]),
@@ -51,7 +55,7 @@ pipelined_query(Client, QueryList, Operation) ->
     V1 = vmq_util:ts(),
     Result = case eredis:qp(whereis(Client), QueryList) of
                  {error, no_connection} ->
-                     lager:error("No connection with Redis"),
+                     lager:debug("No connection with Redis"),
                      {error, no_connection};
                  Res -> Res
              end,
