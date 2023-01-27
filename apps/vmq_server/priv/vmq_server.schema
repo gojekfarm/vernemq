@@ -1831,13 +1831,20 @@
                                                           hidden
                                                          ]}.
 
-%% @doc This parameter allows to set the max time in seconds before resfreshing
-%% number of crashes on vmq_queue_sup.
-{mapping, "queue_sup_sup_max_t", "vmq_server.max_t", [
+%% @doc This parameter allows to set the number of samples per hundred that will be logged
+%% for queue drop cases.
+{mapping, "queue_drop_sample_log_threshold", "vmq_server.queue_drop_sample_log_threshold", [
                                                           {default, 10},
                                                           {datatype, integer},
                                                           hidden
                                                          ]}.
+
+
+%% @doc This option specifies the number of worker processes per redis shard
+%% that will poll their main queues in message passing redis shard for new messages.
+{mapping,
+"main_queue_workers_per_redis_shard",
+"vmq_server.main_queue_workers_per_redis_shard", [{default, 1}, {datatype, integer}]}.
 
 {validator, "file-exists", "file does not exist",
  fun("") ->

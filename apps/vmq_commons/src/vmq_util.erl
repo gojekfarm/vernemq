@@ -21,3 +21,9 @@ timed_measurement({_,_} = Metric, Module, Function, Args) ->
     Val = Ts2 - Ts1,
     vmq_metrics:pretimed_measurement(Metric, Val),
     Ret.
+
+sample_log(Threshold, Log, Params) ->
+    case rand:uniform(100) =< Threshold of
+        true -> lager:error(Log, Params);
+        _ -> ok
+    end.

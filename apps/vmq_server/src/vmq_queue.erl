@@ -107,6 +107,8 @@
 
 -type state() :: #state{}.
 
+-define(SampleLogThreshold, application:get_env(vmq_server, queue_drop_sample_log_threshold, 10)).
+
 %%%===================================================================
 %%% API functions
 %%%===================================================================
@@ -934,6 +936,7 @@ queue_insert(Offline, MsgOrRef, #queue{max=-1, size=Size, queue=Queue} = Q, SId)
 queue_insert(_Offline, MsgOrRef, #queue{type=fifo, max=Max, size=Size, drop=Drop} = Q, SId)
   when Size >= Max ->
     on_message_drop_hook(SId, MsgOrRef, queue_full),
+    vmq_util:sample_log(1, "Message dropped for subscriber_id: ~p due to ~p", [SId, queue_full]),
     vmq_metrics:incr_queue_drop(),
     maybe_offline_delete(SId, MsgOrRef),
     Q#queue{drop=Drop + 1};
@@ -942,6 +945,7 @@ queue_insert(Offline, MsgOrRef, #queue{type=lifo, max=Max, size=Size, queue=Queu
   when Size >= Max ->
     {{value, OldMsgOrRef}, NewQueue} = queue:out(Queue),
     on_message_drop_hook(SId, OldMsgOrRef, queue_full),
+    vmq_util:sample_log(1, "Message dropped for subscriber_id: ~p due to ~p", [SId, queue_full]),
     vmq_metrics:incr_queue_drop(),
     maybe_offline_delete(SId, OldMsgOrRef),
     Q#queue{queue=queue:in(maybe_offline_store(Offline, SId, MsgOrRef), NewQueue), drop=Drop + 1};
@@ -1194,6 +1198,7 @@ maybe_expire_msg(SId,
     case vmq_time:is_past(ExpiryTS) of
         true ->
             on_message_drop_hook(SId, D, expired),
+            vmq_util:sample_log(1, "Message dropped for subscriber_id: ~p due to ~p", [SId, expired]),
             vmq_metrics:incr_queue_msg_expired(1),
             expired;
         Remaining ->
