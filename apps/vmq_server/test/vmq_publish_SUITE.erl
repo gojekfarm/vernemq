@@ -20,15 +20,15 @@ end_per_suite(_Config) ->
 
 init_per_group(mqttv3, Config) ->
     vmq_test_utils:setup(),
-    vmq_server_cmd:listener_start(1888, [{allowed_protocol_versions, "3,4,5"}]),
+    vmq_server_cmd:listener_start(1888, [{allowed_protocol_versions, "3,4,5,10"}]),
     Config;
 init_per_group(mqttv4, Config) ->
     vmq_test_utils:setup(),
-    vmq_server_cmd:listener_start(1888, [{allowed_protocol_versions, "3,4,5"}]),
+    vmq_server_cmd:listener_start(1888, [{allowed_protocol_versions, "3,4,5,10"}]),
     [{protover, 4}|Config];
 init_per_group(mqttv5, Config) ->
     vmq_test_utils:setup(),
-    vmq_server_cmd:listener_start(1888, [{allowed_protocol_versions, "3,4,5"}]),
+    vmq_server_cmd:listener_start(1888, [{allowed_protocol_versions, "3,4,5,10"}]),
     [{protover, 5}|Config].
 end_per_group(_Group, _Config) ->
     vmq_server_cmd:listener_stop(1888, "127.0.0.1", false),

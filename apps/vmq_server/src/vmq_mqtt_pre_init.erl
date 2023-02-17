@@ -66,13 +66,21 @@ data_in(Data, #state{peer = Peer,
                 {FsmState1, Out} ->
                     {switch_fsm, vmq_mqtt5_fsm, FsmState1, Rest, Out}
             end;
+        {#mqtt_connect{proto_ver=10} = ConnectFrame, Rest} ->
+            erlang:cancel_timer(TRef),
+            case vmq_mqtt10_fsm:init(Peer, Opts, ConnectFrame) of
+                {stop, Reason, Out} ->
+                    {stop, Reason, Out};
+                {FsmState1, Out} ->
+                    {switch_fsm, vmq_mqtt6_fsm, FsmState1, Rest, Out}
+            end;
         {#mqtt_connect{} = ConnectFrame, Rest} ->
             erlang:cancel_timer(TRef),
             case vmq_mqtt_fsm:init(Peer, Opts, ConnectFrame) of
                 {stop, Reason, Out} ->
                     {stop, Reason, Out};
                 {FsmState1, Out} ->
-                    {switch_fsm, vmq_mqtt_fsm, FsmState1, Rest, Out}
+                    {switch_fsm, vmq_mqtt10_fsm, FsmState1, Rest, Out}
             end;
         {{error, Reason}, _} ->
             {error, Reason, []}
@@ -83,6 +91,8 @@ parse_connect_frame(Data, MaxMessageSize) ->
     case determine_protocol_version(Data) of
         5 ->
             vmq_parser_mqtt5:parse(Data, MaxMessageSize);
+        10 ->
+            vmq_parser_mqtt10:parse(Data, MaxMessageSize);
         131 ->
             vmq_parser:parse(Data, MaxMessageSize);
         132 ->
@@ -127,6 +137,8 @@ get_protocol_info(<<0:8, 4:8, "MQTT", 131:8, _/binary>>) ->
     131;
 get_protocol_info(<<0:8, 4:8, "MQTT", 132:8, _/binary>>) ->
     132;
+get_protocol_info(<<0:8, 4:8, "MQTT", 10:8, _/binary>>) ->
+    10;
 get_protocol_info(<<0:8, 4:8, "MQTT", _:8, _/binary>>) ->
     {error, unknown_protocol_version};
 get_protocol_info(<<0:8, 6:8, "MQIsdp", 3:8, _/binary>>) ->

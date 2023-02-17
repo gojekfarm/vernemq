@@ -13,7 +13,7 @@ init_per_suite(Config) ->
     vmq_server_cmd:set_config(allow_anonymous, false),
     vmq_server_cmd:set_config(retry_interval, 10),
     vmq_server_cmd:set_config(max_client_id_size, 100),
-    vmq_server_cmd:listener_start(1888, [{allowed_protocol_versions, "3,4,5"}]),
+    vmq_server_cmd:listener_start(1888, [{allowed_protocol_versions, "3,4,5,10"}]),
     enable_hooks(),
     [S,{ct_hooks, vmq_cth}| Config].
 

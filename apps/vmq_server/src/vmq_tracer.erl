@@ -334,7 +334,9 @@ setup_trace(TracePids, Tracer) ->
     TSpecs =
         [{vmq_parser, serialise, vmq_m4_parser_serialize_ms()},
          {vmq_parser_mqtt5, serialise, vmq_m5_parser_serialize_ms()},
+         {vmq_parser_mqtt10, serialise, vmq_m10_parser_serialize_ms()},
          {vmq_mqtt_fsm, connected, vmq_mqtt_fsm_connected_ms()},
+         {vmq_mqtt10_fsm, connected, vmq_mqtt10_fsm_connected_ms()},
          {vmq_mqtt5_fsm, connected, vmq_mqtt5_fsm_connected_ms()},
          {vmq_plugin, all_till_ok, vmq_plugin_hooks_ms()}],
 
@@ -407,6 +409,23 @@ vmq_m4_parser_serialize_ms() ->
          ([#mqtt_pingresp{}]) -> ok;
          ([#mqtt_disconnect{}]) -> ok end).
 
+vmq_m10_parser_serialize_ms() ->
+  dbg:fun2ms(
+    fun([#mqtt_connect{}]) -> ok;
+      ([#mqtt_connack{}]) -> ok;
+      ([#mqtt_publish{}]) -> ok;
+      ([#mqtt_puback{}]) -> ok;
+      ([#mqtt_pubrec{}]) -> ok;
+      ([#mqtt_pubrel{}]) -> ok;
+      ([#mqtt_pubcomp{}]) -> ok;
+      ([#mqtt_subscribe{}]) -> ok;
+      ([#mqtt_unsubscribe{}]) -> ok;
+      ([#mqtt_suback{}]) -> ok;
+      ([#mqtt_unsuback{}]) -> ok;
+      ([#mqtt_pingreq{}]) -> ok;
+      ([#mqtt_pingresp{}]) -> ok;
+      ([#mqtt_disconnect{}]) -> ok end).
+
 vmq_m5_parser_serialize_ms() ->
     dbg:fun2ms(
       fun([#mqtt5_connect{}]) -> ok;
@@ -441,6 +460,23 @@ vmq_mqtt_fsm_connected_ms() ->
          ([#mqtt_pingreq{},_]) -> ok;
          ([#mqtt_pingresp{},_]) -> ok;
          ([#mqtt_disconnect{},_]) -> ok end).
+
+vmq_mqtt10_fsm_connected_ms() ->
+  dbg:fun2ms(
+    fun([#mqtt_connect{},_]) -> ok;
+      ([#mqtt_connack{},_]) -> ok;
+      ([#mqtt_publish{},_]) -> ok;
+      ([#mqtt_puback{},_]) -> ok;
+      ([#mqtt_pubrec{},_]) -> ok;
+      ([#mqtt_pubrel{},_]) -> ok;
+      ([#mqtt_pubcomp{},_]) -> ok;
+      ([#mqtt_subscribe{},_]) -> ok;
+      ([#mqtt_unsubscribe{},_]) -> ok;
+      ([#mqtt_suback{},_]) -> ok;
+      ([#mqtt_unsuback{},_]) -> ok;
+      ([#mqtt_pingreq{},_]) -> ok;
+      ([#mqtt_pingresp{},_]) -> ok;
+      ([#mqtt_disconnect{},_]) -> ok end).
 
 vmq_mqtt5_fsm_connected_ms() ->
     dbg:fun2ms(
@@ -488,6 +524,10 @@ format_trace(Trace, #state{client_id=ClientId,
             {call, Pid, Timestamp, [{vmq_parser, serialise, [Msg]}]} ->
                 format_frame(from, Pid, Timestamp, SId, Msg, Opts);
             {call, Pid, Timestamp, [{vmq_mqtt_fsm, connected, [Msg, _]}]} ->
+                format_frame(to, Pid, Timestamp, SId, Msg, Opts);
+            {call, Pid, Timestamp, [{vmq_parser_mqtt10, serialise, [Msg]}]} ->
+                format_frame(from, Pid, Timestamp, SId, Msg, Opts);
+            {call, Pid, Timestamp, [{vmq_mqtt10_fsm, connected, [Msg, _]}]} ->
                 format_frame(to, Pid, Timestamp, SId, Msg, Opts);
             {call, Pid, Timestamp, [{vmq_parser_mqtt5, serialise, [Msg]}]} ->
                 format_frame(from, Pid, Timestamp, SId, Msg, Opts);
@@ -596,9 +636,9 @@ format_frame_(#mqtt_connect{proto_ver = Ver, username = Username,
 format_frame_(#mqtt_connack{session_present = SP, return_code = RC}, _) ->
     {"CONNACK(sp: ~p, rc: ~p)~n", [fflag(SP), RC]};
 format_frame_(#mqtt_publish{message_id = MId, topic = Topic, qos = QoS, retain = Retain,
-                            dup = Dup, payload = Payload}, #{payload_limit := Limit}) ->
-    {"PUBLISH(d~p, q~p, r~p, m~p, \"~s\") with payload:~n"
-     "    ~s~n", [fflag(Dup), QoS, fflag(Retain), fmid(MId), jtopic(Topic), trunc_payload(Payload, Limit)]};
+                            dup = Dup, payload = Payload, retryable = Retryable}, #{payload_limit := Limit}) ->
+    {"PUBLISH(d~p, q~p, r~p, m~p re~p, \"~s\") with payload:~n"
+     "    ~s~n", [fflag(Dup), QoS, fflag(Retain), fmid(MId), fflag(Retryable), jtopic(Topic), trunc_payload(Payload, Limit)]};
 format_frame_(#mqtt_puback{message_id = MId}, _) ->
     {"PUBACK(m~p)~n", [fmid(MId)]};
 format_frame_(#mqtt_pubrec{message_id = MId}, _) ->

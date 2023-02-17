@@ -9,7 +9,7 @@
 -define(CONNACK_CREDENTIALS, 4). %% bad user name or password
 -define(CONNACK_AUTH,        5). %% not authorized
 
--type proto_version()       :: 3 | 4 | 131 | 132.
+-type proto_version()       :: 3 | 4 | 131 | 132 | 10.
 -type return_code()         :: ?CONNACK_ACCEPT
                             | ?CONNACK_PROTO_VER
                             | ?CONNACK_INVALID_ID
@@ -46,7 +46,8 @@
           qos               :: qos(),
           retain            :: flag(),
           dup               :: flag(),
-          payload           :: payload()
+          payload           :: payload(),
+          retryable         :: flag()
         }).
 -type mqtt_publish()        :: #mqtt_publish{}.
 
