@@ -79,6 +79,7 @@ parse_unparse_tests(_Config) ->
   compare_frame("publish2", vmq_parser_mqtt10:gen_publish("test-topic", 2, crypto:strong_rand_bytes(1000), [{dup, true}, {retain, true}])),
   compare_frame("publish3", vmq_parser_mqtt10:gen_publish("test-topic", 2, crypto:strong_rand_bytes(100000), [{dup, true}, {retain, true}])),
   compare_frame("publish4", vmq_parser_mqtt10:gen_publish("test-topic", 2, crypto:strong_rand_bytes(2097153), [{dup, true}, {retain, true}])),
+  compare_frame("publish5", vmq_parser_mqtt10:gen_publish("test-topic", 2, crypto:strong_rand_bytes(2097153), [{dup, true}, {retain, true}, {retryable, true}])),
 
   compare_frame("puback", vmq_parser_mqtt10:gen_puback(123)),
   compare_frame("pubrec", vmq_parser_mqtt10:gen_pubrec(123)),

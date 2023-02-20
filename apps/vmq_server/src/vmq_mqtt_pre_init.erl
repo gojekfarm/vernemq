@@ -107,14 +107,14 @@ parse_connect_frame(Data, MaxMessageSize) ->
             E
     end.
    
--spec determine_protocol_version(binary()) -> 'more' | 3 | 4 | 5 | 131 | 132 | 
+-spec determine_protocol_version(binary()) -> 'more' | 3 | 4 | 5 | 131 | 132 | 10 |
     {'error','cant_parse_fixed_header' | 'unknown_protocol_version' | {'cant_parse_connect_fixed_header',binary()}}.
 determine_protocol_version(<<1:4, 0:4, Rest/binary>>) ->
     consume_var_header(Rest);
 determine_protocol_version(Unknown) ->
     {error, {cant_parse_connect_fixed_header, Unknown}}.
 
--spec consume_var_header(binary()) -> 'more' | 3 | 4 | 5 | 131 | 132 | {'error','cant_parse_fixed_header' | 'unknown_protocol_version'}.
+-spec consume_var_header(binary()) -> 'more' | 3 | 4 | 5 | 131 | 132 | 10 | {'error','cant_parse_fixed_header' | 'unknown_protocol_version'}.
 consume_var_header(<<0:1, _:7, Rest/binary>>) ->
     get_protocol_info(Rest);
 consume_var_header(<<1:1, _:7, 0:1, _:7, Rest/binary>>) ->
@@ -128,7 +128,7 @@ consume_var_header(<<_:8/binary, _/binary>>) ->
 consume_var_header(_) ->
     more.
 
--spec get_protocol_info(binary()) -> 'more' | 3 | 4 | 5 | 131 | 132 | {'error','unknown_protocol_version'}.
+-spec get_protocol_info(binary()) -> 'more' | 3 | 4 | 5 | 131 | 132 | 10 | {'error','unknown_protocol_version'}.
 get_protocol_info(<<0:8, 4:8, "MQTT", 5:8, _/binary>>) ->
     5;
 get_protocol_info(<<0:8, 4:8, "MQTT", 4:8, _/binary>>) ->
