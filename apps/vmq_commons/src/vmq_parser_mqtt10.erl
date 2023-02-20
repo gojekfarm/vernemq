@@ -84,19 +84,20 @@ parse(_, _, _, _) -> more.
 
 
 -spec variable(binary(), binary()) -> mqtt_frame() | {error, atom()}.
-variable(<<?PUBLISH:4, Dup:1, 0:2, Retain:1, Retryable:1>>, <<TopicLen:16/big, Topic:TopicLen/binary, Payload/binary>>) ->
+variable(<<?PUBLISH:4, Dup:1, 0:2, Retain:1>>, <<_:7, Retryable:1, TopicLen:16/big, Topic:TopicLen/binary, MessageId:16/big, Payload/binary>>) ->
   case vmq_topic:validate_topic(publish, Topic) of
     {ok, ParsedTopic} ->
       #mqtt_publish{dup=Dup,
         retain=Retain,
         topic=ParsedTopic,
         qos=0,
+        message_id=MessageId,
         payload=Payload,
         retryable=Retryable};
     {error, Reason} ->
       {error, Reason}
   end;
-variable(<<?PUBLISH:4, Dup:1, QoS:2, Retain:1, Retryable:1>>, <<TopicLen:16/big, Topic:TopicLen/binary, MessageId:16/big, Payload/binary>>)
+variable(<<?PUBLISH:4, Dup:1, QoS:2, Retain:1>>, <<_:7, Retryable:1, TopicLen:16/big, Topic:TopicLen/binary, MessageId:16/big, Payload/binary>>)
   when QoS < 3 ->
   case vmq_topic:validate_topic(publish, Topic) of
     {ok, ParsedTopic} ->
@@ -244,25 +245,26 @@ parse_acks(<<_:6, QoS:2, Rest/binary>>, Acks)
   parse_acks(Rest, [QoS | Acks]).
 
 -spec serialise(mqtt_frame()) -> binary() | iolist().
-serialise(#mqtt_publish{qos=0,
+serialise(#mqtt_publish{message_id=MessageId,
+  qos=0,
   topic=Topic,
   retain=Retain,
   dup=Dup,
   payload=Payload,
   retryable=Retryable}) ->
-  Var = [utf8(vmq_topic:unword(Topic)), Payload],
+  Var = [<<(flag(Retryable)):8/big>>, utf8(vmq_topic:unword(Topic)), msg_id(MessageId), Payload],
   LenBytes = serialise_len(iolist_size(Var)),
-  [<<?PUBLISH:4, (flag(Dup)):1/integer, 0:2/integer, (flag(Retain)):1/integer, (flag(Retryable)):1/integer>>, LenBytes, Var];
+  [<<?PUBLISH:4, (flag(Dup)):1/integer, 0:2/integer, (flag(Retain)):1/integer>>, LenBytes, Var];
 serialise(#mqtt_publish{message_id=MessageId,
   topic=Topic,
   qos=QoS,
   retain=Retain,
   dup=Dup,
   payload=Payload}) ->
-  Var = [utf8(vmq_topic:unword(Topic)), msg_id(MessageId), Payload],
+  Var = [<<0:8/big>>, utf8(vmq_topic:unword(Topic)), msg_id(MessageId), Payload],
   LenBytes = serialise_len(iolist_size(Var)),
   [<<?PUBLISH:4, (flag(Dup)):1/integer,
-    (default(QoS, 0)):2/integer, (flag(Retain)):1/integer, 0:1/integer>>, LenBytes, Var];
+    (default(QoS, 0)):2/integer, (flag(Retain)):1/integer>>, LenBytes, Var];
 
 serialise(#mqtt_puback{message_id=MessageId}) ->
   <<?PUBACK:4, 0:4, 2, MessageId:16/big>>;

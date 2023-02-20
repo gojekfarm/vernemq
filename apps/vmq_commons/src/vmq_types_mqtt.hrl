@@ -47,7 +47,7 @@
           retain            :: flag(),
           dup               :: flag(),
           payload           :: payload(),
-          retryable         :: flag()
+          retryable         :: flag() | undefined
         }).
 -type mqtt_publish()        :: #mqtt_publish{}.
 
