@@ -237,5 +237,6 @@ to_vmq_msg(InMsg) when is_tuple(InMsg),
        persisted = element(9, InMsg),
        sg_policy = element(10, InMsg),
        properties = element(11, InMsg),
-       expiry_ts = element(12, InMsg)
+       expiry_ts = element(12, InMsg),
+       retryable = element(13, InMsg)
       }.

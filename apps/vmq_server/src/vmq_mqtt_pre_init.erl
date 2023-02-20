@@ -72,7 +72,7 @@ data_in(Data, #state{peer = Peer,
                 {stop, Reason, Out} ->
                     {stop, Reason, Out};
                 {FsmState1, Out} ->
-                    {switch_fsm, vmq_mqtt6_fsm, FsmState1, Rest, Out}
+                    {switch_fsm, vmq_mqtt10_fsm, FsmState1, Rest, Out}
             end;
         {#mqtt_connect{} = ConnectFrame, Rest} ->
             erlang:cancel_timer(TRef),
@@ -80,7 +80,7 @@ data_in(Data, #state{peer = Peer,
                 {stop, Reason, Out} ->
                     {stop, Reason, Out};
                 {FsmState1, Out} ->
-                    {switch_fsm, vmq_mqtt10_fsm, FsmState1, Rest, Out}
+                    {switch_fsm, vmq_mqtt_fsm, FsmState1, Rest, Out}
             end;
         {{error, Reason}, _} ->
             {error, Reason, []}

@@ -254,7 +254,7 @@ connected(#mqtt_publish{message_id=MessageId, topic=Topic,
           mountpoint=MountPoint,
           msg_ref=vmq_mqtt_fsm_util:msg_ref(),
           sg_policy=SGPolicy,
-          retryable=Retryable},
+          retryable=unflag(Retryable)},
         dispatch_publish(QoS, MessageId, Msg, State)
     end,
   case Ret of
