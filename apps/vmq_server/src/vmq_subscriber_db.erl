@@ -69,6 +69,9 @@ read(vmq_reg_redis_trie, {MP, ClientId}, Default) ->
 read(_, SubscriberId, Default) ->
     case vmq_metadata:get(?SUBSCRIBER_DB, SubscriberId) of
          undefined -> Default;
+         {error, no_matching_hook_found} ->
+             lager:debug("No matching hook found"),
+             Default;
          Subs ->
              check_format(Subs)
     end.

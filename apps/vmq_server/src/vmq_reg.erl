@@ -77,10 +77,7 @@
 -spec subscribe(flag(), subscriber_id(),
                 [subscription()]) -> {ok, [qos() | not_allowed]} |
                                      {error, not_allowed | not_ready}.
-subscribe(false, SubscriberId, Topics) ->
-    %% trade availability for consistency
-    vmq_cluster:if_ready(fun subscribe_op/3, [?DefaultRegView, SubscriberId, Topics]);
-subscribe(true, SubscriberId, Topics) ->
+subscribe(_, SubscriberId, Topics) ->
     %% trade consistency for availability
     if_ready(fun subscribe_op/3, [?DefaultRegView, SubscriberId, Topics]).
 
@@ -149,10 +146,7 @@ subscribe_op(_, SubscriberId, Topics) ->
     {ok, lists:reverse(QoSTable)}.
 
 -spec unsubscribe(flag(), subscriber_id(), [topic()]) -> ok | {error, not_ready}.
-unsubscribe(false, SubscriberId, Topics) ->
-    %% trade availability for consistency
-    vmq_cluster:if_ready(fun unsubscribe_op/2, [SubscriberId, Topics]);
-unsubscribe(true, SubscriberId, Topics) ->
+unsubscribe(_, SubscriberId, Topics) ->
     %% trade consistency for availability
     unsubscribe_op( SubscriberId, Topics).
 
@@ -167,7 +161,7 @@ delete_subscriptions(SubscriberId) ->
            session_present := flag(),
            queue_pid := pid()}} | {error, _}.
 register_subscriber(AllowRegister, CoordinateRegs, SubscriberId, StartClean, #{allow_multiple_sessions := false} = QueueOpts) ->
-    Netsplit = not vmq_cluster:is_ready(),
+    Netsplit = false,
     %% we don't allow multiple sessions using same subscriber id
     %% allow_multiple_sessions is needed for session balancing
     SessionPid = self(),
@@ -179,20 +173,17 @@ register_subscriber(AllowRegister, CoordinateRegs, SubscriberId, StartClean, #{a
                                       register_subscriber_(SessionPid, SubscriberId, StartClean,
                                                           QueueOpts, ?NR_OF_REG_RETRIES)
                               end, 60000);
-        {true, false, _} ->
-            %% netsplit, registrations during netsplits not allowed.
-            {error, not_ready};
         _ ->
             %% all other cases we allow registrations but unsynced.
             register_subscriber_(SessionPid, SubscriberId, StartClean,
                                  QueueOpts, ?NR_OF_REG_RETRIES)
     end;
-register_subscriber(CAPAllowRegister, _, SubscriberId, _StartClean, #{allow_multiple_sessions := true} = QueueOpts) ->
+register_subscriber(_CAPAllowRegister, _, SubscriberId, _StartClean, #{allow_multiple_sessions := true} = QueueOpts) ->
     %% we allow multiple sessions using same subscriber id
     %%
     %% !!! CleanSession is disabled if multiple sessions are in use
     %%
-    case vmq_cluster:is_ready() or CAPAllowRegister of
+    case true of
         true ->
             register_session(SubscriberId, QueueOpts);
         false ->
@@ -398,7 +389,7 @@ publish(false, RegView, ClientId, #vmq_msg{mountpoint=MP,
                                                properties=Properties,
                                                retain=IsRetain} = Msg) ->
     %% don't trade consistency for availability
-    case vmq_cluster:is_ready() of
+    case true of
         true when (IsRetain == true) and (Payload == <<>>) ->
             %% retain delete action
             vmq_retain_srv:delete(MP, Topic),
@@ -412,9 +403,7 @@ publish(false, RegView, ClientId, #vmq_msg{mountpoint=MP,
                                                }),
             publish_fold_wrapper(RegView, ClientId, Topic, Msg);
         true ->
-            publish_fold_wrapper(RegView, ClientId, Topic, Msg);
-        false ->
-            {error, not_ready}
+            publish_fold_wrapper(RegView, ClientId, Topic, Msg)
     end.
 
 % route_remote_msg/4 is called by the vmq_cluster_com

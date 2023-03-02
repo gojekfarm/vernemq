@@ -54,7 +54,7 @@ fold({MP, _} = SubscriberId, Topic, FoldFun, Acc) when is_list(Topic) ->
     fold_(SubscriberId, SubscribersList, FoldFun, Acc).
 
 add_complex_topics(Topics) ->
-    Nodes = vmq_cluster:nodes(),
+    Nodes = [node()],
     Query = lists:foldl(fun(T, Acc) ->
                                 lists:foreach(fun(Node) -> safe_rpc(Node, ?MODULE, add_complex_topic, ["", T]) end, Nodes),
                                 [[?SADD, "wildcard_topics", term_to_binary(T)] | Acc]
@@ -75,7 +75,7 @@ add_complex_topic(MP, Topic) ->
     end.
 
 delete_complex_topics(Topics) ->
-    Nodes = vmq_cluster:nodes(),
+    Nodes = [node()],
     Query = lists:foldl(fun(T, Acc) ->
                                 lists:foreach(fun(Node) -> safe_rpc(Node, ?MODULE, delete_complex_topic, ["", T]) end, Nodes),
                                 Acc ++ [[?SREM, "wildcard_topics", term_to_binary(T)]]

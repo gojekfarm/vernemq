@@ -29,8 +29,8 @@
 %%% API functions
 %%%===================================================================
 
-start_query(MgrPid, QueryString, Opts) when is_pid(MgrPid) ->
-    Nodes = proplists:get_value(nodes, Opts, vmq_cluster:nodes()),
+start_query(MgrPid, QueryString, _Opts) when is_pid(MgrPid) ->
+    Nodes = [node()],
     lists:foldl(fun(Node, {AccRes,AccBad}) ->
                         try start_query_(Node, MgrPid, QueryString) of
                             {ok, Pid} -> {[Pid|AccRes], AccBad};
