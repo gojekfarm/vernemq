@@ -1,17 +1,3 @@
-%% Copyright 2018 Erlio GmbH Basel Switzerland (http://erl.io)
-%%
-%% Licensed under the Apache License, Version 2.0 (the "License");
-%% you may not use this file except in compliance with the License.
-%% You may obtain a copy of the License at
-%%
-%%     http://www.apache.org/licenses/LICENSE-2.0
-%%
-%% Unless required by applicable law or agreed to in writing, software
-%% distributed under the License is distributed on an "AS IS" BASIS,
-%% WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-%% See the License for the specific language governing permissions and
-%% limitations under the License.
-
 -module(vmq_mqtt10_fsm).
 -include_lib("vmq_commons/include/vmq_types.hrl").
 -include("vmq_server.hrl").
@@ -527,7 +513,6 @@ check_client_id(#mqtt_connect{} = Frame,
     State#state{username=UserNameFromCert});
 
 check_client_id(#mqtt_connect{client_id= <<>>, proto_ver=Ver} = F, State) when ?IS_PROTO_10(Ver) ->
-  %% [MQTT-3.1.3-8]
   %% If the Client supplies a zero-byte ClientId with CleanSession set to 0,
   %% the Server MUST respond to the >CONNECT Packet with a CONNACK return
   %% code 0x02 (Identifier rejected) and then close the Network
@@ -541,10 +526,6 @@ check_client_id(#mqtt_connect{client_id= <<>>, proto_ver=Ver} = F, State) when ?
       check_user(F#mqtt_connect{client_id=RandomClientId},
         State#state{subscriber_id=SubscriberId})
   end;
-check_client_id(#mqtt_connect{client_id= <<>>, proto_ver=Ver}, State) when ?IS_PROTO_3(Ver) ->
-  lager:warning("empty client id not allowed in mqttv3 ~p",
-    [State#state.subscriber_id]),
-  connack_terminate(?CONNACK_INVALID_ID, State);
 check_client_id(#mqtt_connect{client_id=ClientId} = F,
     #state{max_client_id_size=S} = State)
   when byte_size(ClientId) =< S ->
@@ -813,8 +794,8 @@ dispatch_publish_qos0(MessageId, Msg, State) ->
       %%ToDo: Change metric name
       _ = vmq_metrics:incr_mqtt_puback_sent(),
       {[#mqtt_puback{message_id=MessageId}], SessCtrl};
-    {error, not_allowed} when ?IS_PROTO_4(Proto) ->
-      %% we have to close connection for 3.1.1
+    {error, not_allowed} when ?IS_PROTO_10(Proto) ->
+      %% we have to close connection for v10
       _ = vmq_metrics:incr_mqtt_error_auth_publish(),
       {error, not_allowed};
     {error, _Reason} ->
@@ -834,8 +815,8 @@ dispatch_publish_qos1(MessageId, Msg, State) ->
     {ok, _, SessCtrl} ->
       _ = vmq_metrics:incr_mqtt_puback_sent(),
       {[#mqtt_puback{message_id=MessageId}], SessCtrl};
-    {error, not_allowed} when ?IS_PROTO_4(Proto) ->
-      %% we have to close connection for 3.1.1
+    {error, not_allowed} when ?IS_PROTO_10(Proto) ->
+      %% we have to close connection for v10
       _ = vmq_metrics:incr_mqtt_error_auth_publish(),
       {error, not_allowed};
     {error, not_allowed} ->
@@ -865,8 +846,8 @@ dispatch_publish_qos2(MessageId, Msg, State) ->
           {State#state{
             waiting_acks=maps:put({qos2, MessageId}, Frame, WAcks)},
             [Frame], SessCtrl};
-        {error, not_allowed} when ?IS_PROTO_4(Proto) ->
-          %% we have to close connection for 3.1.1
+        {error, not_allowed} when ?IS_PROTO_10(Proto) ->
+          %% we have to close connection for v10
           _ = vmq_metrics:incr_mqtt_error_auth_publish(),
           {error, not_allowed};
         {error, not_allowed} ->
@@ -885,7 +866,6 @@ dispatch_publish_qos2(MessageId, Msg, State) ->
       [Frame]
   end.
 
-%%ToDo: Do not transfer qos0 acks to offline store. Also remove pending puback frames.
 -spec handle_waiting_acks_and_msgs(state()) -> ok.
 handle_waiting_acks_and_msgs(State) ->
   #state{waiting_acks=WAcks, waiting_msgs=WMsgs, queue_pid=QPid, next_msg_id=NextMsgId} = State,
@@ -1004,6 +984,7 @@ prepare_frame(#deliver{qos=QoS, msg_id=MsgId, msg=Msg}, State) ->
               Msg#vmq_msg{qos=NewQoS}, WAcks)}};
         _ ->
           {Frame, State1#state{
+          retry_queue=set_retry(delete, OutgoingMsgId, RetryInterval, RetryQueue),
           waiting_acks=maps:put(OutgoingMsgId,
           Msg#vmq_msg{qos=NewQoS}, WAcks)}}
       end;
@@ -1170,6 +1151,8 @@ handle_retry(Now, Interval, {{value, {Ts, {MsgTag, MsgId} = RetryId } = Val}, Re
       case get_retry_frame(MsgTag, MsgId, maps:get(MsgId, WAcks, not_found), Acc) of
         already_acked ->
           handle_retry(Now, Interval, queue:out(RetryQueue), WAcks, Acc);
+        delete ->
+          handle_retry(Now, Interval, queue:out(RetryQueue), maps:remove(MsgId, WAcks), Acc);
         NewAcc ->
           NewRetryQueue = queue:in({Now, RetryId}, RetryQueue),
           handle_retry(Now, Interval, queue:out(NewRetryQueue), WAcks, NewAcc)
@@ -1195,6 +1178,9 @@ get_retry_frame(publish, MsgId, #vmq_msg{routing_key=Topic, qos=QoS, retain=Reta
 get_retry_frame(pubrel, _MsgId, #mqtt_pubrel{} = Frame, Acc) ->
   _ = vmq_metrics:incr_mqtt_pubrel_sent(),
   [Frame|Acc];
+get_retry_frame(delete, _, _, _) ->
+  %%ToDo: Add metric
+  delete;
 get_retry_frame(_, _, _, _) ->
   %% already acked
   already_acked.

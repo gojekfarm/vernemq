@@ -39,8 +39,7 @@
 -define(DISCONNECT,  14).
 
 -define(RESERVED, 0).
--define(PROTOCOL_MAGIC_31, <<"MQIsdp">>).
--define(PROTOCOL_MAGIC_311, <<"MQTT">>).
+-define(PROTOCOL_MAGIC_10, <<"MQTT">>).
 -define(PROTOCOL_10, 10).
 -define(MAX_LEN, 16#fffffff).
 -define(HIGHBIT, 2#10000000).
@@ -97,7 +96,7 @@ variable(<<?PUBLISH:4, Dup:1, 0:2, Retain:1>>, <<_:7, Retryable:1, TopicLen:16/b
     {error, Reason} ->
       {error, Reason}
   end;
-variable(<<?PUBLISH:4, Dup:1, QoS:2, Retain:1>>, <<_:7, Retryable:1, TopicLen:16/big, Topic:TopicLen/binary, MessageId:16/big, Payload/binary>>)
+variable(<<?PUBLISH:4, Dup:1, QoS:2, Retain:1>>, <<TopicLen:16/big, Topic:TopicLen/binary, MessageId:16/big, Payload/binary>>)
   when QoS < 3 ->
   case vmq_topic:validate_topic(publish, Topic) of
     {ok, ParsedTopic} ->
@@ -106,8 +105,7 @@ variable(<<?PUBLISH:4, Dup:1, QoS:2, Retain:1>>, <<_:7, Retryable:1, TopicLen:16
         topic=ParsedTopic,
         qos=QoS,
         message_id=MessageId,
-        payload=Payload,
-        retryable=Retryable};
+        payload=Payload};
     {error, Reason} ->
       {error, Reason}
   end;
@@ -140,18 +138,17 @@ variable(<<?SUBACK:4, 0:4>>, <<MessageId:16/big, Acks/binary>>) ->
 variable(<<?UNSUBACK:4, 0:4>>, <<MessageId:16/big>>) ->
   #mqtt_unsuback{message_id=MessageId};
 variable(<<?CONNECT:4, 0:4>>, <<L:16/big, PMagic:L/binary, _/binary>>)
-  when not ((PMagic == ?PROTOCOL_MAGIC_311) or
-  (PMagic == ?PROTOCOL_MAGIC_31)) ->
+  when not (PMagic == ?PROTOCOL_MAGIC_10) ->
   {error, unknown_protocol_magic};
 variable(<<?CONNECT:4, 0:4>>,
-    <<L:16/big, _:L/binary, ProtoVersion:8,
+    <<4:16/big, "MQTT", ?PROTOCOL_10:8,
       UserNameFlag:1, PasswordFlag:1, WillRetain:1, WillQos:2, WillFlag:1,
       CleanSession:1,
       0:1,  % reserved
       KeepAlive: 16/big,
       ClientIdLen:16/big, ClientId:ClientIdLen/binary, Rest0/binary>>) ->
 
-  Conn0 = #mqtt_connect{proto_ver=ProtoVersion,
+  Conn0 = #mqtt_connect{proto_ver=?PROTOCOL_10,
     clean_session=CleanSession,
     keep_alive=KeepAlive,
     client_id=ClientId},
@@ -261,7 +258,7 @@ serialise(#mqtt_publish{message_id=MessageId,
   retain=Retain,
   dup=Dup,
   payload=Payload}) ->
-  Var = [<<0:8/big>>, utf8(vmq_topic:unword(Topic)), msg_id(MessageId), Payload],
+  Var = [utf8(vmq_topic:unword(Topic)), msg_id(MessageId), Payload],
   LenBytes = serialise_len(iolist_size(Var)),
   [<<?PUBLISH:4, (flag(Dup)):1/integer,
     (default(QoS, 0)):2/integer, (flag(Retain)):1/integer>>, LenBytes, Var];
@@ -346,11 +343,7 @@ serialise_acks([_|Rest], Acks) ->
 serialise_acks([], Acks) ->
   Acks.
 
-proto(4) -> {4, ?PROTOCOL_MAGIC_311};
-proto(3) -> {6, ?PROTOCOL_MAGIC_31};
-proto(10) -> {4, ?PROTOCOL_MAGIC_311};
-proto(131) -> {6, ?PROTOCOL_MAGIC_31};
-proto(132) -> {4, ?PROTOCOL_MAGIC_311}.
+proto(10) -> {4, ?PROTOCOL_MAGIC_10}.
 
 flag(<<>>) -> 0;
 flag(undefined) -> 0;
