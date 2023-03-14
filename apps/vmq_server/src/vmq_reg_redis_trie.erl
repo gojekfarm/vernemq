@@ -131,6 +131,8 @@ init([]) ->
     SentinelEndpoints = vmq_schema_util:parse_list(application:get_env(vmq_server, redis_sentinel_endpoints, "[{\"127.0.0.1\", 26379}]")),
     RedisDB = application:get_env(vmq_server, redis_database, 0),
     {ok, _Pid} = eredis:start_link([{sentinel, [{endpoints, SentinelEndpoints}]}, {database, RedisDB}, {name, {local, redis_client}}]),
+    {ok, _Pid1} = eredis:start_link([{host, "g-gofood-courier-loadtest-redis-a-6d454a"}, {database, RedisDB}, {name, {local, subscription_redis_read_only_client_1}}]),
+    {ok, _Pid2} = eredis:start_link([{host, "g-gofood-courier-loadtest-redis-a-0f2657"}, {database, RedisDB}, {name, {local, subscription_redis_read_only_client_2}}]),
     load_redis_functions(),
     initialize_trie(),
     {ok, #state{status=ready}}.
@@ -208,7 +210,7 @@ code_change(_OldVsn, State, _Extra) ->
 %%%===================================================================
 fetchSubscribers(Topics, MP) ->
     UnwordedTopics = [vmq_topic:unword(T) || T <- Topics],
-    {ok, SubscribersList} = vmq_redis:query(redis_client, [?FCALL,
+    {ok, SubscribersList} = vmq_redis:query(gen_subscription_redis_read_only_client(), [fcall_ro,
                                    ?FETCH_MATCHED_TOPIC_SUBSCRIBERS,
                                    0,
                                    MP,
@@ -325,3 +327,6 @@ trie_delete_path(MP, [{Node, Word, _}|RestPath]) ->
         [] ->
             ignore
     end.
+
+gen_subscription_redis_read_only_client() ->
+    list_to_atom("subscription_redis_read_only_client_" ++ integer_to_list(rand:uniform(2))).

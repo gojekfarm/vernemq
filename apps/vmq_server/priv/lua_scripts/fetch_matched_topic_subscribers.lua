@@ -30,4 +30,8 @@ local function fetch_matched_topic_subscribers(_KEYS, ARGV)
     return subscribersList
 end
 
-redis.register_function('fetch_matched_topic_subscribers', fetch_matched_topic_subscribers)
+redis.register_function{
+    function_name='fetch_matched_topic_subscribers',
+    callback=fetch_matched_topic_subscribers,
+    flags={'no-writes'}
+}
