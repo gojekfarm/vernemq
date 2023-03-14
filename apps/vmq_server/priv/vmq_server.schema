@@ -5,6 +5,11 @@
 {mapping, "redis_database", "vmq_server.redis_database", [{default, 0}, {datatype, integer}]}.
 {mapping, "redis_lua_dir", "vmq_server.redis_lua_dir", [{default, "./etc/lua"}, {datatype, string}]}.
 
+%% @doc This option specifies the number of redis shards used for message passing.
+{mapping,
+    "num_redis_queue_shards",
+    "vmq_server.num_redis_queue_shards", [{default, 1}, {datatype, integer}]}.
+
 %% @doc This option specifies the list of comma separated connect options list
 %% [[{host, "localhost"}, {port, 1234}]] of redis shards used for message passing.
 {mapping,
