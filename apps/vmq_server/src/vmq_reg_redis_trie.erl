@@ -329,4 +329,7 @@ trie_delete_path(MP, [{Node, Word, _}|RestPath]) ->
     end.
 
 gen_subscription_redis_read_only_client() ->
-    list_to_atom("subscription_redis_read_only_client_" ++ integer_to_list(rand:uniform(2))).
+    case list_to_atom("subscription_redis_read_only_client_" ++ integer_to_list(rand:uniform(3))) of
+        subscription_redis_read_only_client_3 -> redis_client;
+        Client -> Client
+    end.
