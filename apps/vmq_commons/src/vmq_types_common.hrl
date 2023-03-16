@@ -33,7 +33,9 @@
           sg_policy=prefer_local:: shared_sub_policy(),
           properties=#{}        :: properties(),
           expiry_ts             :: undefined
-                                 | msg_expiry_ts()
+                                 | msg_expiry_ts(),
+          retry=false                :: flag(),
+          non_persistence=false       :: flag()
          }).
 -type msg()             :: #vmq_msg{}.
 -endif.

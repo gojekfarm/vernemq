@@ -70,9 +70,17 @@
          }).
 -type mqtt_pubcomp()        :: #mqtt_pubcomp{}.
 
+-record(mqtt_subscribe_topic, {
+  topic             :: topic(),
+  qos               :: qos(),
+  retry             :: flag(),
+  non_persistence   :: flag()
+}).
+
 -record(mqtt_subscribe, {
           message_id        :: msg_id(),
-          topics=[]         :: [{topic(), qos()}]
+          %% setting first flag denotes retry, setting second flag denotes non_persistence
+          topics=[]         :: [{topic(), qos(), flag(), flag()}]
          }).
 -type mqtt_subscribe()      :: #mqtt_subscribe{}.
 

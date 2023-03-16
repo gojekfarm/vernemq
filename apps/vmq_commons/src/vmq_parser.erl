@@ -217,11 +217,17 @@ parse_password(_, _, 1, _) ->
 
 parse_topics(<<>>, _, []) -> {error, no_topic_provided};
 parse_topics(<<>>, _, Topics) -> {ok, Topics};
-parse_topics(<<L:16/big, Topic:L/binary, 0:6, QoS:2, Rest/binary>>, ?SUBSCRIBE = Sub, Acc)
+parse_topics(<<L:16/big, Topic:L/binary, 0:4, Retry:1, NonPersistence:1, QoS:2, Rest/binary>>, ?SUBSCRIBE = Sub, Acc)
   when (QoS >= 0) and (QoS < 3) ->
     case vmq_topic:validate_topic(subscribe, Topic) of
         {ok, ParsedTopic} ->
-            parse_topics(Rest, Sub, [{ParsedTopic, QoS}|Acc]);
+            T = #mqtt_subscribe_topic{
+              topic = ParsedTopic,
+              qos = QoS,
+              retry = Retry,
+              non_persistence = NonPersistence
+            },
+            parse_topics(Rest, Sub, [T|Acc]);
         E -> E
     end;
 parse_topics(<<L:16/big, Topic:L/binary, Rest/binary>>, ?UNSUBSCRIBE = Sub, Acc) ->

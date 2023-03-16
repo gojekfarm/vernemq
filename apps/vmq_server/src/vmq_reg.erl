@@ -462,8 +462,10 @@ publish_fold_fun({{_,_} = SubscriberId, SubInfo}, _FromClientId, #publish_fold_a
         QPid ->
             Msg1 = handle_rap_flag(SubInfo, Msg0),
             Msg2 = maybe_add_sub_id(SubInfo, Msg1),
+            Msg3 = handle_non_persistence(SubInfo, Msg2),
+            Msg4 = handle_retry_flag(SubInfo, Msg3),
             QoS = qos(SubInfo),
-            ok = vmq_queue:enqueue(QPid, {deliver, QoS, Msg2}),
+            ok = vmq_queue:enqueue(QPid, {deliver, QoS, Msg4}),
             Acc#publish_fold_acc{local_matches= N + 1}
     end;
 publish_fold_fun({Node, SubscriberId, SubInfo}, _FromClientId, #publish_fold_acc{local_matches =N,
@@ -499,8 +501,10 @@ enqueue_msg({{_,_} = SubscriberId, SubInfo}, Msg0) ->
         QPid ->
             Msg1 = handle_rap_flag(SubInfo, Msg0),
             Msg2 = maybe_add_sub_id(SubInfo, Msg1),
+            Msg3 = handle_non_persistence(SubInfo, Msg2),
+            Msg4 = handle_retry_flag(SubInfo, Msg3),
             QoS = qos(SubInfo),
-            ok = vmq_queue:enqueue(QPid, {deliver, QoS, Msg2})
+            ok = vmq_queue:enqueue(QPid, {deliver, QoS, Msg4})
     end.
 
 maybe_set_expiry_ts(#{p_message_expiry_interval := ExpireAfter}) ->
@@ -514,6 +518,20 @@ handle_rap_flag({_QoS, #{rap := true}}, Msg) ->
 handle_rap_flag(_SubInfo, Msg) ->
     %% Default is to set the retain flag to false to be compatible with MQTTv3
     Msg#vmq_msg{retain = false}.
+
+-spec handle_retry_flag(subinfo(), msg()) -> msg().
+handle_retry_flag({_QoS, #{retry := Retry}}, Msg) ->
+  Msg#vmq_msg{non_persistence = unflag(Retry)};
+handle_retry_flag(_SubInfo, Msg) ->
+  %% Default is to set the retain flag to false to be compatible with MQTTv3
+  Msg#vmq_msg{retry = false}.
+
+-spec handle_non_persistence(subinfo(), msg()) -> msg().
+handle_non_persistence({_QoS, #{non_persistence := NonPersistence}}, Msg) ->
+  Msg#vmq_msg{non_persistence = unflag(NonPersistence)};
+handle_non_persistence(_SubInfo, Msg) ->
+  %% Default is to set the retain flag to false to be compatible with MQTTv3
+  Msg#vmq_msg{non_persistence = false}.
 
 maybe_add_sub_id({_, #{sub_id := SubId}}, #vmq_msg{properties = Props} = Msg) ->
     Msg#vmq_msg{properties = Props#{p_subscription_id => [SubId]}};
@@ -1122,3 +1140,11 @@ if_ready(Fun, Args) ->
         0 ->
             {error, not_ready}
     end.
+
+
+unflag(NonPersistence) when NonPersistence =:= 1 ->
+  true;
+unflag(NonPersistence) when NonPersistence =:= true ->
+  true;
+unflag(_) ->
+  false.

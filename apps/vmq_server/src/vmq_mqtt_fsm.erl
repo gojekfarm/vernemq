@@ -388,6 +388,7 @@ connected(#mqtt_subscribe{message_id=MessageId, topics=Topics},
         end,
     case auth_on_subscribe(User, SubscriberId, Topics, OnAuthSuccess) of
         {ok, QoSs} ->
+            QoSs = subscription_to_qos(maps:get(topics, QoSs, [])),
             check_mqtt_auth_errors(QoSs),
             Frame = #mqtt_suback{message_id=MessageId, qos_table=QoSs},
             _ = vmq_metrics:incr_mqtt_suback_sent(),
@@ -1301,7 +1302,7 @@ set_defopt(Key, Default, Map) ->
 peertoa({_IP, _Port} = Peer) ->
     vmq_mqtt_fsm_util:peertoa(Peer).
 
--spec subtopics([{topic(),0 | 1 | 2} |
+-spec subtopics([{topic(),0 | 1 | 2, 0 | 1, 0 | 1} |
 #mqtt5_subscribe_topic{topic::topic(),
 qos::0 | 1 | 2,no_local::'empty' | 'false' | 'true' | 0 | 1,
 rap::'empty' | 'false' | 'true' | 0 | 1,
@@ -1321,3 +1322,11 @@ check_mqtt_auth_errors(QoSTable) ->
         _ ->
             ok
     end.
+
+subscription_to_qos(Subscription) ->
+    lists:map(
+    fun({_T, QoS}) when is_integer(QoS) ->
+    QoS;
+    ({_T, {QoS, _}}) ->
+    QoS
+end, Subscription).
