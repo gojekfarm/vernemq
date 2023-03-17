@@ -88,7 +88,7 @@ subscribe_op(vmq_reg_redis_trie, {MP, ClientId} = SubscriberId, Topics) ->
     {NumOfTopics, UnwordedTopicsWithBinaryQoS} =
         lists:foldr(
             fun({T, QoS}, {Num, Acc}) when is_integer(QoS) ->
-                {Num + 1, [vmq_topic:unword(T), term_to_binary(QoS) | Acc]};
+                    {Num + 1, [vmq_topic:unword(T), term_to_binary(QoS) | Acc]};
                 ({T, {QoS, _Opts} = QoSWithOpts}, {Num, Acc}) when is_integer(QoS) ->
                     {Num + 1, [vmq_topic:unword(T), term_to_binary(QoSWithOpts) | Acc]};
                 (_, Acc) -> Acc
@@ -110,6 +110,11 @@ subscribe_op(vmq_reg_redis_trie, {MP, ClientId} = SubscriberId, Topics) ->
                         [{node(), CleanSessionBool, NewTopicsWithQoS}];
                   {ok, []} -> []
     end,
+    lists:foreach(fun ({[<<"$share">>,_Group | Topic], QoS}) ->
+                    Key = {MP, Topic},
+                    Value = {ClientId, QoS},
+                    ets:insert(vmq_shared_subs_local, {{Key, Value}});
+        (_) -> ok end, Topics),
     Existing = subscriptions_exist(OldSubs, Topics),
     QoSTable =
         lists:foldl(fun
@@ -971,7 +976,13 @@ del_subscriber(vmq_reg_redis_trie, {MP, ClientId} = _SubscriberId) ->
                                         MP,
                                         ClientId,
                                         node(),
-                                        os:system_time(nanosecond)], ?FCALL, ?DELETE_SUBSCRIBER);
+                                        os:system_time(nanosecond)], ?FCALL, ?DELETE_SUBSCRIBER),
+    Key = {MP, '$1'},
+    Value = {ClientId, '$2'},
+    case ets:select(vmq_shared_subs_local, [{{{Key, Value}}, [], ['$_']}]) of
+        [] -> ok;
+        SharedSubs -> lists:foreach(fun ({DKey}) -> ets:delete(vmq_shared_subs_local, DKey) end, SharedSubs)
+    end;
 del_subscriber(_, SubscriberId) ->
     vmq_subscriber_db:delete(SubscriberId).
 
@@ -986,6 +997,15 @@ del_subscriptions(vmq_reg_redis_trie, Topics, {MP, ClientId} = _SubscriberId) ->
                                               node(),
                                               os:system_time(nanosecond),
                                               length(SortedUnwordedTopics) | SortedUnwordedTopics], ?FCALL, ?UNSUBSCRIBE),
+    lists:foreach(fun([<<"$share">>,_Group | Topic]) ->
+                        Key = {MP, Topic},
+                        Value = {ClientId, '$1'},
+                        case ets:select(vmq_shared_subs_local, [{{{Key, Value}}, [], ['$_']}]) of
+                            [] -> ok;
+                            SharedSubs -> lists:foreach(fun ({DKey}) -> ets:delete(vmq_shared_subs_local, DKey) end, SharedSubs)
+                        end;
+        (_) -> ok
+                        end, Topics),
     ok;
 del_subscriptions(_, Topics, SubscriberId) ->
     OldSubs = subscriptions_for_subscriber_id(SubscriberId),
