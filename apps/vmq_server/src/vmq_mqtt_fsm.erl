@@ -373,21 +373,25 @@ connected(#mqtt_pubcomp{message_id=MessageId}, State) ->
     end;
 connected(#mqtt_subscribe{message_id=MessageId, topics=Topics},
           #state{proto_ver = ProtoVer} = State) ->
+    lager:error("subscribed to topics ~p", [Topics]),
     #state{subscriber_id=SubscriberId, username=User,
            cap_settings=CAPSettings} = State,
     _ = vmq_metrics:incr_mqtt_subscribe_received(),
+    SubTopics = subtopics(Topics, ProtoVer),
     OnAuthSuccess =
         fun(_User, _SubscriberId, MaybeChangedTopics) ->
-                SubTopics = subtopics(MaybeChangedTopics, ProtoVer),
-                case vmq_reg:subscribe(CAPSettings#cap_settings.allow_subscribe, SubscriberId, SubTopics) of
+                case vmq_reg:subscribe(CAPSettings#cap_settings.allow_subscribe, SubscriberId, MaybeChangedTopics) of
                     {ok, _} = Res ->
-                        vmq_plugin:all(on_subscribe, [User, SubscriberId, MaybeChangedTopics]),
+                        T = lists:foldl(fun({Topic, Sub} ,Acc) -> [Acc | {Topic, extract_qos(Sub)}] end, [], MaybeChangedTopics),
+                        lager:error("Topics passed to hook ~p", [T]),
+                        vmq_plugin:all(on_subscribe, [User, SubscriberId, T]),
                         Res;
                     Res -> Res
                 end
         end,
-    case auth_on_subscribe(User, SubscriberId, Topics, OnAuthSuccess) of
+    case auth_on_subscribe(User, SubscriberId, SubTopics, OnAuthSuccess) of
         {ok, QoSs} ->
+            lager:error("L394: QoSTable passed to hook ~p", [QoSs]),
             QoSs = subscription_to_qos(maps:get(topics, QoSs, [])),
             check_mqtt_auth_errors(QoSs),
             Frame = #mqtt_suback{message_id=MessageId, qos_table=QoSs},
@@ -677,7 +681,7 @@ set_sock_opts(Opts) ->
     self() ! {set_sock_opts, Opts}.
 
 -spec auth_on_subscribe(username(), subscriber_id(), [{topic(), qos()}],
-                        fun((username(), subscriber_id(), [{topic(), qos()}]) ->
+                        fun((username(), subscriber_id(), [{topic(), subinfo()}]) ->
                                    {ok, [qos() | not_allowed]} | {error, atom()})
                        ) -> {ok, [qos() | not_allowed]} | {error, atom()}.
 auth_on_subscribe(User, SubscriberId, Topics, AuthSuccess) ->
@@ -1330,3 +1334,6 @@ subscription_to_qos(Subscription) ->
     ({_T, {QoS, _}}) ->
     QoS
 end, Subscription).
+
+extract_qos({QoS, _SubInfo}) -> QoS;
+extract_qos(QoS) when is_integer(QoS) -> QoS.

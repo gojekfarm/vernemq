@@ -521,14 +521,14 @@ handle_rap_flag(_SubInfo, Msg) ->
 
 -spec handle_retry_flag(subinfo(), msg()) -> msg().
 handle_retry_flag({_QoS, #{retry := Retry}}, Msg) ->
-  Msg#vmq_msg{non_persistence = unflag(Retry)};
+  Msg#vmq_msg{non_retry = Retry};
 handle_retry_flag(_SubInfo, Msg) ->
-  %% Default is to set the retain flag to false to be compatible with MQTTv3
-  Msg#vmq_msg{retry = false}.
+  %% Default is to set the non_retry flag to false so that default qos 1 behaviour is preserved
+  Msg#vmq_msg{non_retry = false}.
 
 -spec handle_non_persistence(subinfo(), msg()) -> msg().
 handle_non_persistence({_QoS, #{non_persistence := NonPersistence}}, Msg) ->
-  Msg#vmq_msg{non_persistence = unflag(NonPersistence)};
+  Msg#vmq_msg{non_persistence = NonPersistence};
 handle_non_persistence(_SubInfo, Msg) ->
   %% Default is to set the retain flag to false to be compatible with MQTTv3
   Msg#vmq_msg{non_persistence = false}.
@@ -1140,11 +1140,3 @@ if_ready(Fun, Args) ->
         0 ->
             {error, not_ready}
     end.
-
-
-unflag(NonPersistence) when NonPersistence =:= 1 ->
-  true;
-unflag(NonPersistence) when NonPersistence =:= true ->
-  true;
-unflag(_) ->
-  false.

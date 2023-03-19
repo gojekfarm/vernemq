@@ -34,8 +34,8 @@
           properties=#{}        :: properties(),
           expiry_ts             :: undefined
                                  | msg_expiry_ts(),
-          retry=false                :: flag(),
-          non_persistence=false       :: flag()
+          non_retry=false                :: flag(),
+          non_persistence=false          :: flag()
          }).
 -type msg()             :: #vmq_msg{}.
 -endif.
