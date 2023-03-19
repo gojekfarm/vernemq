@@ -224,8 +224,8 @@ parse_topics(<<L:16/big, Topic:L/binary, 0:4, Retry:1, NonPersistence:1, QoS:2, 
             T = #mqtt_subscribe_topic{
               topic = ParsedTopic,
               qos = QoS,
-              retry = Retry,
-              non_persistence = NonPersistence
+              retry = to_bool(Retry),
+              non_persistence = to_bool(NonPersistence)
             },
             parse_topics(Rest, Sub, [T|Acc]);
         E -> E
@@ -450,3 +450,8 @@ gen_pingresp() ->
 
 gen_disconnect() ->
     iolist_to_binary(serialise(#mqtt_disconnect{})).
+
+to_bool(1) ->
+  true;
+to_bool(0) ->
+  false.
