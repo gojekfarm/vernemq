@@ -119,7 +119,7 @@ subscribe_op(vmq_reg_redis_trie, {MP, ClientId} = SubscriberId, Topics) ->
                         ({Exists, {T, QoS}}, AccQoSTable) when is_integer(QoS) ->
                             deliver_retained(SubscriberId, T, QoS, #{}, Exists),
                             [QoS|AccQoSTable];
-                        %% MQTTv5 clauses
+                        %% MQTTv5 clauses and new MQTTv4 clause
                         ({_, {_, {not_allowed, _}}}, AccQoSTable) ->
                             [not_allowed|AccQoSTable];
                         ({Exists, {T, {QoS, SubOpts}}}, AccQoSTable) when is_integer(QoS), is_map(SubOpts) ->

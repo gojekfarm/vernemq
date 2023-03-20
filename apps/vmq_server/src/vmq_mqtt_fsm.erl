@@ -79,7 +79,7 @@
          }).
 
 -define(COORDINATE_REGISTRATIONS, true).
--type msg_tag() :: 'publish' | 'pubrel'.
+-type msg_tag() :: 'publish' | 'pubrel' | 'delete'.
 
 -type state() :: #state{}.
 -export_type([state/0]).
@@ -382,7 +382,7 @@ connected(#mqtt_subscribe{message_id=MessageId, topics=Topics},
         fun(_User, _SubscriberId, MaybeChangedTopics) ->
                 case vmq_reg:subscribe(CAPSettings#cap_settings.allow_subscribe, SubscriberId, MaybeChangedTopics) of
                     {ok, _} = Res ->
-                        T = lists:foldl(fun({Topic, Sub} ,Acc) -> [Acc | {Topic, extract_qos(Sub)}] end, [], MaybeChangedTopics),
+                        T = lists:foldr(fun({Topic, Sub} ,Acc) -> [{Topic, extract_qos(Sub)}|Acc] end, [], MaybeChangedTopics),
                         lager:error("Topics passed to hook ~p", [T]),
                         vmq_plugin:all(on_subscribe, [User, SubscriberId, T]),
                         Res;
@@ -392,7 +392,6 @@ connected(#mqtt_subscribe{message_id=MessageId, topics=Topics},
     case auth_on_subscribe(User, SubscriberId, SubTopics, OnAuthSuccess) of
         {ok, QoSs} ->
             lager:error("L394: QoSTable passed to hook ~p", [QoSs]),
-            QoSs = subscription_to_qos(maps:get(topics, QoSs, [])),
             check_mqtt_auth_errors(QoSs),
             Frame = #mqtt_suback{message_id=MessageId, qos_table=QoSs},
             _ = vmq_metrics:incr_mqtt_suback_sent(),
@@ -1177,7 +1176,7 @@ handle_retry(_, Interval, {empty, Queue}, _, Acc) when length(Acc) > 0 ->
 handle_retry(_, _, {empty, Queue}, _, Acc) ->
     {Acc, Queue}.
 
--spec get_retry_frame(_,msg_id(),msg(), list()) -> 'already_acked' | [any()].
+-spec get_retry_frame(_,msg_id(),msg(), list()) -> 'already_acked' | 'delete' | [any()].
 get_retry_frame(publish, MsgId, #vmq_msg{routing_key=Topic, qos=QoS, retain=Retain,
                          payload=Payload}, Acc) ->
     _ = vmq_metrics:incr_mqtt_publish_sent(),
@@ -1191,6 +1190,9 @@ get_retry_frame(publish, MsgId, #vmq_msg{routing_key=Topic, qos=QoS, retain=Reta
 get_retry_frame(pubrel, _MsgId, #mqtt_pubrel{} = Frame, Acc) ->
     _ = vmq_metrics:incr_mqtt_pubrel_sent(),
     [Frame|Acc];
+get_retry_frame(delete, _, _, _) ->
+    %%ToDo: Add metric
+    delete;
 get_retry_frame(_, _, _, _) ->
     %% already acked
     already_acked.
@@ -1319,7 +1321,9 @@ set_defopt(Key, Default, Map) ->
 peertoa({_IP, _Port} = Peer) ->
     vmq_mqtt_fsm_util:peertoa(Peer).
 
--spec subtopics([{topic(),0 | 1 | 2, 0 | 1, 0 | 1} |
+-spec subtopics([#mqtt_subscribe_topic{topic::topic(),
+qos::0 | 1 | 2,non_retry::'empty' | 'false' | 'true',
+non_persistence::'empty' | 'false' | 'true'} |
 #mqtt5_subscribe_topic{topic::topic(),
 qos::0 | 1 | 2,no_local::'empty' | 'false' | 'true' | 0 | 1,
 rap::'empty' | 'false' | 'true' | 0 | 1,
@@ -1339,14 +1343,6 @@ check_mqtt_auth_errors(QoSTable) ->
         _ ->
             ok
     end.
-
-subscription_to_qos(Subscription) ->
-    lists:map(
-    fun({_T, QoS}) when is_integer(QoS) ->
-    QoS;
-    ({_T, {QoS, _}}) ->
-    QoS
-end, Subscription).
 
 extract_qos({QoS, _SubInfo}) -> QoS;
 extract_qos(QoS) when is_integer(QoS) -> QoS.
