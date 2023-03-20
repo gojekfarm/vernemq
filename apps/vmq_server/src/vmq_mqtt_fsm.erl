@@ -890,6 +890,8 @@ handle_waiting_acks_and_msgs(State) ->
                   ({MsgId, #mqtt_pubrel{} = Frame}, Acc) ->
                       %% unacked PUBREL Frame
                       [{deliver_pubrel, {MsgId, Frame}}|Acc];
+                  ({_, #vmq_msg{non_persistence = true}}, Acc) ->
+                      Acc;
                   ({MsgId, #vmq_msg{qos=QoS} = Msg}, Acc) ->
                       [#deliver{qos=QoS, msg_id=MsgId, msg=Msg#vmq_msg{dup=true}}|Acc]
               end, lists:reverse(WMsgs),
@@ -962,7 +964,8 @@ prepare_frame(#deliver{qos=QoS, msg_id=MsgId, msg=Msg}, State) ->
              payload=Payload,
              retain=IsRetained,
              dup=IsDup,
-             qos=MsgQoS} = Msg,
+             qos=MsgQoS,
+             non_retry = NonRetry} = Msg,
     NewQoS = maybe_upgrade_qos(QoS, MsgQoS, State),
     {NewTopic, NewPayload} =
     case on_deliver_hook(User, SubscriberId, QoS, Topic, Payload, IsRetained) of
@@ -989,10 +992,18 @@ prepare_frame(#deliver{qos=QoS, msg_id=MsgId, msg=Msg}, State) ->
         0 ->
             {Frame, State1};
         _ ->
-            {Frame, State1#state{
-                      retry_queue=set_retry(publish, OutgoingMsgId, RetryInterval, RetryQueue),
-                      waiting_acks=maps:put(OutgoingMsgId,
-                                            Msg#vmq_msg{qos=NewQoS}, WAcks)}}
+          case NonRetry of
+            true ->
+              {Frame, State1#state{
+                retry_queue=set_retry(delete, OutgoingMsgId, RetryInterval, RetryQueue),
+                waiting_acks=maps:put(OutgoingMsgId,
+                  Msg#vmq_msg{qos=NewQoS}, WAcks)}};
+            _ ->
+              {Frame, State1#state{
+                        retry_queue=set_retry(publish, OutgoingMsgId, RetryInterval, RetryQueue),
+                        waiting_acks=maps:put(OutgoingMsgId,
+                                              Msg#vmq_msg{qos=NewQoS}, WAcks)}}
+              end
     end.
 
 -spec on_deliver_hook(username(), subscriber_id(), qos(), topic(), payload(), flag()) -> any().
@@ -1153,6 +1164,8 @@ handle_retry(Now, Interval, {{value, {Ts, {MsgTag, MsgId} = RetryId } = Val}, Re
             case get_retry_frame(MsgTag, MsgId, maps:get(MsgId, WAcks, not_found), Acc) of
                 already_acked ->
                     handle_retry(Now, Interval, queue:out(RetryQueue), WAcks, Acc);
+                delete ->
+                    handle_retry(Now, Interval, queue:out(RetryQueue), maps:remove(MsgId, WAcks), Acc);
                 NewAcc ->
                     NewRetryQueue = queue:in({Now, RetryId}, RetryQueue),
                     handle_retry(Now, Interval, queue:out(NewRetryQueue), WAcks, NewAcc)
