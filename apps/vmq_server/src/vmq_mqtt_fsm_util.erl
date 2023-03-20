@@ -93,7 +93,7 @@ to_vmq_subtopics(Topics, SubId) ->
         topic = T, qos = QoS, non_persistence = NonPersistence, non_retry = Retry
       }) ->
               %% MQTTv4 style topics
-              SubOpts = #{non_persistence = NonPersistence, non_retry = Retry},
+              SubOpts = #{non_persistence => NonPersistence, non_retry => Retry},
               {T, {QoS, SubOpts}};
          (#mqtt5_subscribe_topic{
              topic = T, qos = QoS, rap = Rap, retain_handling = RH, no_local = NL
