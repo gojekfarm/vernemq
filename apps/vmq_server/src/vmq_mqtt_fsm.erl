@@ -1331,8 +1331,10 @@ retain_handling::'dont_send' | 'send_if_new_sub' | 'send_retain'}],'undefined' |
 subtopics(Topics, ProtoVer) when ?IS_BRIDGE(ProtoVer) ->
     %% bridge connection
     SubTopics = vmq_mqtt_fsm_util:to_vmq_subtopics(Topics, undefined),
-    lists:map(fun({T, QoS}) -> {T, {QoS, #{rap => true,
-                                           no_local => true}}} end, SubTopics);
+    lists:map(fun({T, QoS}) when is_integer(QoS) ->
+                    {T, {QoS, #{rap => true, no_local => true}}};
+                 ({T, {QoS, Opts}=QoSWithOpts}) when is_tuple(QoSWithOpts)  ->
+                    {T, {QoS, Opts#{rap => true, no_local => true}}} end, SubTopics);
 subtopics(Topics, _Proto) ->
     vmq_mqtt_fsm_util:to_vmq_subtopics(Topics, undefined).
 
@@ -1344,5 +1346,6 @@ check_mqtt_auth_errors(QoSTable) ->
             ok
     end.
 
-extract_qos({QoS, _SubInfo}) -> QoS;
-extract_qos(QoS) when is_integer(QoS) -> QoS.
+extract_qos(not_allowed) -> not_allowed;
+extract_qos(QoS) when is_integer(QoS) -> QoS;
+extract_qos({QoS, _SubInfo}) -> QoS.
