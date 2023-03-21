@@ -82,7 +82,7 @@
 -record(mqtt_subscribe, {
           message_id        :: msg_id(),
           %% setting first flag denotes retry, setting second flag denotes non_persistence
-          topics=[]         :: [mqtt_subscribe_topic()]
+          topics=[]         :: [mqtt_subscribe_topic()|{topic(), qos()}]
          }).
 -type mqtt_subscribe()      :: #mqtt_subscribe{}.
 
