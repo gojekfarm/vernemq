@@ -89,9 +89,11 @@ plugin_receive_loop(PluginPid, PluginMod) ->
 -spec to_vmq_subtopics([mqtt5_subscribe_topic() | mqtt_subscribe_topic()], subscription_id() | undefined) -> [subscription()].
 to_vmq_subtopics(Topics, SubId) ->
     lists:map(
-      fun(#mqtt_subscribe_topic{
-        topic = T, qos = QoS, non_persistence = NonPersistence, non_retry = Retry
-      }) ->
+      fun({T, QoS}) ->
+            {T, QoS};
+          (#mqtt_subscribe_topic{
+            topic = T, qos = QoS, non_persistence = NonPersistence, non_retry = Retry
+           }) ->
               %% MQTTv4 style topics
               SubOpts = #{non_persistence => NonPersistence, non_retry => Retry},
               {T, {QoS, SubOpts}};

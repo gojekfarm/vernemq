@@ -520,8 +520,8 @@ handle_rap_flag(_SubInfo, Msg) ->
     Msg#vmq_msg{retain = false}.
 
 -spec handle_retry_flag(subinfo(), msg()) -> msg().
-handle_retry_flag({_QoS, #{retry := Retry}}, Msg) ->
-  Msg#vmq_msg{non_retry = Retry};
+handle_retry_flag({_QoS, #{non_retry := NonRetry}}, Msg) ->
+  Msg#vmq_msg{non_retry = NonRetry};
 handle_retry_flag(_SubInfo, Msg) ->
   %% Default is to set the non_retry flag to false so that default qos 1 behaviour is preserved
   Msg#vmq_msg{non_retry = false}.
