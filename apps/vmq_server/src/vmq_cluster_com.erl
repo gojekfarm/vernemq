@@ -206,7 +206,7 @@ to_vmq_msg(#vmq_msg{} = Msg) ->
     Msg;
 to_vmq_msg({vmq_msg, MsgRef, RoutingKey, Payload,
             Retain, Dup, QoS, Mountpoint, Persisted,
-            SGPolicy}) ->
+            SGPolicy, NonRetry, NonPersistence}) ->
     %% Pre-MQTT5 msg record. Fill in the missing ones.
     #vmq_msg{
        msg_ref = MsgRef,
@@ -219,7 +219,9 @@ to_vmq_msg({vmq_msg, MsgRef, RoutingKey, Payload,
        persisted = Persisted,
        sg_policy = SGPolicy,
        properties = #{},
-       expiry_ts = undefined
+       expiry_ts = undefined,
+       non_retry = NonRetry,
+       non_persistence = NonPersistence
       };
 to_vmq_msg(InMsg) when is_tuple(InMsg),
                        size(InMsg) > size(#vmq_msg{}) ->
@@ -237,5 +239,7 @@ to_vmq_msg(InMsg) when is_tuple(InMsg),
        persisted = element(9, InMsg),
        sg_policy = element(10, InMsg),
        properties = element(11, InMsg),
-       expiry_ts = element(12, InMsg)
+       expiry_ts = element(12, InMsg),
+       non_retry = element(13, InMsg),
+       non_persistence = element(14, InMsg)
       }.
