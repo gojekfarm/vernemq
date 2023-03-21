@@ -331,11 +331,11 @@ serialise_len(N) when N =< ?LOWBITS ->
 serialise_len(N) ->
     <<1:1, (N rem ?HIGHBIT):7, (serialise_len(N div ?HIGHBIT))/binary>>.
 
-serialise_topics(?SUBSCRIBE = Sub, [{Topic, QoS}|Rest], Acc) ->
-  serialise_topics(Sub, Rest, [utf8(vmq_topic:unword(Topic)), <<0:6, QoS:2>>|Acc]);
 serialise_topics(?SUBSCRIBE = Sub, [#mqtt_subscribe_topic{
   topic = Topic,
   qos = QoS}|Rest], Acc) ->
+    serialise_topics(Sub, Rest, [utf8(vmq_topic:unword(Topic)), <<0:6, QoS:2>>|Acc]);
+serialise_topics(?SUBSCRIBE = Sub, [{Topic, QoS}|Rest], Acc) ->
     serialise_topics(Sub, Rest, [utf8(vmq_topic:unword(Topic)), <<0:6, QoS:2>>|Acc]);
 serialise_topics(?UNSUBSCRIBE = Sub, [Topic|Rest], Acc) ->
     serialise_topics(Sub, Rest, [utf8(vmq_topic:unword(Topic))|Acc]);
