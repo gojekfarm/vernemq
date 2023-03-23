@@ -516,6 +516,7 @@ maybe_set_expiry_ts(_) ->
 handle_rap_flag({_QoS, #{rap := true}}, Msg) ->
     Msg;
 handle_rap_flag(_SubInfo, Msg) ->
+    lager:error("Msgs in handle_rap_flag ~p", [Msg]),
     %% Default is to set the retain flag to false to be compatible with MQTTv3
     Msg#vmq_msg{retain = false}.
 
