@@ -58,6 +58,7 @@ local function remap_subscriber(_KEYS, ARGV)
     if S == nil or T == nil or S == false or T == false then
         local subscriptionValue = {newNode, newCleanSession, {}}
         redis.call('HMSET', subscriberKey, subscriptionField, cmsgpack.pack(subscriptionValue), timestampField, timestampValue)
+        redis.call('SET', newNode, subscriberKey)
         return {false, subscriptionValue, nil}
     elseif tonumber(timestampValue) > tonumber(T) and newCleanSession == true then
         local subscriptionValue = {newNode, true, {}}
@@ -65,6 +66,7 @@ local function remap_subscriber(_KEYS, ARGV)
         local currNode, _cs, topicsWithQoS = unpack(cmsgpack.unpack(S))
         removeTopicsForRouting(MP, currNode, clientId, topicsWithQoS)
         if currNode ~= newNode then
+            redis.call('SMOVE', currNode, newNode, subscriberKey)
             return {true, subscriptionValue, currNode}
         end
         return {true, subscriptionValue, nil}
@@ -73,6 +75,7 @@ local function remap_subscriber(_KEYS, ARGV)
         local subscriptionValue = {newNode, false, topicsWithQoS}
         redis.call('HMSET', subscriberKey, subscriptionField, cmsgpack.pack(subscriptionValue), timestampField, timestampValue)
         if currNode ~= newNode then
+            redis.call('SMOVE', currNode, newNode, subscriberKey)
             updateNodeForRouting(MP, clientId, topicsWithQoS, currNode, newNode)
             return {true, subscriptionValue, currNode}
         end

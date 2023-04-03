@@ -55,7 +55,8 @@ init([]) ->
                ?CHILD(vmq_reg_sup, supervisor, []),
                ?CHILD(vmq_redis_queue_sup, supervisor, []),
                ?CHILD(vmq_sysmon, worker, []),
-               ?CHILD(vmq_ranch_sup, supervisor, [])
+               ?CHILD(vmq_ranch_sup, supervisor, []),
+               ?CHILD(vmq_redis_cluster_liveness, worker, [])
               ]} }.
 
 maybe_change_nodename() ->

@@ -272,32 +272,36 @@ register_subscriber_(SessionPid, SubscriberId, StartClean, QueueOpts, N, Reason)
                         block_until(SubscriberId, UpdatedSubs, ChangedNodes, Fun),
                         SessionPresent1
                 end,
-            case catch vmq_queue:add_session(QPid, SessionPid, QueueOpts) of
-                {'EXIT', {normal, _}} ->
-                    %% queue went down in the meantime, retry
-                    register_subscriber_(SessionPid, SubscriberId, StartClean, QueueOpts, N -1, register_subscriber_retry_exhausted);
-                {'EXIT', {noproc, _}} ->
-                    timer:sleep(100),
-                    %% queue was stopped in the meantime, retry
-                    register_subscriber_(SessionPid, SubscriberId, StartClean, QueueOpts, N -1, register_subscriber_retry_exhausted);
-                {'EXIT', Reason} ->
-                    {error, Reason};
-                {error, draining} ->
-                    %% queue is still draining it's offline queue to a different
-                    %% remote queue. This can happen if a client hops around
-                    %% different nodes very frequently... adjust load balancing!!
-                    timer:sleep(100),
-                    register_subscriber_(SessionPid, SubscriberId, StartClean, QueueOpts, N -1, {register_subscriber_retry_exhausted, draining});
-                {error, {cleanup, _Reason}} ->
-                    %% queue is still cleaning up.
-                    timer:sleep(100),
-                    register_subscriber_(SessionPid, SubscriberId, StartClean, QueueOpts, N -1, register_subscriber_retry_exhausted);
-                {ok, Opts} ->
-                    {ok, Opts#{session_present => SessionPresent2,
-                               queue_pid => QPid}};
+            case SessionPid of
+                undefined -> ok;
                 _ ->
-                    timer:sleep(100),
-                    register_subscriber_(SessionPid, SubscriberId, StartClean, QueueOpts, N -1, register_subscriber_retry_exhausted)
+                    case catch vmq_queue:add_session(QPid, SessionPid, QueueOpts) of
+                        {'EXIT', {normal, _}} ->
+                            %% queue went down in the meantime, retry
+                            register_subscriber_(SessionPid, SubscriberId, StartClean, QueueOpts, N -1, register_subscriber_retry_exhausted);
+                        {'EXIT', {noproc, _}} ->
+                            timer:sleep(100),
+                            %% queue was stopped in the meantime, retry
+                            register_subscriber_(SessionPid, SubscriberId, StartClean, QueueOpts, N -1, register_subscriber_retry_exhausted);
+                        {'EXIT', Reason} ->
+                            {error, Reason};
+                        {error, draining} ->
+                            %% queue is still draining it's offline queue to a different
+                            %% remote queue. This can happen if a client hops around
+                            %% different nodes very frequently... adjust load balancing!!
+                            timer:sleep(100),
+                            register_subscriber_(SessionPid, SubscriberId, StartClean, QueueOpts, N -1, {register_subscriber_retry_exhausted, draining});
+                        {error, {cleanup, _Reason}} ->
+                            %% queue is still cleaning up.
+                            timer:sleep(100),
+                            register_subscriber_(SessionPid, SubscriberId, StartClean, QueueOpts, N -1, register_subscriber_retry_exhausted);
+                        {ok, Opts} ->
+                            {ok, Opts#{session_present => SessionPresent2,
+                                queue_pid => QPid}};
+                        _ ->
+                            timer:sleep(100),
+                            register_subscriber_(SessionPid, SubscriberId, StartClean, QueueOpts, N -1, register_subscriber_retry_exhausted)
+                    end
             end
     end.
 
@@ -460,10 +464,16 @@ publish_fold_fun({Node, SubscriberId, SubInfo}, _FromClientId, #publish_fold_acc
     when Node == node() ->
     enqueue_msg({SubscriberId, SubInfo}, Msg),
     Acc#publish_fold_acc{local_matches= N + 1};
-publish_fold_fun({Node, SubscriberId, SubInfo}, _FromClientId, #publish_fold_acc{remote_matches=RN,
+publish_fold_fun({Node, SubscriberId, SubInfo}, FromClientId, #publish_fold_acc{remote_matches=RN,
                                                                                  msg=Msg} = Acc) ->
-    vmq_redis_queue:enqueue(Node, term_to_binary(SubscriberId), term_to_binary({SubInfo, Msg})),
-    Acc#publish_fold_acc{local_matches= RN + 1};
+    case vmq_redis_cluster_liveness:is_node_alive(Node) of
+        true ->
+            vmq_redis_queue:enqueue(Node, term_to_binary(SubscriberId), term_to_binary({SubInfo, Msg})),
+            Acc#publish_fold_acc{local_matches= RN + 1};
+        false ->
+            ok = register_subscriber_(undefined, SubscriberId, false, #{}, ?NR_OF_REG_RETRIES),
+            publish_fold_fun({node(), SubscriberId, SubInfo}, FromClientId, Acc)
+    end;
 publish_fold_fun({_Node, _Group, SubscriberId, #{no_local := true}}, SubscriberId, Acc) ->
     %% Publisher is the same as subscriber, discard.
     Acc;

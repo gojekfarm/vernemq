@@ -810,7 +810,8 @@ redis_def() ->
             ?FETCH_SUBSCRIBER,
             ?FETCH_MATCHED_TOPIC_SUBSCRIBERS,
             ?ENQUEUE_MSG,
-            ?POLL_MAIN_QUEUE],
+            ?POLL_MAIN_QUEUE,
+            ?GET_LIVE_NODES],
     REDIS_DEF_1 =
         [
             m(counter, [{cmd, rcn_to_str(?FCALL)}, {operation, rcn_to_str(OPERATION)}], {?REDIS_CMD, ?FCALL, OPERATION} , redis_cmd_total, <<"The number of redis cmd calls.">>) || OPERATION <- OPERATIONs
@@ -1643,7 +1644,14 @@ met2idx({?REDIS_CMD_MISS, ?DEL, ?MSG_STORE_DELETE})                       -> 303
 met2idx({?REDIS_CMD_MISS, ?FIND, ?MSG_STORE_FIND})                        -> 304;
 met2idx({?REDIS_CMD, ?LPOP, ?MSG_STORE_DELETE})                           -> 305;
 met2idx({?REDIS_CMD_ERROR, ?LPOP, ?MSG_STORE_DELETE})                     -> 306;
-met2idx({?REDIS_CMD_MISS, ?LPOP, ?MSG_STORE_DELETE})                      -> 307.
+met2idx({?REDIS_CMD_MISS, ?LPOP, ?MSG_STORE_DELETE})                      -> 307;
+met2idx({?REDIS_CMD, ?FCALL, ?GET_LIVE_NODES})                            -> 308;
+met2idx({?REDIS_CMD_ERROR, ?FCALL, ?GET_LIVE_NODES})                      -> 309;
+met2idx({?REDIS_CMD_MISS, ?FCALL, ?GET_LIVE_NODES})                       -> 310;
+met2idx({?REDIS_STALE_CMD, ?FCALL, ?GET_LIVE_NODES})                      -> 311;
+met2idx({?UNAUTH_REDIS_CMD, ?FCALL, ?GET_LIVE_NODES})                     -> 312;
+met2idx({?REDIS_CMD, ?FUNCTION_LOAD, ?GET_LIVE_NODES})                    -> 313;
+met2idx({?REDIS_CMD_ERROR, ?FUNCTION_LOAD, ?GET_LIVE_NODES})              -> 314.
 
 -ifdef(TEST).
 clear_stored_rates() ->

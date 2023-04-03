@@ -40,6 +40,7 @@ local function delete_subscriber(_KEYS, ARGV)
                 end
             end
             redis.call('DEL', subscriberKey)
+            redis.call('SREM', newNode, subscriberKey)
             return true
         end
         return redis.error_reply(UNAUTHORIZED)
