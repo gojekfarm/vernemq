@@ -443,8 +443,8 @@ connected(#mqtt_disconnect{}, State) ->
 connected(retry,
     #state{waiting_acks=WAcks, retry_interval=RetryInterval,
            retry_queue=RetryQueue} = State) ->
-    {RetryFrames, NewRetryQueue} = handle_retry(RetryInterval, RetryQueue, WAcks),
-    {State#state{retry_queue=NewRetryQueue}, RetryFrames};
+    {NewWaitingAcks, RetryFrames, NewRetryQueue} = handle_retry(RetryInterval, RetryQueue, WAcks),
+    {State#state{retry_queue=NewRetryQueue, waiting_acks=NewWaitingAcks}, RetryFrames};
 connected({disconnect, Reason}, State) ->
     lager:debug("stop due to disconnect", []),
     terminate(Reason, State);
@@ -891,6 +891,8 @@ handle_waiting_acks_and_msgs(State) ->
                       [{deliver_pubrel, {MsgId, Frame}}|Acc];
                   ({_, #vmq_msg{non_persistence = true}}, Acc) ->
                       Acc;
+                  ({_, #vmq_msg{non_retry = true}}, Acc) ->
+                      Acc;
                   ({MsgId, #vmq_msg{qos=QoS} = Msg}, Acc) ->
                       [#deliver{qos=QoS, msg_id=MsgId, msg=Msg#vmq_msg{dup=true}}|Acc]
               end, lists:reverse(WMsgs),
@@ -1158,7 +1160,7 @@ handle_retry(Now, Interval, {{value, {Ts, {MsgTag, MsgId} = RetryId } = Val}, Re
     case NowDiff < Interval of
         true ->
             vmq_mqtt_fsm_util:send_after(Interval - NowDiff, retry),
-            {Acc, queue:in_r(Val, RetryQueue)};
+            {WAcks, Acc, queue:in_r(Val, RetryQueue)};
         false ->
             case get_retry_frame(MsgTag, MsgId, maps:get(MsgId, WAcks, not_found), Acc) of
                 already_acked ->
@@ -1170,11 +1172,11 @@ handle_retry(Now, Interval, {{value, {Ts, {MsgTag, MsgId} = RetryId } = Val}, Re
                     handle_retry(Now, Interval, queue:out(NewRetryQueue), WAcks, NewAcc)
             end
     end;
-handle_retry(_, Interval, {empty, Queue}, _, Acc) when length(Acc) > 0 ->
+handle_retry(_, Interval, {empty, Queue}, WAcks, Acc) when length(Acc) > 0 ->
     vmq_mqtt_fsm_util:send_after(Interval, retry),
-    {Acc, Queue};
-handle_retry(_, _, {empty, Queue}, _, Acc) ->
-    {Acc, Queue}.
+    {WAcks, Acc, Queue};
+handle_retry(_, _, {empty, Queue}, WAcks, Acc) ->
+    {WAcks, Acc, Queue}.
 
 -spec get_retry_frame(_,msg_id(),msg(), list()) -> 'already_acked' | 'delete' | [any()].
 get_retry_frame(publish, MsgId, #vmq_msg{routing_key=Topic, qos=QoS, retain=Retain,

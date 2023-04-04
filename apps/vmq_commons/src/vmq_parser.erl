@@ -15,6 +15,7 @@
          gen_pubcomp/1,
          gen_subscribe/2,
          gen_subscribe/3,
+         gen_subscribe/5,
          gen_suback/2,
          gen_unsubscribe/2,
          gen_unsuback/1,
@@ -333,8 +334,12 @@ serialise_len(N) ->
 
 serialise_topics(?SUBSCRIBE = Sub, [#mqtt_subscribe_topic{
   topic = Topic,
-  qos = QoS}|Rest], Acc) ->
-    serialise_topics(Sub, Rest, [utf8(vmq_topic:unword(Topic)), <<0:6, QoS:2>>|Acc]);
+  qos = QoS,
+  non_persistence=NP,
+  non_retry=NR}|Rest], Acc) ->
+    NonRetry = to_int(NR),
+    NonPersistence = to_int(NP),
+    serialise_topics(Sub, Rest, [utf8(vmq_topic:unword(Topic)), <<0:4, NonRetry:1, NonPersistence:1, QoS:2>>|Acc]);
 serialise_topics(?SUBSCRIBE = Sub, [{Topic, QoS}|Rest], Acc) ->
     serialise_topics(Sub, Rest, [utf8(vmq_topic:unword(Topic)), <<0:6, QoS:2>>|Acc]);
 serialise_topics(?UNSUBSCRIBE = Sub, [Topic|Rest], Acc) ->
@@ -431,9 +436,15 @@ gen_pubcomp(MId) ->
 
 gen_subscribe(MId, [{_, _}|_] = Topics) ->
     BinTopics = [{ensure_binary(Topic), QoS} || {Topic, QoS} <- Topics],
+    iolist_to_binary(serialise(#mqtt_subscribe{topics=BinTopics, message_id=MId}));
+gen_subscribe(MId, [#mqtt_subscribe_topic{}|_] = Topics) ->
+    BinTopics = [E#mqtt_subscribe_topic{topic=ensure_binary(T)}
+    || #mqtt_subscribe_topic{topic = T} = E <- Topics],
     iolist_to_binary(serialise(#mqtt_subscribe{topics=BinTopics, message_id=MId})).
 gen_subscribe(MId, Topic, QoS) ->
     gen_subscribe(MId, [{Topic, QoS}]).
+gen_subscribe(MId, Topic, QoS, NonRetry, NonPersistence) ->
+    gen_subscribe(MId, [#mqtt_subscribe_topic{topic=Topic, qos=QoS, non_retry=NonRetry, non_persistence=NonPersistence}]).
 
 gen_suback(MId, QoSs) when is_list(QoSs) ->
     iolist_to_binary(serialise(#mqtt_suback{qos_table=QoSs, message_id=MId}));
@@ -459,3 +470,8 @@ to_bool(1) ->
   true;
 to_bool(0) ->
   false.
+
+to_int(true) ->
+  1;
+to_int(false) ->
+  0.
