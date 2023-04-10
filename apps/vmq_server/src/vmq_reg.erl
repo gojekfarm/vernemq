@@ -85,6 +85,7 @@ subscribe(true, SubscriberId, Topics) ->
     if_ready(fun subscribe_op/3, [?DefaultRegView, SubscriberId, Topics]).
 
 subscribe_op(vmq_reg_redis_trie, {MP, ClientId} = SubscriberId, Topics) ->
+    update_qos1_metrics(Topics),
     {NumOfTopics, UnwordedTopicsWithBinaryQoS} =
         lists:foldr(
             fun({T, QoS}, {Num, Acc}) when is_integer(QoS) ->
@@ -128,6 +129,7 @@ subscribe_op(vmq_reg_redis_trie, {MP, ClientId} = SubscriberId, Topics) ->
                     end, [], lists:zip(Existing,Topics)),
     {ok, lists:reverse(QoSTable)};
 subscribe_op(_, SubscriberId, Topics) ->
+    update_qos1_metrics(Topics),
     OldSubs = subscriptions_for_subscriber_id(SubscriberId),
     Existing = subscriptions_exist(OldSubs, Topics),
     add_subscriber(lists:usort(Topics), OldSubs, SubscriberId),
@@ -1141,3 +1143,18 @@ if_ready(Fun, Args) ->
         0 ->
             {error, not_ready}
     end.
+
+update_qos1_metrics(Topics) ->
+  lists:foreach(fun({_, 1}) ->
+    _ = vmq_metrics:incr_qos1_opts({false, false});
+    ({_, {1, #{non_retry := true, non_persistence := true}}}) ->
+      _ = vmq_metrics:incr_qos1_opts({true, true});
+    ({_, {1, #{non_retry := false, non_persistence := true}}}) ->
+      _ = vmq_metrics:incr_qos1_opts({false, true});
+    ({_, {1, #{non_retry := true, non_persistence := false}}}) ->
+      _ = vmq_metrics:incr_qos1_opts({true, false});
+    ({_, {1, #{non_retry := false, non_persistence := false}}}) ->
+      _ = vmq_metrics:incr_qos1_opts({false, false});
+    (_) ->
+      ok
+  end, Topics).

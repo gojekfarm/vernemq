@@ -129,3 +129,8 @@
 -define(READ, read).
 -define(DELETE_ALL, delete_all).
 -define(DELETE, delete).
+-define(QOS1_SUBSCRIPTION_OPTS, qos1_subscription_opts).
+-define(NON_PERSISTENCE, true).
+-define(NON_RETRY, true).
+-define(PERSISTENCE, false).
+-define(RETRY, false).
