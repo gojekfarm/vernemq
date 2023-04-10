@@ -696,7 +696,6 @@ maybe_set_expiry_ts(_) ->
 handle_rap_flag({_QoS, #{rap := true}}, Msg) ->
     Msg;
 handle_rap_flag(_SubInfo, Msg) ->
-    lager:error("Msgs in handle_rap_flag ~p", [Msg]),
     %% Default is to set the retain flag to false to be compatible with MQTTv3
     Msg#vmq_msg{retain = false}.
 
@@ -711,7 +710,7 @@ handle_retry_flag(_SubInfo, Msg) ->
 handle_non_persistence({_QoS, #{non_persistence := NonPersistence}}, Msg) ->
     Msg#vmq_msg{non_persistence = NonPersistence};
 handle_non_persistence(_SubInfo, Msg) ->
-    %% Default is to set the retain flag to false to be compatible with MQTTv3
+    %% Default is to set the non_persistence flag to false to be compatible with MQTTv3 behaviour
     Msg#vmq_msg{non_persistence = false}.
 
 maybe_add_sub_id({_, #{sub_id := SubId}}, #vmq_msg{properties = Props} = Msg) ->
@@ -1482,14 +1481,8 @@ update_qos1_metrics(Topics) ->
         fun
             ({_, 1}) ->
                 _ = vmq_metrics:incr_qos1_opts({false, false});
-            ({_, {1, #{non_retry := true, non_persistence := true}}}) ->
-                _ = vmq_metrics:incr_qos1_opts({true, true});
-            ({_, {1, #{non_retry := false, non_persistence := true}}}) ->
-                _ = vmq_metrics:incr_qos1_opts({false, true});
-            ({_, {1, #{non_retry := true, non_persistence := false}}}) ->
-                _ = vmq_metrics:incr_qos1_opts({true, false});
-            ({_, {1, #{non_retry := false, non_persistence := false}}}) ->
-                _ = vmq_metrics:incr_qos1_opts({false, false});
+            ({_, {1, #{non_retry := NonRetry, non_persistence := NonPersistence}}}) ->
+                _ = vmq_metrics:incr_qos1_opts({NonRetry, NonPersistence});
             (_) ->
                 ok
         end,

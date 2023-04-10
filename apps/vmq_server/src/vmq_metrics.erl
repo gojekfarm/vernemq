@@ -1481,28 +1481,28 @@ counter_entries_def() ->
         m(
             counter,
             [{mqtt_version, "4"}, {non_persistence, ?NON_PERSISTENCE}, {non_retry, ?NON_RETRY}],
-            {?QOS1_SUBSCRIPTION_OPTS, true, true},
+            {?QOS1_SUBSCRIPTION_OPTS, ?NON_PERSISTENCE, ?NON_RETRY},
             qos1_subscription_opts,
             <<"QoS 1 opts in subscription.">>
         ),
         m(
             counter,
             [{mqtt_version, "4"}, {non_persistence, ?NON_PERSISTENCE}, {non_retry, ?RETRY}],
-            {?QOS1_SUBSCRIPTION_OPTS, true, false},
+            {?QOS1_SUBSCRIPTION_OPTS, ?NON_PERSISTENCE, ?RETRY},
             qos1_subscription_opts,
             <<"QoS 1 opts in subscription.">>
         ),
         m(
             counter,
             [{mqtt_version, "4"}, {non_persistence, ?PERSISTENCE}, {non_retry, ?NON_RETRY}],
-            {?QOS1_SUBSCRIPTION_OPTS, false, true},
+            {?QOS1_SUBSCRIPTION_OPTS, ?PERSISTENCE, ?NON_RETRY},
             qos1_subscription_opts,
             <<"QoS 1 opts in subscription.">>
         ),
         m(
             counter,
             [{mqtt_version, "4"}, {non_persistence, ?PERSISTENCE}, {non_retry, ?RETRY}],
-            {?QOS1_SUBSCRIPTION_OPTS, false, false},
+            {?QOS1_SUBSCRIPTION_OPTS, ?PERSISTENCE, ?RETRY},
             qos1_subscription_opts,
             <<"QoS 1 opts in subscription.">>
         ),

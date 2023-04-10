@@ -263,7 +263,7 @@ parse_topics(<<>>, _, []) ->
 parse_topics(<<>>, _, Topics) ->
     {ok, Topics};
 parse_topics(
-    <<L:16/big, Topic:L/binary, 0:4, Retry:1, NonPersistence:1, QoS:2, Rest/binary>>,
+    <<L:16/big, Topic:L/binary, 0:4, NonRetry:1, NonPersistence:1, QoS:2, Rest/binary>>,
     ?SUBSCRIBE = Sub,
     Acc
 ) when
@@ -274,7 +274,7 @@ parse_topics(
             T = #mqtt_subscribe_topic{
                 topic = ParsedTopic,
                 qos = QoS,
-                non_retry = to_bool(Retry),
+                non_retry = to_bool(NonRetry),
                 non_persistence = to_bool(NonPersistence)
             },
             parse_topics(Rest, Sub, [T | Acc]);

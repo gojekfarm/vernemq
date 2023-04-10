@@ -111,9 +111,10 @@ qos1_retry_test(Cfg) ->
   Connect = packet:gen_connect(vmq_cth:ustr(Cfg) ++ "qos1-retry-test", [{keepalive,60}, {clean_session, false}]),
   Connack1 = packet:gen_connack(0),
   Disconnect = packet:gen_disconnect(),
-  Subscribe = packet:gen_subscribe(109, "qos1/retry/test", 1, true, false),
+  Subscribe = packet:gen_subscribe(109, "qos1/retry/test", 1, false, false),
   Suback = packet:gen_suback(109, 1),
   Publish = packet:gen_publish("qos1/retry/test", 1, <<"retry-message">>, [{mid, 1}]),
+  Publish2 = packet:gen_publish("qos1/retry/test", 1, <<"retry-message">>, [{mid, 1}, {dup, 1}]),
   {ok, Socket} = packet:do_client_connect(Connect, Connack1, []),
   enable_on_publish(),
   enable_on_subscribe(),
@@ -126,8 +127,8 @@ qos1_retry_test(Cfg) ->
   %% we receive the message but do not send puback
   ok = packet:expect_packet(Socket, "publish", Publish),
 
-  %% wait for 25 seconds and check that we receive no further messages
-  {error,timeout} = packet:expect_packet(gen_tcp, Socket, "publish", Publish, 25000),
+  %% wait for 25 seconds and check that we receive retried messages
+  ok = packet:expect_packet(gen_tcp, Socket, "publish", Publish2, 25000),
   ok = gen_tcp:send(Socket, Disconnect),
   ok = gen_tcp:close(Socket),
   disable_on_publish(),

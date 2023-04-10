@@ -438,7 +438,6 @@ connected(
     } = State,
     _ = vmq_metrics:incr_mqtt_subscribe_received(),
     SubTopics = subtopics(Topics, ProtoVer),
-    SubTopics = subtopics(Topics, ProtoVer),
     OnAuthSuccess =
         fun(_User, _SubscriberId, MaybeChangedTopics) ->
             case
@@ -867,7 +866,7 @@ set_sock_opts(Opts) ->
 -spec auth_on_subscribe(
     username(),
     subscriber_id(),
-    [{topic(), qos()}],
+    [{topic(), subinfo()}],
     fun(
         (username(), subscriber_id(), [{topic(), subinfo()}]) ->
             {ok, [qos() | not_allowed]} | {error, atom()}
@@ -1505,7 +1504,6 @@ get_retry_frame(pubrel, _MsgId, #mqtt_pubrel{} = Frame, Acc) ->
     _ = vmq_metrics:incr_mqtt_pubrel_sent(),
     [Frame | Acc];
 get_retry_frame(delete, _, _, _) ->
-    %%ToDo: Add metric
     delete;
 get_retry_frame(_, _, _, _) ->
     %% already acked
