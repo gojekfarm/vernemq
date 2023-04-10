@@ -58,6 +58,9 @@
          incr_mqtt_error_invalid_pubrec/0,
          incr_mqtt_error_invalid_pubcomp/0,
 
+         incr_qos1_non_retry_message_dropped/0,
+         incr_qos1_non_persistence_message_dropped/0,
+
          incr_mqtt_error_publish/0,
          incr_mqtt_error_subscribe/0,
          incr_mqtt_error_unsubscribe/0,
@@ -231,6 +234,12 @@ incr_mqtt_error_subscribe() ->
 
 incr_mqtt_error_unsubscribe() ->
     incr_item(?MQTT4_UNSUBSCRIBE_ERROR, 1).
+
+incr_qos1_non_retry_message_dropped() ->
+  incr_item(?QOS1_NON_RETRY_DROPPED, 1).
+
+incr_qos1_non_persistence_message_dropped() ->
+  incr_item(?QOS1_NON_PERSISTENCE_DROPPED, 1).
 
 incr_sidecar_events(HookName) ->
     incr_item({?SIDECAR_EVENTS, HookName}, 1).
@@ -928,6 +937,8 @@ counter_entries_def() ->
      m(counter, [{mqtt_version,"4"}, {non_persistence, ?NON_PERSISTENCE}, {non_retry, ?RETRY}], {?QOS1_SUBSCRIPTION_OPTS, true, false}, qos1_subscription_opts, <<"QoS 1 opts in subscription.">>),
      m(counter, [{mqtt_version,"4"}, {non_persistence, ?PERSISTENCE}, {non_retry, ?NON_RETRY}], {?QOS1_SUBSCRIPTION_OPTS, false, true}, qos1_subscription_opts, <<"QoS 1 opts in subscription.">>),
      m(counter, [{mqtt_version,"4"}, {non_persistence, ?PERSISTENCE}, {non_retry, ?RETRY}], {?QOS1_SUBSCRIPTION_OPTS, false, false}, qos1_subscription_opts, <<"QoS 1 opts in subscription.">>),
+     m(counter, [{mqtt_version,"4"}], qos1_non_retry_dropped, qos1_non_retry_dropped, <<"QoS 1 non_retry messages dropped.">>),
+     m(counter, [{mqtt_version,"4"}], qos1_non_persistence_dropped, qos1_non_persistence_dropped, <<"QoS 1 non_persistence messages dropped.">>),
 
      m(counter, [{mqtt_version,"5"}], ?MQTT5_CONNECT_RECEIVED, mqtt_connect_received, <<"The number of CONNECT packets received.">>),
      m(counter, [{mqtt_version,"5"}], ?MQTT5_INVALID_MSG_SIZE_ERROR, mqtt_invalid_msg_size_error, <<"The number of packages exceeding the maximum allowed size.">>),
@@ -1656,8 +1667,8 @@ met2idx({?QOS1_SUBSCRIPTION_OPTS, ?NON_RETRY, ?NON_PERSISTENCE})          -> 308
 met2idx({?QOS1_SUBSCRIPTION_OPTS, ?RETRY, ?NON_PERSISTENCE})              -> 309;
 met2idx({?QOS1_SUBSCRIPTION_OPTS, ?NON_RETRY, ?PERSISTENCE})              -> 310;
 met2idx({?QOS1_SUBSCRIPTION_OPTS, ?RETRY, ?PERSISTENCE})                  -> 311;
-met2idx(mqtt4_qos1_non_retry_messages_dropped)                            -> 312;
-met2idx(mqtt4_qos1_non_persistence_messages_dropped)                      -> 313.
+met2idx(?QOS1_NON_RETRY_DROPPED)                                          -> 312;
+met2idx(?QOS1_NON_PERSISTENCE_DROPPED)                                    -> 313.
 
 -ifdef(TEST).
 clear_stored_rates() ->

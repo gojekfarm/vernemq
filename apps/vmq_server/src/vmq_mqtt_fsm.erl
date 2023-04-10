@@ -378,6 +378,7 @@ connected(#mqtt_subscribe{message_id=MessageId, topics=Topics},
            cap_settings=CAPSettings} = State,
     _ = vmq_metrics:incr_mqtt_subscribe_received(),
     SubTopics = subtopics(Topics, ProtoVer),
+    SubTopics = subtopics(Topics, ProtoVer),
     OnAuthSuccess =
         fun(_User, _SubscriberId, MaybeChangedTopics) ->
                 case vmq_reg:subscribe(CAPSettings#cap_settings.allow_subscribe, SubscriberId, MaybeChangedTopics) of
@@ -890,8 +891,10 @@ handle_waiting_acks_and_msgs(State) ->
                       %% unacked PUBREL Frame
                       [{deliver_pubrel, {MsgId, Frame}}|Acc];
                   ({_, #vmq_msg{non_persistence = true}}, Acc) ->
+                      _ = vmq_metrics:incr_qos1_non_persistence_message_dropped(),
                       Acc;
                   ({_, #vmq_msg{non_retry = true}}, Acc) ->
+                      _ = vmq_metrics:incr_qos1_non_retry_message_dropped(),
                       Acc;
                   ({MsgId, #vmq_msg{qos=QoS} = Msg}, Acc) ->
                       [#deliver{qos=QoS, msg_id=MsgId, msg=Msg#vmq_msg{dup=true}}|Acc]
@@ -1166,6 +1169,7 @@ handle_retry(Now, Interval, {{value, {Ts, {MsgTag, MsgId} = RetryId } = Val}, Re
                 already_acked ->
                     handle_retry(Now, Interval, queue:out(RetryQueue), WAcks, Acc);
                 delete ->
+                    _ = vmq_metrics:incr_qos1_non_retry_message_dropped(),
                     handle_retry(Now, Interval, queue:out(RetryQueue), maps:remove(MsgId, WAcks), Acc);
                 NewAcc ->
                     NewRetryQueue = queue:in({Now, RetryId}, RetryQueue),
