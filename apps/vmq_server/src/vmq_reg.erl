@@ -1311,23 +1311,6 @@ del_subscriber(_, SubscriberId) ->
 
 -spec del_subscriptions(atom(), [topic()], subscriber_id()) -> ok.
 del_subscriptions(vmq_reg_redis_trie, Topics, {MP, ClientId} = _SubscriberId) ->
-    SortedUnwordedTopics = [vmq_topic:unword(T) || T <- lists:usort(Topics)],
-    {ok, <<"1">>} = vmq_redis:query(
-        redis_client,
-        [
-            ?FCALL,
-            ?UNSUBSCRIBE,
-            0,
-            MP,
-            ClientId,
-            node(),
-            os:system_time(nanosecond),
-            length(SortedUnwordedTopics)
-            | SortedUnwordedTopics
-        ],
-        ?FCALL,
-        ?UNSUBSCRIBE
-    ),
     lists:foreach(
         fun
             ([<<"$share">>, _Group | Topic]) ->
