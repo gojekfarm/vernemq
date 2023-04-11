@@ -22,13 +22,13 @@ init_per_testcase(_Case, Config) ->
   vmq_server_cmd:set_config(retry_interval, 10),
   vmq_server_cmd:set_config(max_client_id_size, 1000),
   vmq_server_cmd:listener_start(1888, [{allowed_protocol_versions, "3,4,5"}]),
-  enable_on_publish(),
-  enable_on_subscribe(),
+  enable_auth_on_publish(),
+  enable_auth_on_subscribe(),
   Config.
 
 end_per_testcase(_, Config) ->
-  disable_on_publish(),
-  disable_on_subscribe(),
+  disable_auth_on_publish(),
+  disable_auth_on_subscribe(),
   vmq_test_utils:teardown(),
   Config.
 
@@ -59,8 +59,8 @@ qos1_persist_test(Cfg) ->
   Suback = packet:gen_suback(109, 1),
   Publish = packet:gen_publish("qos1/persistence/test", 1, <<"persist-message">>, [{mid, 1}]),
   {ok, Socket} = packet:do_client_connect(Connect, Connack1, []),
-  enable_on_publish(),
-  enable_on_subscribe(),
+  enable_auth_on_publish(),
+  enable_auth_on_subscribe(),
   ok = gen_tcp:send(Socket, Subscribe),
   ok = packet:expect_packet(Socket, "suback", Suback),
   ok = gen_tcp:send(Socket, Disconnect),
@@ -74,8 +74,8 @@ qos1_persist_test(Cfg) ->
   %% Now reconnect and see that messages are received.
   {ok, Socket1} = packet:do_client_connect(Connect, Connack2, []),
   ok = packet:expect_packet(Socket1, "publish", Publish),
-  disable_on_publish(),
-  disable_on_subscribe(),
+  disable_auth_on_publish(),
+  disable_auth_on_subscribe(),
   ok = gen_tcp:close(Socket1).
 
 qos1_non_persist_test(Cfg) ->
@@ -87,8 +87,8 @@ qos1_non_persist_test(Cfg) ->
   Suback = packet:gen_suback(109, 1),
   Publish = packet:gen_publish("qos1/nonpersistence/test", 1, <<"non-persist-message">>, [{mid, 1}]),
   {ok, Socket} = packet:do_client_connect(Connect, Connack1, []),
-  enable_on_publish(),
-  enable_on_subscribe(),
+  enable_auth_on_publish(),
+  enable_auth_on_subscribe(),
   ok = gen_tcp:send(Socket, Subscribe),
   ok = packet:expect_packet(Socket, "suback", Suback),
   ok = gen_tcp:send(Socket, Disconnect),
@@ -103,8 +103,8 @@ qos1_non_persist_test(Cfg) ->
   {ok, Socket1} = packet:do_client_connect(Connect, Connack2, []),
   {1,0,0,0,0} = vmq_queue_sup_sup:summary(),
   {error,timeout} = packet:expect_packet(gen_tcp, Socket1, "publish", Publish, 500),
-  disable_on_publish(),
-  disable_on_subscribe(),
+  disable_auth_on_publish(),
+  disable_auth_on_subscribe(),
   ok = gen_tcp:close(Socket1).
 
 qos1_retry_test(Cfg) ->
@@ -116,8 +116,8 @@ qos1_retry_test(Cfg) ->
   Publish = packet:gen_publish("qos1/retry/test", 1, <<"retry-message">>, [{mid, 1}]),
   Publish2 = packet:gen_publish("qos1/retry/test", 1, <<"retry-message">>, [{mid, 1}, {dup, 1}]),
   {ok, Socket} = packet:do_client_connect(Connect, Connack1, []),
-  enable_on_publish(),
-  enable_on_subscribe(),
+  enable_auth_on_publish(),
+  enable_auth_on_subscribe(),
   ok = gen_tcp:send(Socket, Subscribe),
   ok = packet:expect_packet(Socket, "suback", Suback),
 
@@ -131,8 +131,8 @@ qos1_retry_test(Cfg) ->
   ok = packet:expect_packet(gen_tcp, Socket, "publish", Publish2, 25000),
   ok = gen_tcp:send(Socket, Disconnect),
   ok = gen_tcp:close(Socket),
-  disable_on_publish(),
-  disable_on_subscribe().
+  disable_auth_on_publish(),
+  disable_auth_on_subscribe().
 
 qos1_non_retry_test(Cfg) ->
   Connect = packet:gen_connect(vmq_cth:ustr(Cfg) ++ "qos1-non-retry-test", [{keepalive,60}, {clean_session, false}]),
@@ -142,8 +142,8 @@ qos1_non_retry_test(Cfg) ->
   Suback = packet:gen_suback(109, 1),
   Publish = packet:gen_publish("qos1/nonretry/test", 1, <<"non-retry-message">>, [{mid, 1}]),
   {ok, Socket} = packet:do_client_connect(Connect, Connack1, []),
-  enable_on_publish(),
-  enable_on_subscribe(),
+  enable_auth_on_publish(),
+  enable_auth_on_subscribe(),
   ok = gen_tcp:send(Socket, Subscribe),
   ok = packet:expect_packet(Socket, "suback", Suback),
 
@@ -157,8 +157,8 @@ qos1_non_retry_test(Cfg) ->
   {error,timeout} = packet:expect_packet(gen_tcp, Socket, "publish", Publish, 25000),
   ok = gen_tcp:send(Socket, Disconnect),
   ok = gen_tcp:close(Socket),
-  disable_on_publish(),
-  disable_on_subscribe().
+  disable_auth_on_publish(),
+  disable_auth_on_subscribe().
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%% Hooks
@@ -169,16 +169,16 @@ hook_auth_on_publish(_, _, _, _, _, _) -> ok.
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%% Helper
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-enable_on_subscribe() ->
+enable_auth_on_subscribe() ->
   vmq_plugin_mgr:enable_module_plugin(
     auth_on_subscribe, ?MODULE, hook_auth_on_subscribe, 3).
-enable_on_publish() ->
+enable_auth_on_publish() ->
   vmq_plugin_mgr:enable_module_plugin(
     auth_on_publish, ?MODULE, hook_auth_on_publish, 6).
-disable_on_subscribe() ->
+disable_auth_on_subscribe() ->
   vmq_plugin_mgr:disable_module_plugin(
     auth_on_subscribe, ?MODULE, hook_auth_on_subscribe, 3).
-disable_on_publish() ->
+disable_auth_on_publish() ->
   vmq_plugin_mgr:disable_module_plugin(
     auth_on_publish, ?MODULE, hook_auth_on_publish, 6).
 

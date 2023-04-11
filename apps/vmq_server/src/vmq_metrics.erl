@@ -1480,28 +1480,44 @@ counter_entries_def() ->
         ),
         m(
             counter,
-            [{mqtt_version, "4"}, {non_persistence, rcn_to_str(?NON_PERSISTENCE)}, {non_retry, rcn_to_str(?NON_RETRY)}],
+            [
+                {mqtt_version, "4"},
+                {non_persistence, rcn_to_str(?NON_PERSISTENCE)},
+                {non_retry, rcn_to_str(?NON_RETRY)}
+            ],
             {?QOS1_SUBSCRIPTION_OPTS, ?NON_PERSISTENCE, ?NON_RETRY},
             qos1_subscription_opts,
             <<"QoS 1 opts in subscription.">>
         ),
         m(
             counter,
-            [{mqtt_version, "4"}, {non_persistence, rcn_to_str(?NON_PERSISTENCE)}, {non_retry, rcn_to_str(?RETRY)}],
+            [
+                {mqtt_version, "4"},
+                {non_persistence, rcn_to_str(?NON_PERSISTENCE)},
+                {non_retry, rcn_to_str(?RETRY)}
+            ],
             {?QOS1_SUBSCRIPTION_OPTS, ?NON_PERSISTENCE, ?RETRY},
             qos1_subscription_opts,
             <<"QoS 1 opts in subscription.">>
         ),
         m(
             counter,
-            [{mqtt_version, "4"}, {non_persistence, rcn_to_str(?PERSISTENCE)}, {non_retry, rcn_to_str(?NON_RETRY)}],
+            [
+                {mqtt_version, "4"},
+                {non_persistence, rcn_to_str(?PERSISTENCE)},
+                {non_retry, rcn_to_str(?NON_RETRY)}
+            ],
             {?QOS1_SUBSCRIPTION_OPTS, ?PERSISTENCE, ?NON_RETRY},
             qos1_subscription_opts,
             <<"QoS 1 opts in subscription.">>
         ),
         m(
             counter,
-            [{mqtt_version, "4"}, {non_persistence, rcn_to_str(?PERSISTENCE)}, {non_retry, rcn_to_str(?RETRY)}],
+            [
+                {mqtt_version, "4"},
+                {non_persistence, rcn_to_str(?PERSISTENCE)},
+                {non_retry, rcn_to_str(?RETRY)}
+            ],
             {?QOS1_SUBSCRIPTION_OPTS, ?PERSISTENCE, ?RETRY},
             qos1_subscription_opts,
             <<"QoS 1 opts in subscription.">>
