@@ -1285,7 +1285,7 @@ subscriptions_exist(OldSubs, Topics) ->
 del_subscriber(vmq_reg_redis_trie, {MP, ClientId} = _SubscriberId) ->
     Key = {MP, '$1'},
     Value = {ClientId, '$2'},
-    ets:select_delete(vmq_shared_subs_local, [{{{Key, Value}}, [], ['$_']}]),
+    ets:select_delete(vmq_shared_subs_local, [{{{Key, Value}}, [], [true]}]),
     vmq_redis:query(
         redis_client,
         [
@@ -1311,7 +1311,7 @@ del_subscriptions(vmq_reg_redis_trie, Topics, {MP, ClientId} = _SubscriberId) ->
             ([<<"$share">>, _Group | Topic]) ->
                 Key = {MP, Topic},
                 Value = {ClientId, '$1'},
-                ets:select_delete(vmq_shared_subs_local, [{{{Key, Value}}, [], ['$_']}]);
+                ets:select_delete(vmq_shared_subs_local, [{{{Key, Value}}, [], [true]}]);
             (_) ->
                 ok
         end,
