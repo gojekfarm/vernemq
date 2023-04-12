@@ -40,45 +40,60 @@ end
 
 local function remap_subscriber(_KEYS, ARGV)
     local STALE_REQUEST='stale_request'
-    local toboolean = { ["true"]=true, ["false"]=false }
+    local str_to_bool = { ["true"]=true, ["false"]=false }
+    local bool_to_str = { [true]="true", [false]="false" }
 
     local MP = ARGV[1]
     local clientId = ARGV[2]
     local newNode = ARGV[3]
-    local newCleanSession = toboolean[ARGV[4]]
+    local newCleanSession = str_to_bool[ARGV[4]]
     local timestampValue = ARGV[5]
 
     local subscriberKey = cmsgpack.pack({MP, clientId})
-    local subscriptionField = 'subscription'
+    local nodeField = 'node'
+    local cleanSessionField = 'clean_session'
+    local topicsField = 'topics_with_qos'
     local timestampField = 'timestamp'
 
-    local currValues = redis.call('HMGET', subscriberKey, subscriptionField, timestampField)
-    local S = currValues[1]
-    local T = currValues[2]
-    if S == nil or T == nil or S == false or T == false then
+    local currValues = redis.call('HMGET', subscriberKey, nodeField, cleanSessionField, topicsField, timestampField)
+    local currNode = currValues[1]
+    local currCleanSession = str_to_bool[currValues[2]]
+    local packedTopicsWithQoS = currValues[3]
+    local T = currValues[4]
+    if currNode == nil or T == nil or currNode == false or T == false then
         local subscriptionValue = {newNode, newCleanSession, {}}
-        redis.call('HMSET', subscriberKey, subscriptionField, cmsgpack.pack(subscriptionValue), timestampField, timestampValue)
-        redis.call('SET', newNode, subscriberKey)
+        redis.call('HSET', subscriberKey, nodeField, newNode, cleanSessionField, bool_to_str[newCleanSession], topicsField, cmsgpack.pack({}), timestampField, timestampValue)
+        redis.call('SADD', newNode, subscriberKey)
         return {false, subscriptionValue, nil}
     elseif tonumber(timestampValue) > tonumber(T) and newCleanSession == true then
         local subscriptionValue = {newNode, true, {}}
-        redis.call('HMSET', subscriberKey, subscriptionField, cmsgpack.pack(subscriptionValue), timestampField, timestampValue)
-        local currNode, _cs, topicsWithQoS = unpack(cmsgpack.unpack(S))
+        redis.call('HSET', subscriberKey, nodeField, newNode, cleanSessionField, bool_to_str[newCleanSession], topicsField, cmsgpack.pack({}), timestampField, timestampValue)
+        local topicsWithQoS = cmsgpack.unpack(packedTopicsWithQoS)
         removeTopicsForRouting(MP, currNode, clientId, topicsWithQoS)
         if currNode ~= newNode then
             redis.call('SMOVE', currNode, newNode, subscriberKey)
             return {true, subscriptionValue, currNode}
         end
         return {true, subscriptionValue, nil}
-    elseif tonumber(timestampValue) > tonumber(T) and newCleanSession == false then
-        local currNode, _cs, topicsWithQoS = unpack(cmsgpack.unpack(S))
-        local subscriptionValue = {newNode, false, topicsWithQoS}
-        redis.call('HMSET', subscriberKey, subscriptionField, cmsgpack.pack(subscriptionValue), timestampField, timestampValue)
+    elseif tonumber(timestampValue) > tonumber(T) and newCleanSession == false and currCleanSession == true then
+        local topicsWithQoS = cmsgpack.unpack(packedTopicsWithQoS)
+        removeTopicsForRouting(MP, currNode, clientId, topicsWithQoS)
+        redis.call('HSET', subscriberKey, nodeField, newNode, cleanSessionField, bool_to_str[newCleanSession], topicsField, cmsgpack.pack({}), timestampField, timestampValue)
+        local subscriptionValue = {newNode, false, {}}
         if currNode ~= newNode then
+            redis.call('SMOVE', currNode, newNode, subscriberKey)
+        end
+        return {false, subscriptionValue, nil}
+    elseif tonumber(timestampValue) > tonumber(T) and newCleanSession == false then
+        local topicsWithQoS = cmsgpack.unpack(packedTopicsWithQoS)
+        local subscriptionValue = {newNode, false, topicsWithQoS}
+        if currNode ~= newNode then
+            redis.call('HSET', subscriberKey, nodeField, newNode, timestampField, timestampValue)
             redis.call('SMOVE', currNode, newNode, subscriberKey)
             updateNodeForRouting(MP, clientId, topicsWithQoS, currNode, newNode)
             return {true, subscriptionValue, currNode}
         end
+        redis.call('HSET', subscriberKey, timestampField, timestampValue)
         return {true, subscriptionValue, nil}
     else
         return redis.error_reply(STALE_REQUEST)

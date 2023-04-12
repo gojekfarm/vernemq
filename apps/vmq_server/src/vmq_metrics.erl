@@ -811,7 +811,8 @@ redis_def() ->
             ?FETCH_MATCHED_TOPIC_SUBSCRIBERS,
             ?ENQUEUE_MSG,
             ?POLL_MAIN_QUEUE,
-            ?GET_LIVE_NODES],
+            ?GET_LIVE_NODES,
+            ?REAP_QUEUES],
     REDIS_DEF_1 =
         [
             m(counter, [{cmd, rcn_to_str(?FCALL)}, {operation, rcn_to_str(OPERATION)}], {?REDIS_CMD, ?FCALL, OPERATION} , redis_cmd_total, <<"The number of redis cmd calls.">>) || OPERATION <- OPERATIONs
@@ -1201,11 +1202,7 @@ fetch_external_metric(Mod, Fun, Default) ->
 misc_statistics() ->
     {NrOfSubs, SMemory} = fetch_external_metric(vmq_reg_trie, stats, {0, 0}),
     {NrOfRetain, RMemory} = fetch_external_metric(vmq_retain_srv, stats, {0, 0}),
-    {NetsplitDetectedCount, NetsplitResolvedCount}
-        = fetch_external_metric(vmq_cluster, netsplit_statistics, {0, 0}),
-    [{netsplit_detected, NetsplitDetectedCount},
-     {netsplit_resolved, NetsplitResolvedCount},
-     {router_subscriptions, NrOfSubs},
+    [{router_subscriptions, NrOfSubs},
      {router_memory, SMemory},
      {retain_messages, NrOfRetain},
      {retain_memory, RMemory},
@@ -1651,7 +1648,14 @@ met2idx({?REDIS_CMD_MISS, ?FCALL, ?GET_LIVE_NODES})                       -> 310
 met2idx({?REDIS_STALE_CMD, ?FCALL, ?GET_LIVE_NODES})                      -> 311;
 met2idx({?UNAUTH_REDIS_CMD, ?FCALL, ?GET_LIVE_NODES})                     -> 312;
 met2idx({?REDIS_CMD, ?FUNCTION_LOAD, ?GET_LIVE_NODES})                    -> 313;
-met2idx({?REDIS_CMD_ERROR, ?FUNCTION_LOAD, ?GET_LIVE_NODES})              -> 314.
+met2idx({?REDIS_CMD_ERROR, ?FUNCTION_LOAD, ?GET_LIVE_NODES})              -> 314;
+met2idx({?REDIS_CMD, ?FCALL, ?REAP_QUEUES})                               -> 315;
+met2idx({?REDIS_CMD_ERROR, ?FCALL, ?REAP_QUEUES})                         -> 316;
+met2idx({?REDIS_CMD_MISS, ?FCALL, ?REAP_QUEUES})                          -> 317;
+met2idx({?REDIS_STALE_CMD, ?FCALL, ?REAP_QUEUES})                         -> 318;
+met2idx({?UNAUTH_REDIS_CMD, ?FCALL, ?REAP_QUEUES})                        -> 319;
+met2idx({?REDIS_CMD, ?FUNCTION_LOAD, ?REAP_QUEUES})                       -> 320;
+met2idx({?REDIS_CMD_ERROR, ?FUNCTION_LOAD, ?REAP_QUEUES})                 -> 321.
 
 -ifdef(TEST).
 clear_stored_rates() ->

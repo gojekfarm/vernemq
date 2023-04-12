@@ -35,17 +35,19 @@ local function unsubscribe(_KEYS, ARGV)
     local numOfTopics = tonumber(ARGV[5])
 
     local subscriberKey = cmsgpack.pack({MP, clientId})
-    local subscriptionField = 'subscription'
+    local nodeField = 'node'
+    local topicsField = 'topics_with_qos'
     local timestampField = 'timestamp'
 
-    local currValues = redis.call('HMGET', subscriberKey, subscriptionField, timestampField)
-    local S = currValues[1]
-    local T = currValues[2]
-    if S == nil or T == nil or S == false or T == false then
+    local currValues = redis.call('HMGET', subscriberKey, nodeField, topicsField, timestampField)
+    local currNode = currValues[1]
+    local currPackedTopicsWithQoS = currValues[2]
+    local T = currValues[3]
+    if currNode == nil or T == nil or currNode == false or T == false then
         return true
     elseif tonumber(timestampValue) > tonumber(T) then
-        local currNode, cs, existingTopicsWithQoS = unpack(cmsgpack.unpack(S))
         if node == currNode then
+            local existingTopicsWithQoS = cmsgpack.unpack(currPackedTopicsWithQoS)
             local newTopicsWithQoS = {}
             local i, j, k = 1, 1, 1
             while (i <= #existingTopicsWithQoS) and (j <= numOfTopics) do
@@ -67,8 +69,7 @@ local function unsubscribe(_KEYS, ARGV)
                 k = k + 1
                 i = i + 1
             end
-            local subscriptionValue = {node, cs, newTopicsWithQoS}
-            redis.call('HMSET', subscriberKey, subscriptionField, cmsgpack.pack(subscriptionValue), timestampField, timestampValue)
+            redis.call('HSET', subscriberKey, topicsField, cmsgpack.pack(newTopicsWithQoS), timestampField, timestampValue)
             return true
         end
         return redis.error_reply(UNAUTHORIZED)

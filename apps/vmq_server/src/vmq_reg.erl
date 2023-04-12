@@ -494,7 +494,7 @@ publish_fold_fun(Node, _FromClientId, #publish_fold_acc{msg=Msg, remote_matches=
 -spec enqueue_msg({subscriber_id(), subinfo()}, msg()) -> ok.
 enqueue_msg({{_,_} = SubscriberId, SubInfo}, Msg0) ->
     case get_queue_pid(SubscriberId) of
-        not_found -> ok;
+        not_found -> lager:error("Subscriber(~p) queue process not found.", [SubscriberId]), ok;
         QPid ->
             Msg1 = handle_rap_flag(SubInfo, Msg0),
             Msg2 = maybe_add_sub_id(SubInfo, Msg1),

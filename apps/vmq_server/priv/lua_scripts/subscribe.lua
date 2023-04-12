@@ -81,6 +81,8 @@ end
 local function subscribe(_KEYS, ARGV)
     local STALE_REQUEST='stale_request'
     local UNAUTHORIZED='unauthorized'
+    local str_to_bool = { ["true"]=true, ["false"]=false }
+    local bool_to_str = { [true]="true", [false]="false" }
 
     local MP = ARGV[1]
     local clientId = ARGV[2]
@@ -89,25 +91,26 @@ local function subscribe(_KEYS, ARGV)
     local numOfNewTopicsWithQoS = tonumber(ARGV[5])
 
     local subscriberKey = cmsgpack.pack({MP, clientId})
-    local subscriptionField = 'subscription'
+    local nodeField = 'node'
+    local cleanSessionField = 'clean_session'
+    local topicsField = 'topics_with_qos'
     local timestampField = 'timestamp'
 
-    local currValues = redis.call('HMGET', subscriberKey, subscriptionField, timestampField)
-    local S = currValues[1]
-    local T = currValues[2]
-    if S == nil or T == nil or S == false or T == false then
-        local topicsWithQoS = mergeTopics(MP, clientId, newNode, numOfNewTopicsWithQoS, ARGV, {})
-        local subscriptionValue = {newNode, true, topicsWithQoS}
-        redis.call('HMSET', subscriberKey, subscriptionField, cmsgpack.pack(subscriptionValue), timestampField, timestampValue)
+    local currValues = redis.call('HMGET', subscriberKey, nodeField, cleanSessionField, topicsField, timestampField)
+    local currNode = currValues[1]
+    local cleanSession = str_to_bool[currValues[2]]
+    local currPackedTopicsWithQoS = currValues[3]
+    local T = currValues[4]
+    if currNode == nil or T == nil or currNode == false or T == false then
+        local newTopicsWithQoS = mergeTopics(MP, clientId, newNode, numOfNewTopicsWithQoS, ARGV, {})
+        redis.call('HSET', subscriberKey, nodeField, newNode, cleanSessionField, bool_to_str[true], topicsField, cmsgpack.pack(newTopicsWithQoS), timestampField, timestampValue)
         return {}
     elseif tonumber(timestampValue) > tonumber(T) then
-        local currSub = cmsgpack.unpack(S)
-        local currNode, cs, existingTopicsWithQoS = unpack(currSub)
         if newNode == currNode then
-            local newTopicsWithQoS = mergeTopics(MP, clientId, newNode, numOfNewTopicsWithQoS, ARGV, existingTopicsWithQoS)
-            local subscriptionValue = {currNode, cs, newTopicsWithQoS}
-            redis.call('HMSET', subscriberKey, subscriptionField, cmsgpack.pack(subscriptionValue), timestampField, timestampValue)
-            return currSub
+            local currTopicsWithQoS = cmsgpack.unpack(currPackedTopicsWithQoS)
+            local newTopicsWithQoS = mergeTopics(MP, clientId, newNode, numOfNewTopicsWithQoS, ARGV, currTopicsWithQoS)
+            redis.call('HSET', subscriberKey, topicsField, cmsgpack.pack(newTopicsWithQoS), timestampField, timestampValue)
+            return {newNode, cleanSession, currTopicsWithQoS}
         end
         return redis.error_reply(UNAUTHORIZED)
     else

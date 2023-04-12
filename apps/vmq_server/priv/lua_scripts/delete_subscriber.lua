@@ -17,17 +17,16 @@ local function delete_subscriber(_KEYS, ARGV)
     local timestampValue = ARGV[4]
 
     local subscriberKey = cmsgpack.pack({MP, clientId})
-    local subscriptionField = 'subscription'
+    local nodeField = 'node'
+    local topicsField = 'topics_with_qos'
     local timestampField = 'timestamp'
 
-    local currValues = redis.call('HMGET', subscriberKey, subscriptionField, timestampField)
-    local S = currValues[1]
-    local T = currValues[2]
-    if S == nil or T == nil or S == false or T == false then
+    local currNode, packedTopicsWithQoS, T = unpack(redis.call('HMGET', subscriberKey, nodeField, topicsField, timestampField))
+    if currNode == nil or T == nil or currNode == false or T == false then
         return true
     elseif tonumber(timestampValue) > tonumber(T) then
-        local currNode, _cs, topicsWithQoS = unpack(cmsgpack.unpack(S))
         if currNode == newNode then
+            local topicsWithQoS = cmsgpack.unpack(packedTopicsWithQoS)
             for i = 1,#topicsWithQoS,1 do
                 local topic, qos = unpack(topicsWithQoS[i])
                 local group, sharedTopic = string.match(topic, '^$share/(.-)/(.*)')

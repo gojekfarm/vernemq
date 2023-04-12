@@ -20,11 +20,11 @@ query(Client, QueryCmd, Cmd, Operation, Timeout) ->
     Result = case eredis:q(Pid, QueryCmd, Timeout) of
                  {error, <<"ERR stale_request">>} = Res when Cmd == ?FCALL ->
                      vmq_metrics:incr_redis_stale_cmd({Cmd, Operation}),
-                     lager:error("Cannot ~p due to staleness", [Cmd]),
+                     lager:error("Cannot ~p:~p due to staleness", [Cmd, Operation]),
                      Res;
                  {error, <<"ERR unauthorized">>} = Res when Cmd == ?FCALL ->
                      vmq_metrics:incr_unauth_redis_cmd({Cmd, Operation}),
-                     lager:error("Cannot ~p as client is connected on different node", [Cmd]),
+                     lager:error("Cannot ~p:~p as client is connected on different node", [Cmd, Operation]),
                      Res;
                  {error, no_connection} ->
                      vmq_metrics:incr_redis_cmd_err({Cmd, Operation}),

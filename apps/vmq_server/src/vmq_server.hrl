@@ -64,6 +64,7 @@
 -define(ENQUEUE_MSG, enqueue_msg).
 -define(POLL_MAIN_QUEUE, poll_main_queue).
 -define(GET_LIVE_NODES, get_live_nodes).
+-define(REAP_QUEUES, reap_queues).
 -define(RPUSH, rpush).
 -define(DEL, del).
 -define(FIND, find).

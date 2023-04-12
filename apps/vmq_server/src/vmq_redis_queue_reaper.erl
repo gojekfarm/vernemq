@@ -1,4 +1,4 @@
--module(vmq_redis_cluster_liveness).
+-module(vmq_redis_queue_reaper).
 -author("dhruvjain").
 
 -behaviour(gen_server).
@@ -6,7 +6,7 @@
 -include("vmq_server.hrl").
 
 %% API functions
--export([start_link/0, is_node_alive/1]).
+-export([start_link/0]).
 
 %% gen_server callbacks
 -export([init/1,
@@ -23,27 +23,20 @@
 %%%===================================================================
 
 start_link() ->
-    gen_server:start_link(?MODULE, [], []).
-
-is_node_alive(Node) ->
-    ets:member(vmq_cluster_nodes, Node).
+    gen_server:start_link({local, ?MODULE}, ?MODULE, [], []).
 
 %%%===================================================================
 %%% Supervisor callbacks
 %%%===================================================================
 init([]) ->
-    DefaultETSOpts = [public, named_table,
-        {read_concurrency, true}],
-    ets:new(vmq_cluster_nodes, DefaultETSOpts),
     SentinelEndpoints = vmq_schema_util:parse_list(application:get_env(vmq_server, redis_sentinel_endpoints, "[{\"127.0.0.1\", 26379}]")),
     RedisDB = application:get_env(vmq_server, redis_database, 0),
-    {ok, _Pid} = eredis:start_link([{sentinel, [{endpoints, SentinelEndpoints}]}, {database, RedisDB}, {name, {local, redis_cluster_liveness_client}}]),
+    {ok, _Pid} = eredis:start_link([{sentinel, [{endpoints, SentinelEndpoints}]}, {database, RedisDB}, {name, {local, redis_queue_reaper_client}}]),
 
     LuaDir = application:get_env(vmq_server, redis_lua_dir, "./etc/lua"),
-    {ok, GetLiveNodesScript} = file:read_file(LuaDir ++ "/get_live_nodes.lua"),
-    {ok, <<"get_live_nodes">>} = vmq_redis:query(redis_cluster_liveness_client, [?FUNCTION, "LOAD", "REPLACE", GetLiveNodesScript], ?FUNCTION_LOAD, ?GET_LIVE_NODES),
+    {ok, QueueReaperScript} = file:read_file(LuaDir ++ "/reap_queues.lua"),
+    {ok, <<"reap_queues">>} = vmq_redis:query(redis_queue_reaper_client, [?FUNCTION, "LOAD", "REPLACE", QueueReaperScript], ?FUNCTION_LOAD, ?REAP_QUEUES),
 
-    erlang:send_after(500, self(), probe_liveness),
     {ok, #state{}}.
 
 %%--------------------------------------------------------------------
@@ -87,30 +80,31 @@ handle_cast(_Msg, State) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
-handle_info(probe_liveness, State) ->
-    case vmq_redis:query(redis_cluster_liveness_client, [?FCALL,
-                              ?GET_LIVE_NODES,
-                              0,
+handle_info({reap_queues, DeadNode}, State) ->
+    case vmq_redis:query(redis_queue_reaper_client, [?FCALL,
+                              ?REAP_QUEUES,
+                              1,
+                              DeadNode,
                               node()
-                             ], ?FCALL, ?GET_LIVE_NODES) of
-        {ok, LiveNodes} when is_list(LiveNodes) ->
-            LiveNodesAtom = lists:foldr(fun(Node, Acc) ->
-                                                NodeAtom = binary_to_atom(Node),
-                                                ets:insert(vmq_cluster_nodes, {NodeAtom}),
-                                                [NodeAtom | Acc] end,
-                                        [], LiveNodes),
-            lists:foreach(fun([{Node}]) -> case lists:member(Node, LiveNodesAtom) of
-                                            false ->
-                                                vmq_redis_queue_reaper ! {reap_queues, Node},
-                                                ets:delete(vmq_cluster_nodes, Node);
-                                             _ -> ok
-                                         end
-                                         end, ets:match(vmq_cluster_nodes, '$1'));
+                             ], ?FCALL, ?REAP_QUEUES) of
+        {ok, ClientList} when is_list(ClientList) ->
+            lager:info("~p", [ClientList]),
+            lists:foreach(fun([MP, ClientId]) ->
+                                SubscriberId = {binary_to_list(MP), ClientId},
+                                lager:info("~p", [SubscriberId]),
+                                {ok, QueuePresent, QPid} = vmq_queue_sup_sup:start_queue(SubscriberId, false),
+                                case QueuePresent of
+                                    true -> ok;
+                                    false -> vmq_queue:init_offline_queue(QPid)
+                                end
+                          end, ClientList),
+            erlang:send_after(100, self(), {reap_queues, DeadNode});
+        {ok, undefined} ->
+            ok;
         Res ->
             lager:error("~p", [Res]),
             ok
     end,
-    erlang:send_after(500, self(), probe_liveness),
     {noreply, State};
 handle_info(_Info, State) -> {noreply, State}.
 
