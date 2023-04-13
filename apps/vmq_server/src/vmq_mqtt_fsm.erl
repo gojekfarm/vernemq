@@ -430,7 +430,6 @@ connected(
     #mqtt_subscribe{message_id = MessageId, topics = Topics},
     #state{proto_ver = ProtoVer} = State
 ) ->
-    lager:error("subscribed to topics ~p", [Topics]),
     #state{
         subscriber_id = SubscriberId,
         username = User,
@@ -451,7 +450,6 @@ connected(
                         [],
                         MaybeChangedTopics
                     ),
-                    lager:error("Topics passed to hook ~p", [T]),
                     vmq_plugin:all(on_subscribe, [User, SubscriberId, T]),
                     Res;
                 Res ->
@@ -460,7 +458,6 @@ connected(
         end,
     case auth_on_subscribe(User, SubscriberId, SubTopics, OnAuthSuccess) of
         {ok, QoSs} ->
-            lager:error("L394: QoSTable passed to hook ~p", [QoSs]),
             check_mqtt_auth_errors(QoSs),
             Frame = #mqtt_suback{message_id = MessageId, qos_table = QoSs},
             _ = vmq_metrics:incr_mqtt_suback_sent(),
