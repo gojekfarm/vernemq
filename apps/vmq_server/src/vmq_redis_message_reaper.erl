@@ -1,4 +1,4 @@
--module(vmq_redis_cluster_liveness).
+-module(vmq_redis_message_reaper).
 -author("dhruvjain").
 
 -behaviour(gen_server).
@@ -6,7 +6,7 @@
 -include("vmq_server.hrl").
 
 %% API functions
--export([start_link/0, is_node_alive/1]).
+-export([start_link/0]).
 
 %% gen_server callbacks
 -export([init/1,
@@ -23,28 +23,12 @@
 %%%===================================================================
 
 start_link() ->
-    gen_server:start_link(?MODULE, [], []).
-
-is_node_alive(Node) ->
-    ets:member(vmq_cluster_nodes, Node).
+    gen_server:start_link({local, ?MODULE}, ?MODULE, [], []).
 
 %%%===================================================================
 %%% Supervisor callbacks
 %%%===================================================================
-init([]) ->
-    DefaultETSOpts = [public, named_table,
-        {read_concurrency, true}],
-    ets:new(vmq_cluster_nodes, DefaultETSOpts),
-    SentinelEndpoints = vmq_schema_util:parse_list(application:get_env(vmq_server, redis_sentinel_endpoints, "[{\"127.0.0.1\", 26379}]")),
-    RedisDB = application:get_env(vmq_server, redis_database, 0),
-    {ok, _Pid} = eredis:start_link([{sentinel, [{endpoints, SentinelEndpoints}]}, {database, RedisDB}, {name, {local, redis_cluster_liveness_client}}]),
-
-    LuaDir = application:get_env(vmq_server, redis_lua_dir, "./etc/lua"),
-    {ok, GetLiveNodesScript} = file:read_file(LuaDir ++ "/get_live_nodes.lua"),
-    {ok, <<"get_live_nodes">>} = vmq_redis:query(redis_cluster_liveness_client, [?FUNCTION, "LOAD", "REPLACE", GetLiveNodesScript], ?FUNCTION_LOAD, ?GET_LIVE_NODES),
-
-    erlang:send_after(500, self(), probe_liveness),
-    {ok, #state{}}.
+init([]) -> {ok, #state{}}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -87,30 +71,42 @@ handle_cast(_Msg, State) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
-handle_info(probe_liveness, State) ->
-    case vmq_redis:query(redis_cluster_liveness_client, [?FCALL,
-                              ?GET_LIVE_NODES,
-                              0,
-                              node()
-                             ], ?FCALL, ?GET_LIVE_NODES) of
-        {ok, LiveNodes} when is_list(LiveNodes) ->
-            LiveNodesAtom = lists:foldr(fun(Node, Acc) ->
-                                                NodeAtom = binary_to_atom(Node),
-                                                ets:insert(vmq_cluster_nodes, {NodeAtom}),
-                                                [NodeAtom | Acc] end,
-                                        [], LiveNodes),
-            lists:foreach(fun([{Node}]) -> case lists:member(Node, LiveNodesAtom) of
-                                            false ->
-                                                vmq_redis_message_reaper ! {reap_messages, Node},
-                                                ets:delete(vmq_cluster_nodes, Node);
-                                             _ -> ok
-                                         end
-                                         end, ets:match(vmq_cluster_nodes, '$1'));
+handle_info({reap_messages, DeadNode}, State) ->
+    MainQueue = "mainQueue::"++ atom_to_list(DeadNode),
+    case vmq_redis:query(redis_queue_consumer_client_0, [?FCALL,
+        ?POLL_MAIN_QUEUE,
+        1,
+        MainQueue,
+        50
+    ], ?FCALL, ?POLL_MAIN_QUEUE) of
+        {ok, undefined} ->
+            vmq_redis_queue_reaper ! {reap_queues, DeadNode};
+        {ok, Msgs} ->
+            lists:foreach(
+                fun([SubBin, MsgBin, TimeInQueue]) ->
+                    vmq_metrics:pretimed_measurement(
+                        {?MODULE, time_spent_in_main_queue},
+                        binary_to_integer(TimeInQueue)
+                    ),
+                    case binary_to_term(SubBin) of
+                        {_, _CId} = SId ->
+                            ok = vmq_reg:register_subscriber_(undefined, SId, false, #{}, 10),
+                            {SubInfo, Msg} = binary_to_term(MsgBin),
+                            vmq_reg:enqueue_msg({SId, SubInfo}, Msg);
+                        RandSubs when is_list(RandSubs) ->
+                            vmq_shared_subscriptions:publish_to_group(binary_to_term(MsgBin),
+                                RandSubs,
+                                {0,0});
+                        UnknownMsg -> lager:error("Unknown Msg in Redis Main Queue : ~p", [UnknownMsg])
+                    end
+                end,
+                Msgs
+            ),
+            erlang:send_after(0, self(), {reap_messages, DeadNode});
         Res ->
             lager:error("~p", [Res]),
             ok
     end,
-    erlang:send_after(500, self(), probe_liveness),
     {noreply, State};
 handle_info(_Info, State) -> {noreply, State}.
 
