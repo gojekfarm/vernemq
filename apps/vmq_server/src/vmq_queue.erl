@@ -1046,7 +1046,7 @@ maybe_set_expiry_timer(0, State) ->
     %% never expire
     State;
 maybe_set_expiry_timer(ExpireAfter, State) when ExpireAfter > 0 ->
-    Ref = gen_fsm:send_event_after(60 * 1000, expire_session),
+    Ref = gen_fsm:send_event_after(ExpireAfter * 1000, expire_session),
     State#state{expiry_timer=Ref}.
 
 maybe_set_last_will_timer(#state{delayed_will = undefined} = State) ->
