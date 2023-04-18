@@ -89,7 +89,12 @@
     incr_redis_cmd_miss/1,
     incr_redis_cmd_err/1,
     incr_redis_stale_cmd/1,
-    incr_unauth_redis_cmd/1
+    incr_unauth_redis_cmd/1,
+
+    incr_cache_insert/1,
+    incr_cache_delete/1,
+    incr_cache_hit/1,
+    incr_cache_miss/1
 ]).
 
 -export([
@@ -304,6 +309,18 @@ incr_redis_stale_cmd({CMD, OPERATION}) ->
 
 incr_unauth_redis_cmd({CMD, OPERATION}) ->
     incr_item({?UNAUTH_REDIS_CMD, CMD, OPERATION}, 1).
+
+incr_cache_insert(NAME) ->
+    incr_item({?CACHE_INSERT, NAME}, 1).
+
+incr_cache_delete(NAME) ->
+    incr_item({?CACHE_DELETE, NAME}, 1).
+
+incr_cache_hit(NAME) ->
+    incr_item({?CACHE_HIT, NAME}, 1).
+
+incr_cache_miss(NAME) ->
+    incr_item({?CACHE_MISS, NAME}, 1).
 
 incr(Entry) ->
     incr_item(Entry, 1).
@@ -1684,6 +1701,34 @@ counter_entries_def() ->
             router_matches_remote,
             router_matches_remote,
             <<"The number of matched remote subscriptions.">>
+        ),
+        m(
+            counter,
+            [{cache, rcn_to_str(?LOCAL_SHARED_SUBS)}],
+            {?CACHE_HIT, ?LOCAL_SHARED_SUBS},
+            cache_hit,
+            <<"The number of cache hit separate by cache name.">>
+        ),
+        m(
+            counter,
+            [{cache, rcn_to_str(?LOCAL_SHARED_SUBS)}],
+            {?CACHE_MISS, ?LOCAL_SHARED_SUBS},
+            cache_miss,
+            <<"The number of cache miss separate by cache name.">>
+        ),
+        m(
+            counter,
+            [{cache, rcn_to_str(?LOCAL_SHARED_SUBS)}],
+            {?CACHE_INSERT, ?LOCAL_SHARED_SUBS},
+            cache_insert,
+            <<"The number of cache insert separate by cache name.">>
+        ),
+        m(
+            counter,
+            [{cache, rcn_to_str(?LOCAL_SHARED_SUBS)}],
+            {?CACHE_DELETE, ?LOCAL_SHARED_SUBS},
+            cache_delete,
+            <<"The number of cache delete separate by cache name.">>
         )
     ].
 
@@ -2677,7 +2722,11 @@ met2idx({?REDIS_CMD_MISS, ?DEL, ?MSG_STORE_DELETE}) -> 303;
 met2idx({?REDIS_CMD_MISS, ?FIND, ?MSG_STORE_FIND}) -> 304;
 met2idx({?REDIS_CMD, ?LPOP, ?MSG_STORE_DELETE}) -> 305;
 met2idx({?REDIS_CMD_ERROR, ?LPOP, ?MSG_STORE_DELETE}) -> 306;
-met2idx({?REDIS_CMD_MISS, ?LPOP, ?MSG_STORE_DELETE}) -> 307.
+met2idx({?REDIS_CMD_MISS, ?LPOP, ?MSG_STORE_DELETE}) -> 307;
+met2idx({?CACHE_HIT, ?LOCAL_SHARED_SUBS}) -> 308;
+met2idx({?CACHE_MISS, ?LOCAL_SHARED_SUBS}) -> 309;
+met2idx({?CACHE_INSERT, ?LOCAL_SHARED_SUBS}) -> 310;
+met2idx({?CACHE_DELETE, ?LOCAL_SHARED_SUBS}) -> 311.
 
 -ifdef(TEST).
 clear_stored_rates() ->
