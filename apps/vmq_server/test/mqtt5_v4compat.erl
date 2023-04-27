@@ -4,7 +4,7 @@
 -export([
     do_client_connect/4,
     expect_packet/4,
-    receive_at_most_n_frames/4,
+    receive_at_most_n_publish_frames/4,
     gen_connect/3,
     gen_connack/2,
     gen_connack/3,
@@ -40,12 +40,12 @@ expect_packet_(4, Socket, Name, Packet) ->
 expect_packet_(5, Socket, _Name, ExpectedPacket) ->
     packetv5:expect_frame(Socket, ExpectedPacket).
 
-receive_at_most_n_frames(Socket, N, QoS, Config) ->
-    receive_at_most_n_frames_(protover(Config), Socket, N, QoS).
+receive_at_most_n_publish_frames(Socket, N, QoS, Config) ->
+    receive_at_most_n_publish_frames_(protover(Config), Socket, N, QoS).
 
-receive_at_most_n_frames_(4, Socket, N, QoS) ->
-    lists:reverse(packet:receive_at_most_n_frames(Socket, N, QoS));
-receive_at_most_n_frames_(5, _Socket, _N, _QoS) ->
+receive_at_most_n_publish_frames_(4, Socket, N, QoS) ->
+    lists:reverse(packet:receive_at_most_n_publish_frames(Socket, N, QoS));
+receive_at_most_n_publish_frames_(5, _Socket, _N, _QoS) ->
     {error, not_implemented}.
 
 gen_connect(ClientId, Opts, Config) ->

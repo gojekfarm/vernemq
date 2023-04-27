@@ -7,7 +7,7 @@
     receive_frame/1,
     receive_frame/3,
     receive_frame/4,
-    receive_at_most_n_frames/3,
+    receive_at_most_n_publish_frames/3,
     do_client_connect/3,
     gen_connect/2,
     gen_connack/0,
@@ -107,12 +107,12 @@ do_client_connect(ConnectPacket, ConnackPacket, Opts) ->
             ConnectError
     end.
 
-receive_at_most_n_frames(Socket, N, QoS) ->
-    receive_at_most_n_frames_(Socket, N, QoS, <<>>, []).
+receive_at_most_n_publish_frames(Socket, N, QoS) ->
+    receive_at_most_n_publish_frames_(Socket, N, QoS, <<>>, []).
 
-receive_at_most_n_frames_(_Socket, 0, _QoS, _Rest, Acc) ->
+receive_at_most_n_publish_frames_(_Socket, 0, _QoS, _Rest, Acc) ->
     Acc;
-receive_at_most_n_frames_(Socket, N, QoS, Rest, Acc) ->
+receive_at_most_n_publish_frames_(Socket, N, QoS, Rest, Acc) ->
     case receive_frame(gen_tcp, Socket, 5000, Rest) of
         {ok, {mqtt_publish, Mid, _, _, _, _, _} = Frame, NewRest} ->
             case QoS of
@@ -122,7 +122,7 @@ receive_at_most_n_frames_(Socket, N, QoS, Rest, Acc) ->
                     Puback = gen_puback(Mid),
                     ok = gen_tcp:send(Socket, Puback)
             end,
-            receive_at_most_n_frames_(Socket, N - 1, QoS, NewRest, [Frame | Acc]);
+            receive_at_most_n_publish_frames_(Socket, N - 1, QoS, NewRest, [Frame | Acc]);
         _E ->
             Acc
     end.

@@ -1086,8 +1086,8 @@ shared_subscription_does_not_honor_grouping(Cfg) ->
             Publish
         end,
     PublishedPackets = [PubFun(PubSocket, Mid) || Mid <- lists:seq(1, 10)],
-    Pid1 = spawn(?MODULE, receive_at_most_n_frames, [self(), SubSocket1, 10, 1, Cfg]),
-    Pid2 = spawn(?MODULE, receive_at_most_n_frames, [self(), SubSocket2, 10, 1, Cfg]),
+    Pid1 = spawn(?MODULE, receive_at_most_n_publish_frames, [self(), SubSocket1, 10, 1, Cfg]),
+    Pid2 = spawn(?MODULE, receive_at_most_n_publish_frames, [self(), SubSocket2, 10, 1, Cfg]),
     ReceivedF1 =
         receive
             {Pid1, Res1} -> Res1
@@ -1634,8 +1634,8 @@ stop_client_offline_events(Cfg) ->
         throw({could_not_stop, ?CLIENT_OFFLINE_EVENT_SRV})
     end.
 
-receive_at_most_n_frames(Pid, Socket, N, QoS, Cfg) ->
-    Pid ! {self(), mqtt5_v4compat:receive_at_most_n_frames(Socket, N, QoS, Cfg)}.
+receive_at_most_n_publish_frames(Pid, Socket, N, QoS, Cfg) ->
+    Pid ! {self(), mqtt5_v4compat:receive_at_most_n_publish_frames(Socket, N, QoS, Cfg)}.
 
 compare_published_packets_payload(PublishedPackets, ReceivedF1, ReceivedF2) ->
     PublishedPayloads = lists:map(
