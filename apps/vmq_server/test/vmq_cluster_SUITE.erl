@@ -113,6 +113,7 @@ all() ->
         cluster_leave_myself_test,
         cluster_leave_dead_node_test,
         shared_subs_random_policy_test,
+        %% This test has been skipped because with introduction of in-mem shared subscriptions cache, the test is not valid anymore
         %% shared_subs_random_policy_online_first_test,
         shared_subs_random_policy_all_offline_test,
         shared_subs_prefer_local_policy_test,
