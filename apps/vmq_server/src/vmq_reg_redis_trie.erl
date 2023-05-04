@@ -72,9 +72,7 @@ fold_matched_topics(_MP, [], Acc) ->
     Acc;
 fold_matched_topics(MP, [Topic | Rest], Acc) ->
     Key = {MP, Topic},
-    T1 = vmq_util:ts(),
     Res = ets:select(?SHARED_SUBS_ETS_TABLE, [{{{Key, '$1'}}, [], ['$$']}]),
-    vmq_metrics:pretimed_measurement({?LOCAL_SHARED_SUBS, select}, vmq_util:ts() - T1),
     case Res of
         [] ->
             vmq_metrics:incr_cache_miss(?LOCAL_SHARED_SUBS),
