@@ -73,7 +73,7 @@ fold_matched_topics(_MP, [], Acc) ->
 fold_matched_topics(MP, [Topic | Rest], Acc) ->
     Key = {MP, Topic},
     T1 = vmq_util:ts(),
-    Res = ets:select(vmq_shared_subs_local, [{{{Key, '$1'}}, [], ['$$']}]),
+    Res = ets:select(?SHARED_SUBS_ETS_TABLE, [{{{Key, '$1'}}, [], ['$$']}]),
     vmq_metrics:pretimed_measurement({?LOCAL_SHARED_SUBS, select}, vmq_util:ts() - T1),
     case Res of
         [] ->
@@ -230,7 +230,7 @@ init([]) ->
         named_table,
         {read_concurrency, true}
     ],
-    _ = ets:new(vmq_shared_subs_local, DefaultETSOpts),
+    _ = ets:new(?SHARED_SUBS_ETS_TABLE, DefaultETSOpts),
     _ = ets:new(vmq_redis_trie, [{keypos, 2} | DefaultETSOpts]),
     _ = ets:new(vmq_redis_trie_node, [{keypos, 2} | DefaultETSOpts]),
     _ = ets:new(vmq_redis_lua_scripts, DefaultETSOpts),

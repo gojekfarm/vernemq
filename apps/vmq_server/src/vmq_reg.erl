@@ -147,7 +147,7 @@ subscribe_op(vmq_reg_redis_trie, {MP, ClientId} = SubscriberId, Topics) ->
                 Key = {MP, Topic},
                 Value = {ClientId, QoS},
                 T1 = vmq_util:ts(),
-                ets:insert(vmq_shared_subs_local, {{Key, Value}}),
+                ets:insert(?SHARED_SUBS_ETS_TABLE, {{Key, Value}}),
                 vmq_metrics:pretimed_measurement(
                     {?LOCAL_SHARED_SUBS, insert},
                     vmq_util:ts() - T1
@@ -1292,7 +1292,7 @@ del_subscriber(vmq_reg_redis_trie, {MP, ClientId} = _SubscriberId) ->
     Key = {MP, '$1'},
     Value = {ClientId, '$2'},
     T1 = vmq_util:ts(),
-    ets:select_delete(vmq_shared_subs_local, [{{{Key, Value}}, [], [true]}]),
+    ets:select_delete(?SHARED_SUBS_ETS_TABLE, [{{{Key, Value}}, [], [true]}]),
     vmq_metrics:pretimed_measurement(
         {?LOCAL_SHARED_SUBS, delete},
         vmq_util:ts() - T1
@@ -1324,7 +1324,7 @@ del_subscriptions(vmq_reg_redis_trie, Topics, {MP, ClientId} = _SubscriberId) ->
                 Key = {MP, Topic},
                 Value = {ClientId, '$1'},
                 T1 = vmq_util:ts(),
-                ets:select_delete(vmq_shared_subs_local, [{{{Key, Value}}, [], [true]}]),
+                ets:select_delete(?SHARED_SUBS_ETS_TABLE, [{{{Key, Value}}, [], [true]}]),
                 vmq_metrics:pretimed_measurement(
                     {?LOCAL_SHARED_SUBS, delete},
                     vmq_util:ts() - T1
