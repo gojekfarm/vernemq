@@ -61,8 +61,7 @@ register_cli() ->
     vmq_server_show_cmd(),
     vmq_server_metrics_cmd(),
     vmq_server_metrics_reset_cmd(),
-    vmq_all_queues_setup_check_rollout_cmd(),
-    vmq_all_queues_setup_check_rollout_status_cmd(),
+
     vmq_cluster_join_cmd(),
     vmq_cluster_leave_cmd(),
     vmq_cluster_upgrade_cmd(),
@@ -104,10 +103,6 @@ register_cli_usage() ->
     clique:register_usage(["vmq-admin", "api-key"], api_usage()),
     clique:register_usage(["vmq-admin", "api-key", "delete"], api_delete_key_usage()),
     clique:register_usage(["vmq-admin", "api-key", "add"], api_add_key_usage()),
-
-    clique:register_usage(["vmq-admin", "all_queues_setup_check"], rollout_usage()),
-    clique:register_usage(["vmq-admin", "all_queues_setup_check", "set"], set_rollout_usage()),
-    clique:register_usage(["vmq-admin", "all_queues_setup_check", "show"], show_rollout_usage()),
 
     case ?RegView == vmq_reg_redis_trie of
         true ->
@@ -296,6 +291,8 @@ vmq_cluster_leave_cmd() ->
     %% 1. stopping the listener via vmq-admin listener stop --kill_sessions
     %% 2. the killed sessions will reconnect to another node (external load balancer)
     %% 3. the reconnected sessions on the other nodes remap subscriptions and
+
+    %% TODO: Implement according to the redis cluster liveness
     Cmd = ["vmq-admin", "cluster", "leave"],
     KeySpecs = [
         {node, [
@@ -345,7 +342,7 @@ vmq_cluster_leave_cmd() ->
             %% Make sure Iterations > 0 to it will be
             %% checked at least once if queue migration is complete.
             Iterations = max(Timeout div Interval, 1),
-            TargetNodes = vmq_peer_service:members() -- [Node],
+            TargetNodes = [node()] -- [Node],
             Text =
                 case net_adm:ping(Node) of
                     pang ->
@@ -387,7 +384,9 @@ vmq_cluster_leave_cmd() ->
                                         %% node is online, we'll go the proper route
                                         %% instead of calling leave_cluster('Node')
                                         %% directly
-                                        _ = vmq_peer_service:leave(Node),
+
+                                        %% TODO: Implement according to the redis cluster liveness
+                                        % _ = vmq_peer_service:leave(Node),
                                         Caller ! {done, CRef},
                                         init:stop();
                                     error ->
@@ -457,6 +456,7 @@ migrate(Caller, CRef, S, MaxConcurrency) ->
     end.
 
 leave_cluster(Node) ->
+    %% TODO: Implement according to the redis cluster liveness
     case vmq_peer_service:leave(Node) of
         ok ->
             "Done";
@@ -496,62 +496,8 @@ wait_till_all_offline(Sleep, N) ->
             wait_till_all_offline(Sleep, N - 1)
     end.
 
-vmq_all_queues_setup_check_rollout_cmd() ->
-    Cmd = ["vmq-admin", "all_queues_setup_check", "set"],
-    KeySpecs = [rollout_keyspec()],
-    FlagSpecs = [],
-    Callback =
-        fun
-            (_, [{rollout, Value}], []) ->
-                case vmq_cluster:set_rollout(Value) of
-                    ok ->
-                        [clique_status:text("Done")];
-                    {error, Reason} ->
-                        lager:warning(
-                            "can't set all_queues_setup_check rollout as ~p due to ~p",
-                            [Value, Reason]
-                        ),
-                        Text = io_lib:format(
-                            "can't set set all_queues_setup_check rollout due to '~p'", [Reason]
-                        ),
-                        [clique_status:alert([clique_status:text(Text)])]
-                end;
-            (_, _, _) ->
-                Text = clique_status:text(set_rollout_usage()),
-                [clique_status:alert([Text])]
-        end,
-    clique:register_command(Cmd, KeySpecs, FlagSpecs, Callback).
-
-vmq_all_queues_setup_check_rollout_status_cmd() ->
-    Cmd = ["vmq-admin", "all_queues_setup_check", "show", "rollout"],
-    KeySpecs = [],
-    FlagSpecs = [],
-    Callback =
-        fun
-            (_, [], []) ->
-                Table = [[{value, vmq_cluster:get_rollout()}]],
-                [clique_status:table(Table)];
-            (_, _, _) ->
-                Text = clique_status:text(show_rollout_usage()),
-                [clique_status:alert([Text])]
-        end,
-    clique:register_command(Cmd, KeySpecs, FlagSpecs, Callback).
-
-rollout_keyspec() ->
-    {rollout, [
-        {typecast, fun
-            (Value) when is_list(Value) ->
-                BooleanValue = list_to_atom(Value),
-                case is_boolean(BooleanValue) of
-                    true -> BooleanValue;
-                    _ -> {error, {invalid_value, Value}}
-                end;
-            (Value) ->
-                {error, {invalid_value, Value}}
-        end}
-    ]}.
-
 vmq_cluster_join_cmd() ->
+    %% TODO: Implement according to the redis cluster liveness
     Cmd = ["vmq-admin", "cluster", "join"],
     KeySpecs = [
         {'discovery-node', [
@@ -567,15 +513,20 @@ vmq_cluster_join_cmd() ->
                 "You have to provide a discovery node (example discovery-node=vernemq1@127.0.0.1)"
             ),
             [clique_status:alert([Text])];
-        (_, [{'discovery-node', Node}], _) ->
-            case vmq_peer_service:join(Node) of
-                ok ->
-                    vmq_cluster:recheck(),
-                    [clique_status:text("Done")];
-                {error, Reason} ->
-                    Text = io_lib:format("Couldn't join cluster due to ~p~n", [Reason]),
-                    [clique_status:alert([clique_status:text(Text)])]
-            end
+        (_, [{'discovery-node', _Node}], _) ->
+            %% TODO: Implement according to the redis cluster liveness
+            Text = clique_status:text(
+                "TODO: Implement according to the redis cluster liveness"
+            ),
+            [clique_status:alert([Text])]
+        % case vmq_peer_service:join(Node) of
+        %     ok ->
+        %         vmq_cluster:recheck(),
+        %         [clique_status:text("Done")];
+        %     {error, Reason} ->
+        %         Text = io_lib:format("Couldn't join cluster due to ~p~n", [Reason]),
+        %         [clique_status:alert([clique_status:text(Text)])]
+        % end
     end,
     clique:register_command(Cmd, KeySpecs, FlagSpecs, Callback).
 
@@ -921,30 +872,6 @@ api_add_key_usage() ->
     [
         "vmq-admin api-key add key=<API Key>\n\n",
         "  Adds an API Key.\n\n"
-    ].
-
-rollout_usage() ->
-    [
-        "vmq-admin all_queues_setup_check <sub-command>\n\n",
-        "  Manage all_queues_setup_check rollout as part of health check.\n\n",
-        "  Sub-commands:\n",
-        "    show        Shows the rollout value\n",
-        "    set         Sets the rollout value\n\n",
-        "  Use --help after a sub-command for more details.\n"
-    ].
-
-show_rollout_usage() ->
-    [
-        "vmq-admin all_queues_setup_check show rollout\n\n",
-        "  Shows the rollout value of all_queues_setup_check.",
-        "\n\n"
-    ].
-
-set_rollout_usage() ->
-    [
-        "vmq-admin all_queues_setup_check set rollout=<true/false>\n\n",
-        "  Sets the rollout value of all_queues_setup_check.",
-        "\n\n"
     ].
 
 get_reg_redis_trie_usage_lead_line() ->

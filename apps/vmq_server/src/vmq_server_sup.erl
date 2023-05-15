@@ -45,7 +45,6 @@ start_link() ->
             {atom(), {atom(), atom(), list()}, permanent, pos_integer(), worker, [atom()]}
         ]}}.
 init([]) ->
-    maybe_change_nodename(),
     persistent_term:put(subscribe_trie_ready, 0),
     {ok,
         {{one_for_one, 5, 10}, [
@@ -55,25 +54,7 @@ init([]) ->
             ?CHILD(vmq_queue_sup_sup, supervisor, [infinity, ?MaxR, ?MaxT]),
             ?CHILD(vmq_reg_sup, supervisor, []),
             ?CHILD(vmq_redis_queue_sup, supervisor, []),
-            ?CHILD(vmq_cluster_node_sup, supervisor, []),
+            ?CHILD(vmq_cluster_mon, worker, []),
             ?CHILD(vmq_sysmon, worker, []),
             ?CHILD(vmq_ranch_sup, supervisor, [])
         ]}}.
-
-maybe_change_nodename() ->
-    case vmq_peer_service:members() of
-        [Node] when Node =/= node() ->
-            lager:info("rename VerneMQ node from ~p to ~p", [Node, node()]),
-            _ = vmq_peer_service:rename_member(Node, node()),
-            vmq_reg:fold_subscribers(
-                fun(SubscriberId, Subs, _) ->
-                    {NewSubs, _} = vmq_subscriber:change_node_all(Subs, node(), false),
-                    vmq_subscriber_db:store(SubscriberId, NewSubs)
-                end,
-                ignored
-            );
-        _ ->
-            %% we ignore if the node has the same name
-            %% or if more than one node is returned (clustered)
-            ignore
-    end.

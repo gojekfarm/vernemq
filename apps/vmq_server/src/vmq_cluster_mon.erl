@@ -30,9 +30,7 @@
 ]).
 
 -record(state, {}).
--define(RECHECK_INTERVAL, 10000).
--define(RECHECK_INTERVAL_NOT_READY, 2000).
--define(ROLLOUT, vmq_cluster_all_queues_setup_check_rollout).
+-define(RECHECK_INTERVAL, 500).
 
 %%%===================================================================
 %%% API functions
@@ -64,20 +62,10 @@ start_link() ->
 %% @end
 %%--------------------------------------------------------------------
 init([]) ->
-    case net_kernel:monitor_nodes(true) of
-        ok ->
-            %% we are the owner of this table, although the event handler
-            %% is writing to it.
-            _ = ets:new(vmq_status, [{read_concurrency, true}, public, named_table]),
-            ets:new(?ROLLOUT, [public, set, named_table, {read_concurrency, true}]),
-            %% the event handler is added after the timeout
-            erlang:send_after(?RECHECK_INTERVAL, self(), recheck),
-            %% we can unregister the event handler
-            process_flag(trap_exit, true),
-            {ok, #state{}, 0};
-        {error, Reason} ->
-            {stop, Reason}
-    end.
+    _ = ets:new(vmq_status, [{read_concurrency, true}, public, named_table]),
+    %% the event handler is added after the timeout
+    erlang:send_after(?RECHECK_INTERVAL, self(), recheck),
+    {ok, #state{}}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -120,27 +108,11 @@ handle_cast(_Msg, State) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
-handle_info(timeout, State) ->
-    vmq_peer_service:add_event_handler(vmq_cluster, []),
-    {noreply, State};
-handle_info({nodedown, Node}, State) ->
-    lager:warning("cluster node ~p DOWN", [Node]),
-    vmq_cluster:recheck(),
-    {noreply, State};
-handle_info({nodeup, Node}, State) ->
-    lager:info("cluster node ~p UP", [Node]),
-    vmq_cluster:recheck(),
-    {noreply, State};
-handle_info({gen_event_EXIT, vmq_cluster, _}, State) ->
-    vmq_peer_service:add_event_handler(vmq_cluster, []),
-    {noreply, State};
 handle_info(recheck, State) ->
-    vmq_cluster:recheck(),
+    %% TODO: Implement recheck logic by obtaining cluster state
+    vmq_cluster:check_ready(),
     erlang:send_after(
-        case vmq_cluster:is_ready() of
-            true -> ?RECHECK_INTERVAL;
-            false -> ?RECHECK_INTERVAL_NOT_READY
-        end,
+        ?RECHECK_INTERVAL,
         self(),
         recheck
     ),
@@ -157,8 +129,7 @@ handle_info(recheck, State) ->
 %% @spec terminate(Reason, State) -> void()
 %% @end
 %%--------------------------------------------------------------------
-terminate(Reason, _State) ->
-    vmq_peer_service:delete_event_handler(vmq_cluster, Reason),
+terminate(_Reason, _State) ->
     ok.
 
 %%--------------------------------------------------------------------

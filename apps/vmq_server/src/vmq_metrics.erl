@@ -78,10 +78,6 @@
     incr_queue_in/1,
     incr_queue_out/1,
 
-    incr_cluster_bytes_sent/1,
-    incr_cluster_bytes_received/1,
-    incr_cluster_bytes_dropped/1,
-
     incr_router_matches_local/1,
     incr_router_matches_remote/1,
     pretimed_measurement/2,
@@ -283,15 +279,6 @@ incr_queue_in(N) ->
 
 incr_queue_out(N) ->
     incr_item(?METRIC_QUEUE_MESSAGE_OUT, N).
-
-incr_cluster_bytes_received(V) ->
-    incr_item(?METRIC_CLUSTER_BYTES_RECEIVED, V).
-
-incr_cluster_bytes_sent(V) ->
-    incr_item(?METRIC_CLUSTER_BYTES_SENT, V).
-
-incr_cluster_bytes_dropped(V) ->
-    incr_item(?METRIC_CLUSTER_BYTES_DROPPED, V).
 
 incr_router_matches_local(V) ->
     incr_item(?METRIC_ROUTER_MATCHES_LOCAL, V).
@@ -1741,27 +1728,6 @@ counter_entries_def() ->
         m(
             counter,
             [],
-            cluster_bytes_received,
-            cluster_bytes_received,
-            <<"The number of bytes received from other cluster nodes.">>
-        ),
-        m(
-            counter,
-            [],
-            cluster_bytes_sent,
-            cluster_bytes_sent,
-            <<"The number of bytes send to other cluster nodes.">>
-        ),
-        m(
-            counter,
-            [],
-            cluster_bytes_dropped,
-            cluster_bytes_dropped,
-            <<"The number of bytes dropped while sending data to other cluster nodes.">>
-        ),
-        m(
-            counter,
-            [],
             router_matches_local,
             router_matches_local,
             <<"The number of matched local subscriptions.">>
@@ -2662,9 +2628,6 @@ met2idx(?METRIC_QUEUE_MESSAGE_UNHANDLED) -> 170;
 met2idx(?METRIC_QUEUE_MESSAGE_IN) -> 171;
 met2idx(?METRIC_QUEUE_MESSAGE_OUT) -> 172;
 met2idx(?METRIC_CLIENT_EXPIRED) -> 173;
-met2idx(?METRIC_CLUSTER_BYTES_RECEIVED) -> 174;
-met2idx(?METRIC_CLUSTER_BYTES_SENT) -> 175;
-met2idx(?METRIC_CLUSTER_BYTES_DROPPED) -> 176;
 met2idx(?METRIC_SOCKET_OPEN) -> 177;
 met2idx(?METRIC_SOCKET_CLOSE) -> 178;
 met2idx(?METRIC_SOCKET_ERROR) -> 179;

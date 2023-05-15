@@ -16,54 +16,22 @@
 
 -include_lib("vmq_commons/include/vmq_types.hrl").
 
--behaviour(gen_event).
-
-%% gen_server callbacks
--export([
-    init/1,
-    handle_event/2,
-    handle_call/2,
-    handle_info/2,
-    terminate/2,
-    code_change/3
-]).
-
 -export([
     nodes/0,
-    recheck/0,
     status/0,
     is_ready/0,
     if_ready/2,
     if_ready/3,
     netsplit_statistics/0,
-    publish/2,
-    remote_enqueue/3,
-    remote_enqueue/4,
-    remote_enqueue_async/3,
-    set_rollout/1,
-    get_rollout/0
+    check_ready/0
 ]).
 
--define(SERVER, ?MODULE).
 %% table is owned by vmq_cluster_mon
 -define(VMQ_CLUSTER_STATUS, vmq_status).
--define(ROLLOUT, vmq_cluster_all_queues_setup_check_rollout).
-
--record(state, {}).
--type state() :: #state{}.
 
 %%%===================================================================
 %%% API
 %%%===================================================================
-
-recheck() ->
-    case vmq_peer_service:call_event_handler(?MODULE, recheck, infinity) of
-        ok ->
-            ok;
-        E ->
-            lager:warning("error during cluster checkup due to ~p", [E]),
-            E
-    end.
 
 -spec nodes() -> [any()].
 nodes() ->
@@ -114,115 +82,13 @@ if_ready(Mod, Fun, Args) ->
             {error, not_ready}
     end.
 
-publish(Node, Msg) ->
-    case vmq_cluster_node_sup:get_cluster_node(Node) of
-        {error, not_found} ->
-            {error, not_found};
-        {ok, Pid} ->
-            vmq_cluster_node:publish(Pid, Msg)
-    end.
-
--spec remote_enqueue(node(), Term, BufferIfUnreachable) ->
-    ok | {error, term()}
-when
-    Term ::
-        {enqueue_many, subscriber_id(), Msgs :: term(), Opts :: map()}
-        | {enqueue, Queue :: term(), Msgs :: term()},
-    BufferIfUnreachable :: boolean().
-remote_enqueue(Node, Term, BufferIfUnreachable) ->
-    Timeout = vmq_config:get_env(remote_enqueue_timeout),
-    remote_enqueue(Node, Term, BufferIfUnreachable, Timeout).
-
--spec remote_enqueue(node(), Term, BufferIfUnreachable, Timeout) ->
-    ok | {error, term()}
-when
-    Term ::
-        {enqueue_many, subscriber_id(), Msgs :: term(), Opts :: map()}
-        | {enqueue, Queue :: term(), Msgs :: term()},
-    BufferIfUnreachable :: boolean(),
-    Timeout :: non_neg_integer() | infinity.
-remote_enqueue(Node, Term, BufferIfUnreachable, Timeout) ->
-    case vmq_cluster_node_sup:get_cluster_node(Node) of
-        {error, not_found} ->
-            {error, not_found};
-        {ok, Pid} ->
-            vmq_cluster_node:enqueue(Pid, Term, BufferIfUnreachable, Timeout)
-    end.
-
-remote_enqueue_async(Node, Term, BufferIfUnreachable) ->
-    case vmq_cluster_node_sup:get_cluster_node(Node) of
-        {error, not_found} ->
-            {error, not_found};
-        {ok, Pid} ->
-            vmq_cluster_node:enqueue_async(Pid, Term, BufferIfUnreachable)
-    end.
-
--spec set_rollout(boolean()) -> any().
-set_rollout(RolloutValue) ->
-    case vmq_peer_service:call_event_handler(?MODULE, {rollout, RolloutValue}, infinity) of
-        ok ->
-            ok;
-        E ->
-            lager:warning("error setting all_queues_setup_check rollout value ~p", [E]),
-            E
-    end.
-
--spec get_rollout() -> boolean().
-get_rollout() ->
-    case catch ets:lookup_element(?ROLLOUT, value, 2) of
-        Value when is_boolean(Value) -> Value;
-        E ->
-            lager:warning("error fetching all_queues_setup_check rollout value ~p", [E]),
-            E
-    end.
-
-%%%===================================================================
-%%% gen_event callbacks
-%%%===================================================================
--spec init([]) -> {'ok', state()}.
-init([]) ->
-    case catch ets:lookup_element(?ROLLOUT, value, 2) of
-        Value when is_boolean(Value) -> ok;
-        _ ->
-            RolloutValue = application:get_env(vmq_server, all_queues_setup_check_rollout, true),
-            ets:insert(?ROLLOUT, {value, RolloutValue})
-    end,
-    check_ready(),
-    lager:info("cluster event handler '~p' registered", [?MODULE]),
-    {ok, #state{}}.
-
--spec handle_call(_, _) -> {'ok', 'ok', _}.
-handle_call({rollout, RolloutValue}, State) ->
-    ets:insert(?ROLLOUT, {value, RolloutValue}),
-    {ok, ok, State};
-handle_call(recheck, State) ->
-    _ = check_ready(),
-    {ok, ok, State}.
-
--spec handle_event(_, _) -> {'ok', _}.
-handle_event({update, _}, State) ->
-    %% Cluster event
-    _ = check_ready(),
-    {ok, State}.
-
-handle_info(Info, State) ->
-    lager:warning("got unhandled info ~p", [Info]),
-    {ok, State}.
-
--spec terminate(_, _) -> 'ok'.
-terminate(_Reason, _State) ->
-    ok.
-
--spec code_change(_, _, _) -> {'ok', _}.
-code_change(_OldVsn, State, _Extra) ->
-    {ok, State}.
+check_ready() ->
+    Nodes = [node()],
+    check_ready(Nodes).
 
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
-check_ready() ->
-    Nodes = vmq_peer_service:members(),
-    check_ready(Nodes).
 
 check_ready(Nodes) ->
     check_ready(Nodes, []),
@@ -237,7 +103,6 @@ check_ready(Nodes) ->
                     false ->
                         %% Node is not part of the cluster anymore
                         lager:warning("remove supervision for node ~p", [Node]),
-                        _ = vmq_cluster_node_sup:del_cluster_node(Node),
                         ets:delete(?VMQ_CLUSTER_STATUS, Node)
                 end
         end,
@@ -252,19 +117,7 @@ check_ready([Node | Rest], Acc) ->
             Pid when is_pid(Pid) -> true;
             _ -> false
         end,
-    ok = vmq_cluster_node_sup:ensure_cluster_node(Node),
-    %% We should only say we're ready if we've established a
-    %% connection to the remote node.
-    Status = vmq_cluster_node_sup:node_status(Node),
-    IsReady1 = IsReady andalso lists:member(Status, [up, init]),
-    IsReady2 =
-        case get_rollout() andalso rpc:call(Node, vmq_reg_mgr, all_queues_setup_status, []) of
-            ready -> true;
-            false -> true;
-            _ -> false
-        end,
-    IsReady3 = IsReady2 andalso IsReady1,
-    check_ready(Rest, [{Node, IsReady3} | Acc]);
+    check_ready(Rest, [{Node, IsReady} | Acc]);
 check_ready([], Acc) ->
     OldObj =
         case ets:lookup(?VMQ_CLUSTER_STATUS, ready) of

@@ -675,15 +675,7 @@ publish_fold_fun(
     %% collect subscriber group members for later processing
     Acc#publish_fold_acc{
         subscriber_groups = add_to_subscriber_group(Sub, SubscriberGroups, SGPolicy)
-    };
-publish_fold_fun(Node, _FromClientId, #publish_fold_acc{msg = Msg, remote_matches = N} = Acc) ->
-    case vmq_cluster:publish(Node, Msg) of
-        ok ->
-            Acc#publish_fold_acc{remote_matches = N + 1};
-        {error, Reason} ->
-            lager:warning("can't publish to remote node ~p due to '~p'", [Node, Reason]),
-            Acc
-    end.
+    }.
 
 -spec enqueue_msg({subscriber_id(), subinfo()}, msg()) -> ok.
 enqueue_msg({{_, _} = SubscriberId, SubInfo}, Msg0) ->
