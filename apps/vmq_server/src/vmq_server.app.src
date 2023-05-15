@@ -64,19 +64,19 @@
         {nr_of_acceptors, 10},
         {listeners, [
             {mqtt, [
-                {{{127, 0, 0, 1}, 1889}, [
-                    {max_connections, infinity},
-                    {mountpoint, ""},
-                    {proxy_protocol, true}
-                ]}
+                % {{{127, 0, 0, 1}, 1889}, [
+                %     {max_connections, infinity},
+                %     {mountpoint, ""},
+                %     {proxy_protocol, true}
+                % ]}
             ]},
             {mqtts, []},
             {mqttws, [
-                {{{127, 0, 0, 1}, 8080}, [
-                    {max_connections, 1000},
-                    {mountpoint, ""},
-                    {proxy_protocol, true}
-                ]}
+                % {{{127, 0, 0, 1}, 8080}, [
+                %     {max_connections, 1000},
+                %     {mountpoint, ""},
+                %     {proxy_protocol, true}
+                % ]}
             ]},
             {mqttwss, []},
 
