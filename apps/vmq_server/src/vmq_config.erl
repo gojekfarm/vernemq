@@ -279,7 +279,7 @@ configure_node(Node) ->
 
 -spec configure_nodes() -> [any()].
 configure_nodes() ->
-    Nodes = vmq_cluster:nodes(),
+    Nodes = vmq_cluster_mon:nodes(),
     _ = [safe_rpc(Node, ?MODULE, configure_node, []) || Node <- Nodes].
 
 -spec init_config_items([{App :: atom(), [any()], [any()]}], [{atom(), [any()]}]) ->

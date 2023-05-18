@@ -30,10 +30,6 @@ register_config_() ->
     ConfigKeys =
         [
             "allow_anonymous",
-            "allow_register_during_netsplit",
-            "allow_publish_during_netsplit",
-            "allow_subscribe_during_netsplit",
-            "allow_unsubscribe_during_netsplit",
             "allow_multiple_sessions",
             "queue_deliver_mode",
             "queue_type",

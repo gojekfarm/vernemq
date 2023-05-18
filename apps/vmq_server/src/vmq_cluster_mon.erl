@@ -17,7 +17,11 @@
 -behaviour(gen_server).
 
 %% API functions
--export([start_link/0]).
+-export([
+    start_link/0,
+    nodes/0,
+    status/0
+]).
 
 %% gen_server callbacks
 -export([
@@ -29,8 +33,14 @@
     code_change/3
 ]).
 
--record(state, {}).
--define(RECHECK_INTERVAL, 500).
+-include("vmq_server.hrl").
+
+-record(state, {
+    fall = 3,
+    timer = undefined,
+    recheck_interval = 500
+}).
+-define(VMQ_CLUSTER_STATUS, vmq_status).
 
 %%%===================================================================
 %%% API functions
@@ -45,6 +55,23 @@
 %%--------------------------------------------------------------------
 start_link() ->
     gen_server:start_link({local, ?MODULE}, ?MODULE, [], []).
+
+
+-spec nodes() -> [any()].
+nodes() ->
+    [
+        Node
+     || [{Node, true, _}] <-
+            ets:match(?VMQ_CLUSTER_STATUS, '$1')
+    ].
+
+-spec status() -> [any()].
+status() ->
+    [
+        {Node, Ready}
+     || [{Node, Ready, _}] <-
+            ets:match(?VMQ_CLUSTER_STATUS, '$1')
+    ].
 
 %%%===================================================================
 %%% gen_server callbacks
@@ -62,10 +89,18 @@ start_link() ->
 %% @end
 %%--------------------------------------------------------------------
 init([]) ->
-    _ = ets:new(vmq_status, [{read_concurrency, true}, public, named_table]),
-    %% the event handler is added after the timeout
-    erlang:send_after(?RECHECK_INTERVAL, self(), recheck),
-    {ok, #state{}}.
+    ets:new(?VMQ_CLUSTER_STATUS, [{read_concurrency, true}, public, named_table]),
+
+    Fall = application:get_env(vmq_server, cluster_node_liveness_fall, 3),
+    RecheckInterval = application:get_env(vmq_server, cluster_node_liveness_check_interval, 500),
+    
+    Tref = erlang:send_after(0, self(), recheck),
+    
+    {ok, #state{
+        fall = Fall,
+        timer = Tref,
+        recheck_interval = RecheckInterval
+    }}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -109,13 +144,35 @@ handle_cast(_Msg, State) ->
 %% @end
 %%--------------------------------------------------------------------
 handle_info(recheck, State) ->
-    %% TODO: Implement recheck logic by obtaining cluster state
-    vmq_cluster:check_ready(),
-    erlang:send_after(
-        ?RECHECK_INTERVAL,
-        self(),
-        recheck
-    ),
+    case
+        vmq_redis:query(
+            vmq_redis_client,
+            [
+                ?FCALL,
+                ?GET_LIVE_NODES,
+                0,
+                node()
+            ],
+            ?FCALL,
+            ?GET_LIVE_NODES
+        )
+    of
+        {ok, LiveNodes} when is_list(LiveNodes) ->
+            LiveNodesAtom = update_cluster_status(LiveNodes, []),
+            filter_dead_nodes(LiveNodesAtom, State#state.fall);
+        Res ->
+            lager:error("~p", [Res])
+    end,
+    NewTRef = erlang:send_after(
+                                            State#state.recheck_interval,
+                                            self(),
+                                            recheck
+                                        ),
+    {noreply, State#state{
+        timer = NewTRef
+    }};
+handle_info(Info, State) ->
+    lager:warning("received unexpected message ~p~n", [Info]),
     {noreply, State}.
 
 %%--------------------------------------------------------------------
@@ -146,3 +203,28 @@ code_change(_OldVsn, State, _Extra) ->
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
+update_cluster_status([], Acc) -> Acc;
+update_cluster_status([BNode | Rest], Acc) ->
+    Node = binary_to_atom(BNode),
+    ets:insert(?VMQ_CLUSTER_STATUS, {Node, true, 0}),
+    update_cluster_status(Rest, [Node | Acc]).
+
+filter_dead_nodes(Nodes, Fall) ->
+    ets:foldl(
+        fun
+            ({Node, _IsReady, FailedAttempts}, _) ->
+                case lists:member(Node, Nodes) of
+                    true ->
+                        ok;
+                    false when FailedAttempts > Fall ->
+                        %% Node is not part of the cluster anymore
+                        lager:warning("trigger reapers for node ~p", [Node]),
+                        ets:delete(?VMQ_CLUSTER_STATUS, Node);
+                    false ->
+                        ets:update_element(?VMQ_CLUSTER_STATUS, Node, [{2, false}, {3, FailedAttempts + 1}])
+                end
+        end,
+        ok,
+        ?VMQ_CLUSTER_STATUS
+    ),
+    ok.

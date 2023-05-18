@@ -929,7 +929,8 @@ redis_def() ->
             ?FETCH_SUBSCRIBER,
             ?FETCH_MATCHED_TOPIC_SUBSCRIBERS,
             ?ENQUEUE_MSG,
-            ?POLL_MAIN_QUEUE
+            ?POLL_MAIN_QUEUE,
+            ?GET_LIVE_NODES
         ],
     REDIS_DEF_1 =
         [
@@ -2141,11 +2142,7 @@ fetch_external_metric(Mod, Fun, Default) ->
 misc_statistics() ->
     {NrOfSubs, SMemory} = fetch_external_metric(vmq_reg_trie, stats, {0, 0}),
     {NrOfRetain, RMemory} = fetch_external_metric(vmq_retain_srv, stats, {0, 0}),
-    {NetsplitDetectedCount, NetsplitResolvedCount} =
-        fetch_external_metric(vmq_cluster, netsplit_statistics, {0, 0}),
     [
-        {netsplit_detected, NetsplitDetectedCount},
-        {netsplit_resolved, NetsplitResolvedCount},
         {router_subscriptions, NrOfSubs},
         {router_memory, SMemory},
         {retain_messages, NrOfRetain},
@@ -2156,20 +2153,6 @@ misc_statistics() ->
 -spec misc_stats_def() -> [metric_def()].
 misc_stats_def() ->
     [
-        m(
-            counter,
-            [],
-            netsplit_detected,
-            netsplit_detected,
-            <<"The number of detected netsplits.">>
-        ),
-        m(
-            counter,
-            [],
-            netsplit_resolved,
-            netsplit_resolved,
-            <<"The number of resolved netsplits.">>
-        ),
         m(
             gauge,
             [],
@@ -2766,7 +2749,14 @@ met2idx(?QOS1_NON_PERSISTENCE_DROPPED) -> 313;
 met2idx({?CACHE_HIT, ?LOCAL_SHARED_SUBS}) -> 314;
 met2idx({?CACHE_MISS, ?LOCAL_SHARED_SUBS}) -> 315;
 met2idx({?CACHE_INSERT, ?LOCAL_SHARED_SUBS}) -> 316;
-met2idx({?CACHE_DELETE, ?LOCAL_SHARED_SUBS}) -> 317.
+met2idx({?CACHE_DELETE, ?LOCAL_SHARED_SUBS}) -> 317;
+met2idx({?REDIS_CMD, ?FCALL, ?GET_LIVE_NODES}) -> 318;
+met2idx({?REDIS_CMD_ERROR, ?FCALL, ?GET_LIVE_NODES}) -> 319;
+met2idx({?REDIS_CMD_MISS, ?FCALL, ?GET_LIVE_NODES}) -> 320;
+met2idx({?REDIS_STALE_CMD, ?FCALL, ?GET_LIVE_NODES}) -> 321;
+met2idx({?UNAUTH_REDIS_CMD, ?FCALL, ?GET_LIVE_NODES}) -> 322;
+met2idx({?REDIS_CMD, ?FUNCTION_LOAD, ?GET_LIVE_NODES}) -> 323;
+met2idx({?REDIS_CMD_ERROR, ?FUNCTION_LOAD, ?GET_LIVE_NODES}) -> 324.
 
 -ifdef(TEST).
 clear_stored_rates() ->

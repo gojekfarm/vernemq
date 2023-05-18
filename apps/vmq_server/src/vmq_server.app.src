@@ -32,10 +32,6 @@
         % no max msg size
         {max_message_size, 0},
         {upgrade_outgoing_qos, false},
-        {allow_register_during_netsplit, false},
-        {allow_publish_during_netsplit, false},
-        {allow_subscribe_during_netsplit, false},
-        {allow_unsubscribe_during_netsplit, false},
         {vmq_config_enabled, true},
         {default_reg_view, vmq_reg_trie},
         {reg_views, [vmq_reg_trie]},

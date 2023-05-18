@@ -103,7 +103,7 @@ node_status() ->
         {<<"matches_local">>, TotalMatchesLocal},
         {<<"matches_remote">>, TotalMatchesRemote},
         {<<"mystatus">>, [
-            [{atom_to_binary(Node, utf8), Status} || {Node, Status} <- vmq_cluster:status()]
+            [{atom_to_binary(Node, utf8), Status} || {Node, Status} <- vmq_cluster_mon:status()]
         ]},
         {<<"listeners">>, listeners()},
         {<<"version">>, version()}

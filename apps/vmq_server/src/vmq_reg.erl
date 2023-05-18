@@ -23,15 +23,15 @@
 %% API
 -export([
     %% used in mqtt fsm handling
-    subscribe/3,
-    unsubscribe/3,
-    register_subscriber/5,
+    subscribe/2,
+    unsubscribe/2,
+    register_subscriber/4,
     %% used during testing
     register_subscriber_/5,
     replace_dead_queue/3,
     delete_subscriptions/1,
     %% used in mqtt fsm handling
-    publish/4,
+    publish/3,
 
     %% used in :get_info/2
     get_session_pids/1,
@@ -80,16 +80,12 @@
 -define(DefaultRegView, application:get_env(vmq_server, default_reg_view, vmq_reg_trie)).
 
 -spec subscribe(
-    flag(),
     subscriber_id(),
     [subscription()]
 ) ->
     {ok, [qos() | not_allowed]}
     | {error, not_allowed | not_ready}.
-subscribe(false, SubscriberId, Topics) ->
-    %% trade availability for consistency
-    vmq_cluster:if_ready(fun subscribe_op/3, [?DefaultRegView, SubscriberId, Topics]);
-subscribe(true, SubscriberId, Topics) ->
+subscribe(SubscriberId, Topics) ->
     %% trade consistency for availability
     if_ready(fun subscribe_op/3, [?DefaultRegView, SubscriberId, Topics]).
 
@@ -111,7 +107,7 @@ subscribe_op(vmq_reg_redis_trie, {MP, ClientId} = SubscriberId, Topics) ->
     OldSubs =
         case
             vmq_redis:query(
-                redis_client,
+                vmq_redis_client,
                 [
                     ?FCALL,
                     ?SUBSCRIBE,
@@ -204,21 +200,14 @@ subscribe_op(_, SubscriberId, Topics) ->
         ),
     {ok, lists:reverse(QoSTable)}.
 
--spec unsubscribe(flag(), subscriber_id(), [topic()]) -> ok | {error, not_ready}.
-unsubscribe(false, SubscriberId, Topics) ->
-    %% trade availability for consistency
-    vmq_cluster:if_ready(fun unsubscribe_op/2, [SubscriberId, Topics]);
-unsubscribe(true, SubscriberId, Topics) ->
-    %% trade consistency for availability
-    unsubscribe_op(SubscriberId, Topics).
-
-unsubscribe_op(SubscriberId, Topics) ->
+-spec unsubscribe(subscriber_id(), [topic()]) -> ok | {error, not_ready}.
+unsubscribe(SubscriberId, Topics) ->
     del_subscriptions(?DefaultRegView, Topics, SubscriberId).
 
 delete_subscriptions(SubscriberId) ->
     del_subscriber(?DefaultRegView, SubscriberId).
 
--spec register_subscriber(flag(), flag(), subscriber_id(), boolean(), map()) ->
+-spec register_subscriber(flag(), subscriber_id(), boolean(), map()) ->
     {ok, #{
         initial_msg_id := msg_id(),
         session_present := flag(),
@@ -226,18 +215,16 @@ delete_subscriptions(SubscriberId) ->
     }}
     | {error, _}.
 register_subscriber(
-    AllowRegister,
     CoordinateRegs,
     SubscriberId,
     StartClean,
     #{allow_multiple_sessions := false} = QueueOpts
 ) ->
-    Netsplit = not vmq_cluster:is_ready(),
     %% we don't allow multiple sessions using same subscriber id
     %% allow_multiple_sessions is needed for session balancing
     SessionPid = self(),
-    case {Netsplit, AllowRegister, CoordinateRegs} of
-        {false, _, true} ->
+    case CoordinateRegs of
+        true ->
             %% no netsplit, but coordinated registrations required.
             vmq_reg_sync:sync(
                 SubscriberId,
@@ -252,9 +239,6 @@ register_subscriber(
                 end,
                 60000
             );
-        {true, false, _} ->
-            %% netsplit, registrations during netsplits not allowed.
-            {error, not_ready};
         _ ->
             %% all other cases we allow registrations but unsynced.
             register_subscriber_(
@@ -265,19 +249,9 @@ register_subscriber(
                 ?NR_OF_REG_RETRIES
             )
     end;
-register_subscriber(
-    CAPAllowRegister, _, SubscriberId, _StartClean, #{allow_multiple_sessions := true} = QueueOpts
-) ->
-    %% we allow multiple sessions using same subscriber id
-    %%
-    %% !!! CleanSession is disabled if multiple sessions are in use
-    %%
-    case vmq_cluster:is_ready() or CAPAllowRegister of
-        true ->
-            register_session(SubscriberId, QueueOpts);
-        false ->
-            {error, not_ready}
-    end.
+register_subscriber(_CoordinateRegs, _SubscriberId, _StartClean, #{allow_multiple_sessions := true}) ->
+    %% we do not allow multiple sessions using same subscriber id
+    {error, multiple_sessions_true}.
 
 register_subscriber_(SessionPid, SubscriberId, StartClean, QueueOpts, N) ->
     register_subscriber_(
@@ -505,10 +479,9 @@ register_session(SubscriberId, QueueOpts) ->
     }}.
 
 %% publish/4
--spec publish(flag(), module(), client_id() | ?INTERNAL_CLIENT_ID, msg()) ->
+-spec publish(module(), client_id() | ?INTERNAL_CLIENT_ID, msg()) ->
     {ok, {integer(), integer()}} | {'error', _}.
 publish(
-    true,
     RegView,
     ClientId,
     #vmq_msg{
@@ -537,37 +510,6 @@ publish(
             publish_fold_wrapper(RegView, ClientId, Topic, Msg);
         false ->
             publish_fold_wrapper(RegView, ClientId, Topic, Msg)
-    end;
-publish(
-    false,
-    RegView,
-    ClientId,
-    #vmq_msg{
-        mountpoint = MP,
-        routing_key = Topic,
-        payload = Payload,
-        properties = Properties,
-        retain = IsRetain
-    } = Msg
-) ->
-    %% don't trade consistency for availability
-    case vmq_cluster:is_ready() of
-        true when (IsRetain == true) and (Payload == <<>>) ->
-            %% retain delete action
-            vmq_retain_srv:delete(MP, Topic),
-            publish_fold_wrapper(RegView, ClientId, Topic, Msg);
-        true when (IsRetain == true) ->
-            %% retain set action
-            vmq_retain_srv:insert(MP, Topic, #retain_msg{
-                payload = Payload,
-                properties = Properties,
-                expiry_ts = maybe_set_expiry_ts(Properties)
-            }),
-            publish_fold_wrapper(RegView, ClientId, Topic, Msg);
-        true ->
-            publish_fold_wrapper(RegView, ClientId, Topic, Msg);
-        false ->
-            {error, not_ready}
     end.
 
 % route_remote_msg/4 is called by the vmq_cluster_com
@@ -1067,25 +1009,12 @@ rewrite_dead_nodes(Subs, DeadNodes, TargetNode, CleanSession) ->
         DeadNodes
     ).
 
--spec wait_til_ready() -> 'ok'.
-wait_til_ready() ->
-    case catch vmq_cluster:if_ready(fun() -> true end, []) of
-        true ->
-            ok;
-        _ ->
-            timer:sleep(100),
-            wait_til_ready()
-    end.
-
 -spec direct_plugin_exports(module()) ->
     {function(), function(), {function(), function()}} | {error, invalid_config}.
 direct_plugin_exports(Mod) when is_atom(Mod) ->
     %% This Function exports a generic Register, Publish, and Subscribe
     %% Fun, that a plugin can use if needed. Currently all functions
     %% block until the cluster is ready.
-    CAPPublish = vmq_config:get_env(allow_publish_during_netsplit, false),
-    CAPSubscribe = vmq_config:get_env(allow_subscribe_during_netsplit, false),
-    CAPUnsubscribe = vmq_config:get_env(allow_unsubscribe_during_netsplit, false),
     SGPolicyConfig = vmq_config:get_env(shared_subscription_policy, prefer_local),
     RegView = vmq_config:get_env(default_reg_view, vmq_reg_trie),
     {ok, #{
@@ -1096,9 +1025,6 @@ direct_plugin_exports(Mod) when is_atom(Mod) ->
     }} =
         direct_plugin_exports(Mod, #{
             mountpoint => "",
-            cap_publish => CAPPublish,
-            cap_subscribe => CAPSubscribe,
-            cap_unsubscribe => CAPUnsubscribe,
             sg_policy => SGPolicyConfig,
             reg_view => RegView
         }),
@@ -1113,9 +1039,6 @@ direct_plugin_exports(Mod) when is_atom(Mod) ->
         unsubscribe_fun := function()
     }}.
 direct_plugin_exports(LogName, Opts) ->
-    CAPPublish = maps:get(cap_publish, Opts, false),
-    CAPSubscribe = maps:get(cap_subscribe, Opts, false),
-    CAPUnsubscribe = maps:get(cap_unsubscribe, Opts, false),
     SGPolicy = maps:get(sg_policy, Opts, prefer_local),
     Mountpoint = maps:get(mountpoint, Opts, ""),
     RegView = maps:get(reg_view, Opts, vmq_reg_trie),
@@ -1130,16 +1053,9 @@ direct_plugin_exports(LogName, Opts) ->
     ),
     ClientId = maps:get(client_id, Opts, ClientIdDef),
     SubscriberId = {Mountpoint, ClientId},
-    MaybeWaitTillReady =
-        case maps:get(wait_till_ready, Opts, undefined) of
-            undefined -> fun wait_til_ready/0;
-            true -> fun wait_til_ready/0;
-            false -> fun() -> ok end
-        end,
     RegisterFun =
         fun() ->
             PluginPid = self(),
-            MaybeWaitTillReady(),
             PluginSessionPid = spawn_link(
                 fun() ->
                     monitor(process, PluginPid),
@@ -1169,7 +1085,6 @@ direct_plugin_exports(LogName, Opts) ->
                 is_binary(Payload) and
                 is_map(Opts_)
         ->
-            MaybeWaitTillReady(),
             %% allow a plugin developer to override
             %% - mountpoint
             %% - dup flag
@@ -1187,15 +1102,14 @@ direct_plugin_exports(LogName, Opts) ->
                 retain = maps:get(retain, Opts_, false),
                 sg_policy = maps:get(shared_subscription_policy, Opts_, SGPolicy)
             },
-            publish(CAPPublish, RegView, ClientId, Msg)
+            publish(RegView, ClientId, Msg)
         end,
 
     SubscribeFun =
         fun
             ([W | _] = Topic) when is_binary(W) ->
-                MaybeWaitTillReady(),
                 CallingPid = self(),
-                subscribe(CAPSubscribe, {Mountpoint, ClientId}, [{Topic, 0}]);
+                subscribe({Mountpoint, ClientId}, [{Topic, 0}]);
             (_) ->
                 {error, invalid_topic}
         end,
@@ -1203,9 +1117,8 @@ direct_plugin_exports(LogName, Opts) ->
     UnsubscribeFun =
         fun
             ([W | _] = Topic) when is_binary(W) ->
-                MaybeWaitTillReady(),
                 CallingPid = self(),
-                unsubscribe(CAPUnsubscribe, {Mountpoint, ClientId}, [Topic]);
+                unsubscribe({Mountpoint, ClientId}, [Topic]);
             (_) ->
                 {error, invalid_topic}
         end,
@@ -1281,7 +1194,7 @@ del_subscriber(vmq_reg_redis_trie, {MP, ClientId} = _SubscriberId) ->
     ets:select_delete(?SHARED_SUBS_ETS_TABLE, [{{{Key, Value}}, [], [true]}]),
     vmq_metrics:incr_cache_delete(?LOCAL_SHARED_SUBS),
     vmq_redis:query(
-        redis_client,
+        vmq_redis_client,
         [
             ?FCALL,
             ?DELETE_SUBSCRIBER,
@@ -1314,7 +1227,7 @@ del_subscriptions(vmq_reg_redis_trie, Topics, {MP, ClientId} = _SubscriberId) ->
     ),
     SortedUnwordedTopics = [vmq_topic:unword(T) || T <- lists:usort(Topics)],
     {ok, <<"1">>} = vmq_redis:query(
-        redis_client,
+        vmq_redis_client,
         [
             ?FCALL,
             ?UNSUBSCRIBE,
@@ -1348,7 +1261,7 @@ maybe_remap_subscriber(vmq_reg_redis_trie, {MP, ClientId}, _StartClean = true) -
     Subs = vmq_subscriber:new(true),
     case
         vmq_redis:query(
-            redis_client,
+            vmq_redis_client,
             [
                 ?FCALL,
                 ?REMAP_SUBSCRIBER,
@@ -1370,7 +1283,7 @@ maybe_remap_subscriber(vmq_reg_redis_trie, {MP, ClientId}, _StartClean = true) -
 maybe_remap_subscriber(vmq_reg_redis_trie, {MP, ClientId}, _StartClean = false) ->
     case
         vmq_redis:query(
-            redis_client,
+            vmq_redis_client,
             [
                 ?FCALL,
                 ?REMAP_SUBSCRIBER,

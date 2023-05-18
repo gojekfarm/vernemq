@@ -31,7 +31,7 @@
 -define(DefaultRegView, application:get_env(vmq_server, default_reg_view, vmq_reg_redis_trie)).
 
 flushall() ->
-    eredis:q(whereis(redis_client), ["FLUSHALL"]),
+    eredis:q(whereis(vmq_redis_client), ["FLUSHALL"]),
     ok.
 
 -spec store(subscriber_id(), vmq_subscriber:subs()) -> ok.
@@ -55,7 +55,7 @@ read(SubscriberId, Default) ->
 read(vmq_reg_redis_trie, {MP, ClientId}, Default) ->
     case
         vmq_redis:query(
-            redis_client,
+            vmq_redis_client,
             [
                 ?FCALL,
                 ?FETCH_SUBSCRIBER,

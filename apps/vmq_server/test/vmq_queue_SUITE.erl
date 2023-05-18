@@ -83,7 +83,7 @@ queue_crash_test(Cfg) ->
 
     {ok, #{session_present := false,
            queue_pid := QPid1}} = vmq_reg:register_subscriber_(SessionPid1, SubscriberId, false, QueueOpts, 10),
-    {ok, [1]} = vmq_reg:subscribe(false, SubscriberId,
+    {ok, [1]} = vmq_reg:subscribe(SubscriberId,
                                   [{[<<"test">>, <<"topic">>], 1}]),
     %% at this point we've a working subscription
     timer:sleep(10),
@@ -124,7 +124,7 @@ queue_fifo_test(Cfg) ->
 
     {ok, #{session_present := false,
            queue_pid := QPid}} = vmq_reg:register_subscriber_(SessionPid1, SubscriberId, false, QueueOpts, 10),
-    {ok, [1]} = vmq_reg:subscribe(false, SubscriberId,
+    {ok, [1]} = vmq_reg:subscribe(SubscriberId,
                            [{[<<"test">>, <<"fifo">>, <<"topic">>], 1}]),
     %% teardown session
     SessionPid1 ! go_down,
@@ -148,7 +148,7 @@ queue_lifo_test(Cfg) ->
 
     {ok, #{session_present := false,
            queue_pid := QPid}} = vmq_reg:register_subscriber_(SessionPid1, SubscriberId, false, QueueOpts, 10),
-    {ok, [1]} = vmq_reg:subscribe(false, SubscriberId, [{[<<"test">>, <<"lifo">>, <<"topic">>], 1}]),
+    {ok, [1]} = vmq_reg:subscribe(SubscriberId, [{[<<"test">>, <<"lifo">>, <<"topic">>], 1}]),
     %% teardown session
     SessionPid1 ! go_down,
     timer:sleep(10),
@@ -172,7 +172,7 @@ queue_fifo_offline_drop_test(Cfg) ->
 
     {ok, #{session_present := false,
            queue_pid := QPid}} = vmq_reg:register_subscriber_(SessionPid1, SubscriberId, false, QueueOpts, 10),
-    {ok, [1]} = vmq_reg:subscribe(false, SubscriberId, [{[<<"test">>, <<"fifo">>, <<"topic">>], 1}]),
+    {ok, [1]} = vmq_reg:subscribe(SubscriberId, [{[<<"test">>, <<"fifo">>, <<"topic">>], 1}]),
     %% teardown session
     SessionPid1 ! go_down,
     timer:sleep(10),
@@ -199,7 +199,7 @@ queue_lifo_offline_drop_test(Cfg) ->
 
     {ok, #{session_present := false,
            queue_pid := QPid}} = vmq_reg:register_subscriber_(SessionPid1, SubscriberId, false, QueueOpts, 10),
-    {ok, [1]} = vmq_reg:subscribe(false, SubscriberId,
+    {ok, [1]} = vmq_reg:subscribe(SubscriberId,
                            [{[<<"test">>, <<"lifo">>, <<"topic">>], 1}]),
     %% teardown session
     SessionPid1 ! go_down,
@@ -226,7 +226,7 @@ queue_offline_transition_test(Cfg) ->
     SessionPid1 = spawn(fun() -> mock_session(Parent) end),
     {ok, #{session_present := false,
            queue_pid := QPid}} = vmq_reg:register_subscriber_(SessionPid1, SubscriberId, false, QueueOpts, 10),
-    {ok, [1]} = vmq_reg:subscribe(false, SubscriberId, [{[<<"test">>, <<"transition">>], 1}]),
+    {ok, [1]} = vmq_reg:subscribe(SubscriberId, [{[<<"test">>, <<"transition">>], 1}]),
     timer:sleep(10), % give some time to plumtree
 
     %% teardown session
@@ -252,7 +252,7 @@ queue_persistent_client_expiration_test(Cfg) ->
     SessionPid1 = spawn(fun() -> mock_session(Parent) end),
     {ok, #{session_present := false,
            queue_pid := QPid}} = vmq_reg:register_subscriber_(SessionPid1, SubscriberId, false, QueueOpts, 10),
-    {ok, [1]} = vmq_reg:subscribe(false, SubscriberId, [{[<<"test">>, <<"transition">>], 1}]),
+    {ok, [1]} = vmq_reg:subscribe(SubscriberId, [{[<<"test">>, <<"transition">>], 1}]),
     timer:sleep(50), % give some time to plumtree
 
     %% teardown session
@@ -280,7 +280,7 @@ queue_force_disconnect_test(_) ->
     SessionPid1 = spawn(fun() -> mock_session(Parent) end),
     {ok, #{session_present := false,
            queue_pid := QPid0}} = vmq_reg:register_subscriber_(SessionPid1, SubscriberId, false, QueueOpts, 10),
-    {ok, [1]} = vmq_reg:subscribe(false, SubscriberId, [{[<<"test">>, <<"disconnect">>], 1}]),
+    {ok, [1]} = vmq_reg:subscribe(SubscriberId, [{[<<"test">>, <<"disconnect">>], 1}]),
     timer:sleep(50), % give some time to plumtree
 
     monitor(process, SessionPid1),
@@ -307,7 +307,7 @@ queue_force_disconnect_cleanup_test(Cfg) ->
     SessionPresent = false,
     {ok, #{session_present := SessionPresent,
            queue_pid := QPid0}} = vmq_reg:register_subscriber_(SessionPid1, SubscriberId, false, QueueOpts, 10),
-    {ok, [1]} = vmq_reg:subscribe(false, SubscriberId, [{[<<"test">>, <<"discleanup">>], 1}]),
+    {ok, [1]} = vmq_reg:subscribe(SubscriberId, [{[<<"test">>, <<"discleanup">>], 1}]),
 
     SessionPid1 ! go_down,
     timer:sleep(50), % give some time to plumtree

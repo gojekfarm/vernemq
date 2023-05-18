@@ -48,7 +48,7 @@ teardown() ->
     teardown(true).
 teardown(ClearRedis) ->
     case ClearRedis of
-        true -> eredis:q(whereis(redis_client), ["FLUSHALL"]);
+        true -> eredis:q(whereis(vmq_redis_client), ["FLUSHALL"]);
         _ -> ok
     end,
     disable_all_plugins(),

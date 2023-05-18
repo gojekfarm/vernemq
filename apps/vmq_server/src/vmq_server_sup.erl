@@ -21,6 +21,8 @@
 %% Supervisor callbacks
 -export([init/1]).
 
+-include("vmq_server.hrl").
+
 -define(MaxR, application:get_env(vmq_server, max_r, 5)).
 -define(MaxT, application:get_env(vmq_server, max_t, 10)).
 
@@ -46,8 +48,18 @@ start_link() ->
         ]}}.
 init([]) ->
     persistent_term:put(subscribe_trie_ready, 0),
+
+    SentinelEndpoints = vmq_schema_util:parse_list(
+        application:get_env(vmq_server, redis_sentinel_endpoints, "[{\"127.0.0.1\", 26379}]")
+    ),
+    RedisDB = application:get_env(vmq_server, redis_sentinel_database, 0),
+    load_redis_functions(),
+
     {ok,
         {{one_for_one, 5, 10}, [
+            ?CHILD(eredis, worker, [{sentinel, [{endpoints, SentinelEndpoints}]},
+        {database, RedisDB},
+        {name, {local, vmq_redis_client}}]),
             ?CHILD(vmq_config, worker, []),
             ?CHILD(vmq_metrics_sup, supervisor, []),
             ?CHILD(vmq_crl_srv, worker, []),
@@ -58,3 +70,55 @@ init([]) ->
             ?CHILD(vmq_sysmon, worker, []),
             ?CHILD(vmq_ranch_sup, supervisor, [])
         ]}}.
+
+load_redis_functions() ->
+    LuaDir = application:get_env(vmq_server, redis_lua_dir, "./etc/lua"),
+    {ok, RemapSubscriberScript} = file:read_file(LuaDir ++ "/remap_subscriber.lua"),
+    {ok, SubscribeScript} = file:read_file(LuaDir ++ "/subscribe.lua"),
+    {ok, UnsubscribeScript} = file:read_file(LuaDir ++ "/unsubscribe.lua"),
+    {ok, DeleteSubscriberScript} = file:read_file(LuaDir ++ "/delete_subscriber.lua"),
+    {ok, FetchMatchedTopicSubscribersScript} = file:read_file(
+        LuaDir ++ "/fetch_matched_topic_subscribers.lua"
+    ),
+    {ok, FetchSubscriberScript} = file:read_file(LuaDir ++ "/fetch_subscriber.lua"),
+    {ok, GetLiveNodesScript} = file:read_file(LuaDir ++ "/get_live_nodes.lua"),
+
+    {ok, <<"remap_subscriber">>} = vmq_redis:query(
+        vmq_redis_client,
+        [?FUNCTION, "LOAD", "REPLACE", RemapSubscriberScript],
+        ?FUNCTION_LOAD,
+        ?REMAP_SUBSCRIBER
+    ),
+    {ok, <<"subscribe">>} = vmq_redis:query(
+        vmq_redis_client, [?FUNCTION, "LOAD", "REPLACE", SubscribeScript], ?FUNCTION_LOAD, ?SUBSCRIBE
+    ),
+    {ok, <<"unsubscribe">>} = vmq_redis:query(
+        vmq_redis_client,
+        [?FUNCTION, "LOAD", "REPLACE", UnsubscribeScript],
+        ?FUNCTION_LOAD,
+        ?UNSUBSCRIBE
+    ),
+    {ok, <<"delete_subscriber">>} = vmq_redis:query(
+        vmq_redis_client,
+        [?FUNCTION, "LOAD", "REPLACE", DeleteSubscriberScript],
+        ?FUNCTION_LOAD,
+        ?DELETE_SUBSCRIBER
+    ),
+    {ok, <<"fetch_matched_topic_subscribers">>} = vmq_redis:query(
+        vmq_redis_client,
+        [?FUNCTION, "LOAD", "REPLACE", FetchMatchedTopicSubscribersScript],
+        ?FUNCTION_LOAD,
+        ?FETCH_MATCHED_TOPIC_SUBSCRIBERS
+    ),
+    {ok, <<"fetch_subscriber">>} = vmq_redis:query(
+        vmq_redis_client,
+        [?FUNCTION, "LOAD", "REPLACE", FetchSubscriberScript],
+        ?FUNCTION_LOAD,
+        ?FETCH_SUBSCRIBER
+    ),
+    {ok, <<"get_live_nodes">>} = vmq_redis:query(
+        vmq_redis_client,
+        [?FUNCTION, "LOAD", "REPLACE", GetLiveNodesScript],
+        ?FUNCTION_LOAD,
+        ?GET_LIVE_NODES
+    ).
