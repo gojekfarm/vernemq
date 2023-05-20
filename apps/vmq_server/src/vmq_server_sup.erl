@@ -57,9 +57,11 @@ init([]) ->
     {ok,
         {{one_for_one, 5, 10}, [
             ?CHILD(eredis, worker, [
-                {sentinel, [{endpoints, SentinelEndpoints}]},
-                {database, RedisDB},
-                {name, {local, vmq_redis_client}}
+                [
+                    {sentinel, [{endpoints, SentinelEndpoints}]},
+                    {database, RedisDB},
+                    {name, {local, vmq_redis_client}}
+                ]
             ]),
             ?CHILD(vmq_config, worker, []),
             ?CHILD(vmq_metrics_sup, supervisor, []),

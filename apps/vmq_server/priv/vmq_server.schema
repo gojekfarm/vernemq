@@ -2,7 +2,7 @@
 %% ex: ft=erlang
 
 {mapping, "redis_sentinel_endpoints", "vmq_server.redis_sentinel_endpoints", [{default, "[{\"127.0.0.1\", 26379}]"}, {datatype, string}]}.
-{mapping, "redis_database", "vmq_server.redis_database", [{default, 0}, {datatype, integer}]}.
+{mapping, "redis_sentinel_database", "vmq_server.redis_sentinel_database", [{default, 0}, {datatype, integer}]}.
 {mapping, "redis_lua_dir", "vmq_server.redis_lua_dir", [{default, "./etc/lua"}, {datatype, string}]}.
 
 %% @doc This option specifies the list of comma separated connect options list
