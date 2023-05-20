@@ -8,8 +8,15 @@
 
 -define(TIMEOUT, 5000).
 
+-type return_value() :: undefined | binary() | [binary() | nonempty_list() | undefined].
+
+-spec query(atom(), [any()], atom(), atom()) ->
+    {ok, return_value()} | {error, Reason :: binary() | no_connection}.
 query(Client, QueryCmd, Cmd, Operation) ->
     query(Client, QueryCmd, Cmd, Operation, ?TIMEOUT).
+
+-spec query(atom(), [any()], atom(), atom(), non_neg_integer()) ->
+    {ok, return_value()} | {error, Reason :: binary() | no_connection}.
 query(Client, QueryCmd, Cmd, Operation, Timeout) ->
     vmq_metrics:incr_redis_cmd({Cmd, Operation}),
     V1 = vmq_util:ts(),

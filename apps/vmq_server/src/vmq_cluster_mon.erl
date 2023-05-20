@@ -56,7 +56,6 @@
 start_link() ->
     gen_server:start_link({local, ?MODULE}, ?MODULE, [], []).
 
-
 -spec nodes() -> [any()].
 nodes() ->
     [
@@ -93,9 +92,9 @@ init([]) ->
 
     Fall = application:get_env(vmq_server, cluster_node_liveness_fall, 3),
     RecheckInterval = application:get_env(vmq_server, cluster_node_liveness_check_interval, 500),
-    
+
     Tref = erlang:send_after(0, self(), recheck),
-    
+
     {ok, #state{
         fall = Fall,
         timer = Tref,
@@ -164,10 +163,10 @@ handle_info(recheck, State) ->
             lager:error("~p", [Res])
     end,
     NewTRef = erlang:send_after(
-                                            State#state.recheck_interval,
-                                            self(),
-                                            recheck
-                                        ),
+        State#state.recheck_interval,
+        self(),
+        recheck
+    ),
     {noreply, State#state{
         timer = NewTRef
     }};
@@ -203,7 +202,8 @@ code_change(_OldVsn, State, _Extra) ->
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
-update_cluster_status([], Acc) -> Acc;
+update_cluster_status([], Acc) ->
+    Acc;
 update_cluster_status([BNode | Rest], Acc) ->
     Node = binary_to_atom(BNode),
     ets:insert(?VMQ_CLUSTER_STATUS, {Node, true, 0}),
@@ -211,18 +211,19 @@ update_cluster_status([BNode | Rest], Acc) ->
 
 filter_dead_nodes(Nodes, Fall) ->
     ets:foldl(
-        fun
-            ({Node, _IsReady, FailedAttempts}, _) ->
-                case lists:member(Node, Nodes) of
-                    true ->
-                        ok;
-                    false when FailedAttempts > Fall ->
-                        %% Node is not part of the cluster anymore
-                        lager:warning("trigger reapers for node ~p", [Node]),
-                        ets:delete(?VMQ_CLUSTER_STATUS, Node);
-                    false ->
-                        ets:update_element(?VMQ_CLUSTER_STATUS, Node, [{2, false}, {3, FailedAttempts + 1}])
-                end
+        fun({Node, _IsReady, FailedAttempts}, _) ->
+            case lists:member(Node, Nodes) of
+                true ->
+                    ok;
+                false when FailedAttempts > Fall ->
+                    %% Node is not part of the cluster anymore
+                    lager:warning("trigger reapers for node ~p", [Node]),
+                    ets:delete(?VMQ_CLUSTER_STATUS, Node);
+                false ->
+                    ets:update_element(?VMQ_CLUSTER_STATUS, Node, [
+                        {2, false}, {3, FailedAttempts + 1}
+                    ])
+            end
         end,
         ok,
         ?VMQ_CLUSTER_STATUS

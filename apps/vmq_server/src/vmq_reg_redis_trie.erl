@@ -10,8 +10,6 @@
 
 -include("vmq_server.hrl").
 
--dialyzer([no_undefined_callbacks]).
-
 -behaviour(vmq_reg_view).
 -behaviour(gen_server2).
 
@@ -60,8 +58,10 @@ fold({MP, _} = SubscriberId, Topic, FoldFun, Acc) when is_list(Topic) ->
     MatchedTopics = [Topic | match(MP, Topic)],
     case fold_matched_topics(MP, MatchedTopics, []) of
         [] ->
-            SubscribersList = fetchSubscribers(MatchedTopics, MP),
-            fold_subscriber_info(SubscriberId, SubscribersList, FoldFun, Acc);
+            case fetchSubscribers(MatchedTopics, MP) of
+                {error, _} = Err -> Err;
+                SubscribersList -> fold_subscriber_info(SubscriberId, SubscribersList, FoldFun, Acc)
+            end;
         LocalSharedSubsList ->
             fold_local_shared_subscriber_info(
                 SubscriberId, lists:flatten(LocalSharedSubsList), FoldFun, Acc
@@ -84,20 +84,24 @@ fold_matched_topics(MP, [Topic | Rest], Acc) ->
 
 fetchSubscribers(Topics, MP) ->
     UnwordedTopics = [vmq_topic:unword(T) || T <- Topics],
-    {ok, SubscribersList} = vmq_redis:query(
-        vmq_redis_client,
-        [
+    case
+        vmq_redis:query(
+            vmq_redis_client,
+            [
+                ?FCALL,
+                ?FETCH_MATCHED_TOPIC_SUBSCRIBERS,
+                0,
+                MP,
+                length(UnwordedTopics)
+                | UnwordedTopics
+            ],
             ?FCALL,
-            ?FETCH_MATCHED_TOPIC_SUBSCRIBERS,
-            0,
-            MP,
-            length(UnwordedTopics)
-            | UnwordedTopics
-        ],
-        ?FCALL,
-        ?FETCH_MATCHED_TOPIC_SUBSCRIBERS
-    ),
-    SubscribersList.
+            ?FETCH_MATCHED_TOPIC_SUBSCRIBERS
+        )
+    of
+        {ok, SubscribersList} -> SubscribersList;
+        Err -> Err
+    end.
 
 fold_subscriber_info(_, [], _, Acc) ->
     Acc;
@@ -231,7 +235,7 @@ init([]) ->
     _ = ets:new(?SHARED_SUBS_ETS_TABLE, DefaultETSOpts),
     _ = ets:new(vmq_redis_trie, [{keypos, 2} | DefaultETSOpts]),
     _ = ets:new(vmq_redis_trie_node, [{keypos, 2} | DefaultETSOpts]),
-    
+
     initialize_trie(),
 
     {ok, #state{status = ready}}.

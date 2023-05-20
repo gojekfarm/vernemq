@@ -17,6 +17,9 @@
 -include("vmq_server.hrl").
 -include("vmq_metrics.hrl").
 
+%% The pattern 'true' can never match the type 'false'
+-dialyzer({no_match, check_mqtt_auth_errors/1}).
+
 -export([
     init/3,
     data_in/2,
@@ -417,9 +420,7 @@ connected(
     SubTopics = subtopics(Topics, ProtoVer),
     OnAuthSuccess =
         fun(_User, _SubscriberId, MaybeChangedTopics) ->
-            case
-                vmq_reg:subscribe(SubscriberId, MaybeChangedTopics)
-            of
+            case vmq_reg:subscribe(SubscriberId, MaybeChangedTopics) of
                 {ok, _} = Res ->
                     T = lists:foldr(
                         fun({Topic, Sub}, Acc) -> [{Topic, extract_qos(Sub)} | Acc] end,
@@ -458,9 +459,7 @@ connected(#mqtt_unsubscribe{message_id = MessageId, topics = Topics}, State) ->
     _ = vmq_metrics:incr_mqtt_unsubscribe_received(),
     OnSuccess =
         fun(_SubscriberId, MaybeChangedTopics) ->
-            case
-                vmq_reg:unsubscribe(SubscriberId, MaybeChangedTopics)
-            of
+            case vmq_reg:unsubscribe(SubscriberId, MaybeChangedTopics) of
                 ok ->
                     vmq_plugin:all(on_topic_unsubscribed, [SubscriberId, MaybeChangedTopics]),
                     ok;
@@ -847,8 +846,8 @@ auth_on_subscribe(User, SubscriberId, Topics, AuthSuccess) ->
     username(),
     subscriber_id(),
     [{topic(), qos()}],
-    fun((subscriber_id(), [{topic(), qos()}]) -> ok | {error, not_ready})
-) -> ok | {error, not_ready}.
+    fun((subscriber_id(), [{topic(), qos()}]) -> ok | {error, _})
+) -> ok | {error, _}.
 unsubscribe(User, SubscriberId, Topics, UnsubFun) ->
     TTopics =
         case vmq_plugin:all_till_ok(on_unsubscribe, [User, SubscriberId, Topics]) of

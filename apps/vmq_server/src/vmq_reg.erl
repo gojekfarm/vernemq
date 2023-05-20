@@ -18,7 +18,8 @@
 
 -import(vmq_subscriber, [check_format/1]).
 
--dialyzer({no_match, [subscribe_op/3, maybe_remap_subscriber/3]}).
+%% TODO: Add undefined in eredis:q spec return_value's list
+-dialyzer({no_match, [subscribe_op/2, maybe_remap_subscriber/2]}).
 
 %% API
 -export([
@@ -49,8 +50,6 @@
     enqueue_msg/2
 ]).
 
-%% called by vmq_cluster_com
--export([route_remote_msg/4]).
 %% used from plugins
 -export([
     direct_plugin_exports/1,
@@ -84,12 +83,12 @@
     [subscription()]
 ) ->
     {ok, [qos() | not_allowed]}
-    | {error, not_allowed | not_ready}.
+    | {error, _}.
 subscribe(SubscriberId, Topics) ->
     %% trade consistency for availability
-    if_ready(fun subscribe_op/3, [?DefaultRegView, SubscriberId, Topics]).
+    if_ready(fun subscribe_op/2, [SubscriberId, Topics]).
 
-subscribe_op(vmq_reg_redis_trie, {MP, ClientId} = SubscriberId, Topics) ->
+subscribe_op({MP, ClientId} = SubscriberId, Topics) ->
     update_qos1_metrics(Topics),
     {NumOfTopics, UnwordedTopicsWithBinaryQoS} =
         lists:foldr(
@@ -99,6 +98,7 @@ subscribe_op(vmq_reg_redis_trie, {MP, ClientId} = SubscriberId, Topics) ->
                 ({T, {QoS, _Opts} = QoSWithOpts}, {Num, Acc}) when is_integer(QoS) ->
                     {Num + 1, [vmq_topic:unword(T), term_to_binary(QoSWithOpts) | Acc]};
                 (_, Acc) ->
+                    %% Filters not_allowed topics
                     Acc
             end,
             {0, []},
@@ -135,74 +135,56 @@ subscribe_op(vmq_reg_redis_trie, {MP, ClientId} = SubscriberId, Topics) ->
                 ],
                 [{node(), CleanSessionBool, NewTopicsWithQoS}];
             {ok, []} ->
-                []
+                [];
+            {ok, _} ->
+                {error, unwanted_redis_response};
+            Err ->
+                Err
         end,
-    lists:foreach(
-        fun
-            ({[<<"$share">>, _Group | Topic], QoS}) ->
-                Key = {MP, Topic},
-                Value = {ClientId, QoS},
-                ets:insert(?SHARED_SUBS_ETS_TABLE, {{Key, Value}}),
-                vmq_metrics:incr_cache_insert(?LOCAL_SHARED_SUBS);
-            (_) ->
-                ok
-        end,
-        Topics
-    ),
-    Existing = subscriptions_exist(OldSubs, Topics),
-    QoSTable =
-        lists:foldl(
-            fun
-                %% MQTTv4 clauses
-                ({_, {_, not_allowed}}, AccQoSTable) ->
-                    [not_allowed | AccQoSTable];
-                ({Exists, {T, QoS}}, AccQoSTable) when is_integer(QoS) ->
-                    deliver_retained(SubscriberId, T, QoS, #{}, Exists),
-                    [QoS | AccQoSTable];
-                %% MQTTv5 clauses and new MQTTv4 clause
-                ({_, {_, {not_allowed, _}}}, AccQoSTable) ->
-                    [not_allowed | AccQoSTable];
-                ({Exists, {T, {QoS, SubOpts}}}, AccQoSTable) when
-                    is_integer(QoS), is_map(SubOpts)
-                ->
-                    deliver_retained(SubscriberId, T, QoS, SubOpts, Exists),
-                    [QoS | AccQoSTable]
-            end,
-            [],
-            lists:zip(Existing, Topics)
-        ),
-    {ok, lists:reverse(QoSTable)};
-subscribe_op(_, SubscriberId, Topics) ->
-    update_qos1_metrics(Topics),
-    OldSubs = subscriptions_for_subscriber_id(SubscriberId),
-    Existing = subscriptions_exist(OldSubs, Topics),
-    add_subscriber(lists:usort(Topics), OldSubs, SubscriberId),
-    QoSTable =
-        lists:foldl(
-            fun
-                %% MQTTv4 clauses
-                ({_, {_, not_allowed}}, AccQoSTable) ->
-                    [not_allowed | AccQoSTable];
-                ({Exists, {T, QoS}}, AccQoSTable) when is_integer(QoS) ->
-                    deliver_retained(SubscriberId, T, QoS, #{}, Exists),
-                    [QoS | AccQoSTable];
-                %% MQTTv5 clauses
-                ({_, {_, {not_allowed, _}}}, AccQoSTable) ->
-                    [not_allowed | AccQoSTable];
-                ({Exists, {T, {QoS, SubOpts}}}, AccQoSTable) when
-                    is_integer(QoS), is_map(SubOpts)
-                ->
-                    deliver_retained(SubscriberId, T, QoS, SubOpts, Exists),
-                    [QoS | AccQoSTable]
-            end,
-            [],
-            lists:zip(Existing, Topics)
-        ),
-    {ok, lists:reverse(QoSTable)}.
+    case OldSubs of
+        {error, _} = ErrRes ->
+            ErrRes;
+        _ ->
+            lists:foreach(
+                fun
+                    ({[<<"$share">>, _Group | Topic], QoS}) ->
+                        Key = {MP, Topic},
+                        Value = {ClientId, QoS},
+                        ets:insert(?SHARED_SUBS_ETS_TABLE, {{Key, Value}}),
+                        vmq_metrics:incr_cache_insert(?LOCAL_SHARED_SUBS);
+                    (_) ->
+                        ok
+                end,
+                Topics
+            ),
+            Existing = subscriptions_exist(OldSubs, Topics),
+            QoSTable =
+                lists:foldl(
+                    fun
+                        %% MQTTv4 clauses
+                        ({_, {_, not_allowed}}, AccQoSTable) ->
+                            [not_allowed | AccQoSTable];
+                        ({Exists, {T, QoS}}, AccQoSTable) when is_integer(QoS) ->
+                            deliver_retained(SubscriberId, T, QoS, #{}, Exists),
+                            [QoS | AccQoSTable];
+                        %% MQTTv5 clauses and new MQTTv4 clause
+                        ({_, {_, {not_allowed, _}}}, AccQoSTable) ->
+                            [not_allowed | AccQoSTable];
+                        ({Exists, {T, {QoS, SubOpts}}}, AccQoSTable) when
+                            is_integer(QoS), is_map(SubOpts)
+                        ->
+                            deliver_retained(SubscriberId, T, QoS, SubOpts, Exists),
+                            [QoS | AccQoSTable]
+                    end,
+                    [],
+                    lists:zip(Existing, Topics)
+                ),
+            {ok, lists:reverse(QoSTable)}
+    end.
 
--spec unsubscribe(subscriber_id(), [topic()]) -> ok | {error, not_ready}.
+-spec unsubscribe(subscriber_id(), [topic()]) -> ok | {error, _}.
 unsubscribe(SubscriberId, Topics) ->
-    del_subscriptions(?DefaultRegView, Topics, SubscriberId).
+    del_subscriptions(Topics, SubscriberId).
 
 delete_subscriptions(SubscriberId) ->
     del_subscriber(?DefaultRegView, SubscriberId).
@@ -295,188 +277,96 @@ register_subscriber_(SessionPid, SubscriberId, StartClean, QueueOpts, N, Reason)
             %% remap subscriber... enabling that new messages will
             %% eventually reach the new queue.  Remapping triggers
             %% remote nodes to initiate queue migration
-            {SubscriptionsPresent, UpdatedSubs, ChangedNodes} =
-                maybe_remap_subscriber(?DefaultRegView, SubscriberId, StartClean),
-            case {SubscriptionsPresent, QueuePresent, ChangedNodes} of
-                {true, false, []} ->
-                    vmq_queue:init_offline_queue(QPid);
-                {true, _, [OldNode]} ->
-                    rpc:call(OldNode, vmq_reg_mgr, handle_new_sub_event, [SubscriberId, UpdatedSubs]),
-                    vmq_queue:init_offline_queue(QPid);
-                _ ->
-                    ok
-            end,
-            SessionPresent1 = SubscriptionsPresent or QueuePresent,
-            SessionPresent2 =
-                case StartClean of
-                    true ->
-                        %% SessionPresent is always false in case CleanupSession=true
-                        false;
-                    false when QueuePresent ->
-                        %% no migration expected to happen, as queue is already local.
-                        SessionPresent1;
-                    false ->
-                        Fun = fun(Sid, OldNode) ->
-                            case rpc:call(OldNode, ?MODULE, get_queue_pid, [Sid]) of
-                                {badrpc, _} ->
-                                    case get_queue_pid(Sid) of
-                                        not_found ->
-                                            block;
-                                        LocalPid when is_pid(LocalPid) ->
-                                            done
-                                    end;
-                                not_found ->
-                                    case get_queue_pid(Sid) of
-                                        not_found ->
-                                            block;
-                                        LocalPid when is_pid(LocalPid) ->
-                                            done
-                                    end;
-                                OldPid when is_pid(OldPid) ->
-                                    case vmq_queue:info(OldPid) of
-                                        #{statename := drain} ->
-                                            %% Queue is in draining state, we're done here and
-                                            %% can return to the caller.
-                                            %% TODO: We can improve this by only having a single
-                                            %% rpc call. But this would break backward upgrade
-                                            %% compatibility.
-                                            done;
-                                        _ ->
-                                            block
-                                    end
-                            end
+            case maybe_remap_subscriber(SubscriberId, StartClean) of
+                {error, _} = Err ->
+                    Err;
+                {SubscriptionsPresent, UpdatedSubs, ChangedNodes} ->
+                    case {SubscriptionsPresent, QueuePresent, ChangedNodes} of
+                        {true, false, []} ->
+                            vmq_queue:init_offline_queue(QPid);
+                        {true, _, [OldNode]} ->
+                            rpc:call(OldNode, vmq_reg_mgr, handle_new_sub_event, [
+                                SubscriberId, UpdatedSubs
+                            ]),
+                            vmq_queue:init_offline_queue(QPid);
+                        _ ->
+                            ok
+                    end,
+                    SessionPresent1 = SubscriptionsPresent or QueuePresent,
+                    SessionPresent2 =
+                        case StartClean of
+                            true ->
+                                %% SessionPresent is always false in case CleanupSession=true
+                                false;
+                            false ->
+                                SessionPresent1
                         end,
-                        block_until(SubscriberId, UpdatedSubs, ChangedNodes, Fun),
-                        SessionPresent1
-                end,
-            case catch vmq_queue:add_session(QPid, SessionPid, QueueOpts) of
-                {'EXIT', {normal, _}} ->
-                    %% queue went down in the meantime, retry
-                    register_subscriber_(
-                        SessionPid,
-                        SubscriberId,
-                        StartClean,
-                        QueueOpts,
-                        N - 1,
-                        register_subscriber_retry_exhausted
-                    );
-                {'EXIT', {noproc, _}} ->
-                    timer:sleep(100),
-                    %% queue was stopped in the meantime, retry
-                    register_subscriber_(
-                        SessionPid,
-                        SubscriberId,
-                        StartClean,
-                        QueueOpts,
-                        N - 1,
-                        register_subscriber_retry_exhausted
-                    );
-                {'EXIT', Reason} ->
-                    {error, Reason};
-                {error, draining} ->
-                    %% queue is still draining it's offline queue to a different
-                    %% remote queue. This can happen if a client hops around
-                    %% different nodes very frequently... adjust load balancing!!
-                    timer:sleep(100),
-                    register_subscriber_(
-                        SessionPid,
-                        SubscriberId,
-                        StartClean,
-                        QueueOpts,
-                        N - 1,
-                        {register_subscriber_retry_exhausted, draining}
-                    );
-                {error, {cleanup, _Reason}} ->
-                    %% queue is still cleaning up.
-                    timer:sleep(100),
-                    register_subscriber_(
-                        SessionPid,
-                        SubscriberId,
-                        StartClean,
-                        QueueOpts,
-                        N - 1,
-                        register_subscriber_retry_exhausted
-                    );
-                {ok, Opts} ->
-                    {ok, Opts#{
-                        session_present => SessionPresent2,
-                        queue_pid => QPid
-                    }};
-                _ ->
-                    timer:sleep(100),
-                    register_subscriber_(
-                        SessionPid,
-                        SubscriberId,
-                        StartClean,
-                        QueueOpts,
-                        N - 1,
-                        register_subscriber_retry_exhausted
-                    )
+                    case catch vmq_queue:add_session(QPid, SessionPid, QueueOpts) of
+                        {'EXIT', {normal, _}} ->
+                            %% queue went down in the meantime, retry
+                            register_subscriber_(
+                                SessionPid,
+                                SubscriberId,
+                                StartClean,
+                                QueueOpts,
+                                N - 1,
+                                register_subscriber_retry_exhausted
+                            );
+                        {'EXIT', {noproc, _}} ->
+                            timer:sleep(100),
+                            %% queue was stopped in the meantime, retry
+                            register_subscriber_(
+                                SessionPid,
+                                SubscriberId,
+                                StartClean,
+                                QueueOpts,
+                                N - 1,
+                                register_subscriber_retry_exhausted
+                            );
+                        {'EXIT', Reason} ->
+                            {error, Reason};
+                        {error, draining} ->
+                            %% queue is still draining it's offline queue to a different
+                            %% remote queue. This can happen if a client hops around
+                            %% different nodes very frequently... adjust load balancing!!
+                            timer:sleep(100),
+                            register_subscriber_(
+                                SessionPid,
+                                SubscriberId,
+                                StartClean,
+                                QueueOpts,
+                                N - 1,
+                                {register_subscriber_retry_exhausted, draining}
+                            );
+                        {error, {cleanup, _Reason}} ->
+                            %% queue is still cleaning up.
+                            timer:sleep(100),
+                            register_subscriber_(
+                                SessionPid,
+                                SubscriberId,
+                                StartClean,
+                                QueueOpts,
+                                N - 1,
+                                register_subscriber_retry_exhausted
+                            );
+                        {ok, Opts} ->
+                            {ok, Opts#{
+                                session_present => SessionPresent2,
+                                queue_pid => QPid
+                            }};
+                        _ ->
+                            timer:sleep(100),
+                            register_subscriber_(
+                                SessionPid,
+                                SubscriberId,
+                                StartClean,
+                                QueueOpts,
+                                N - 1,
+                                register_subscriber_retry_exhausted
+                            )
+                    end
             end
     end.
-
-%% block_until/4 has three cases to consider, the logic for
-%% these cases are handled by the BlockCond function
-%%
-%% migrate queue to local node (register_subscriber):
-%%
-%%    we wait until there is
-%%      "the original queue has been terminated" OR "the original queue is indraining state"
-%%
-%% migrate local queue to remote node (cluster leave):
-%%
-%%    we wait until there is no local queue and until there is one on the remote node.
-%%
-%% migrate dead queue (node down) to another node in cluster (including this one):
-%%
-%%    we have no local queue, but wait until the (offline) queue exists on target node.
-block_until(_, _, [], _) ->
-    ok;
-block_until(SubscriberId, UpdatedSubs, [Node | Rest] = ChangedNodes, BlockCond) ->
-    case ?DefaultRegView of
-        vmq_reg_redis_trie ->
-            ok;
-        _ ->
-            %% the call to subscriptions_for_subscriber_id will resolve any remaining
-            %% conflicts to this entry by broadcasting the resolved value to the
-            %% other nodes
-            case subscriptions_for_subscriber_id(SubscriberId) of
-                UpdatedSubs ->
-                    ok;
-                _OldSubs ->
-                    %% in case the subscriptions were resolved elsewhere in the meantime
-                    %% we'll write 'our' version of the remapped subscriptions
-                    vmq_subscriber_db:store(SubscriberId, UpdatedSubs)
-            end
-    end,
-
-    case BlockCond(SubscriberId, Node) of
-        block ->
-            timer:sleep(100),
-            block_until(SubscriberId, UpdatedSubs, ChangedNodes, BlockCond);
-        done ->
-            block_until(SubscriberId, UpdatedSubs, Rest, BlockCond)
-    end.
-
--spec register_session(subscriber_id(), map()) ->
-    {ok, #{
-        initial_msg_id := msg_id(),
-        session_present := flag(),
-        queue_pid := pid()
-    }}.
-register_session(SubscriberId, QueueOpts) ->
-    %% register_session allows to have multiple subscribers connected
-    %% with the same session_id (as oposed to register_subscriber)
-    SessionPid = self(),
-    % wont create new queue in case it already exists
-    {ok, QueuePresent, QPid} = vmq_queue_sup_sup:start_queue(SubscriberId),
-    {ok, SessionOpts} = vmq_queue:add_session(QPid, SessionPid, QueueOpts),
-    %% TODO: How to handle SessionPresent flag for allow_multiple_sessions=true
-    SessionPresent = QueuePresent,
-    {ok, SessionOpts#{
-        session_present => SessionPresent,
-        queue_pid => QPid
-    }}.
 
 %% publish/4
 -spec publish(module(), client_id() | ?INTERNAL_CLIENT_ID, msg()) ->
@@ -512,25 +402,8 @@ publish(
             publish_fold_wrapper(RegView, ClientId, Topic, Msg)
     end.
 
-% route_remote_msg/4 is called by the vmq_cluster_com
--spec route_remote_msg(module(), mountpoint(), topic(), msg()) -> ok.
-route_remote_msg(RegView, MP, Topic, Msg) ->
-    SubscriberId = {MP, ?INTERNAL_CLIENT_ID},
-    Acc = #publish_fold_acc{msg = Msg},
-    _ = vmq_reg_view:fold(RegView, SubscriberId, Topic, fun route_remote_msg_fold_fun/3, Acc),
-    % don't increment the router_matches_[local|remote] here, as they're already counted
-    % at the origin node.
-    ok.
-route_remote_msg_fold_fun({_, _} = SubscriberIdAndSubInfo, From, Acc) ->
-    publish_fold_fun(SubscriberIdAndSubInfo, From, Acc);
-route_remote_msg_fold_fun({_, _, _} = SubscriberIdAndSubInfo, From, Acc) ->
-    publish_fold_fun(SubscriberIdAndSubInfo, From, Acc);
-route_remote_msg_fold_fun(_Node, _, Acc) ->
-    %% we ignore remote subscriptions, they are already covered
-    %% by original publisher
-    Acc.
-
--spec publish_fold_wrapper(module(), client_id(), topic(), msg()) -> {ok, {integer(), integer()}}.
+-spec publish_fold_wrapper(module(), client_id() | ?INTERNAL_CLIENT_ID, topic(), msg()) ->
+    {ok, {integer(), integer()}} | {error, _}.
 publish_fold_wrapper(
     RegView,
     ClientId,
@@ -541,46 +414,27 @@ publish_fold_wrapper(
     } = Msg
 ) ->
     Acc = #publish_fold_acc{msg = Msg},
-    #publish_fold_acc{
-        msg = NewMsg,
-        subscriber_groups = SubscriberGroups,
-        local_matches = LocalMatches0,
-        remote_matches = RemoteMatches0
-    } = vmq_reg_view:fold(RegView, {MP, ClientId}, Topic, fun publish_fold_fun/3, Acc),
-    {LocalMatches1, RemoteMatches1} = vmq_shared_subscriptions:publish(
-        NewMsg, SGPolicy, SubscriberGroups, LocalMatches0, RemoteMatches0
-    ),
-    vmq_metrics:incr_router_matches_local(LocalMatches1),
-    vmq_metrics:incr_router_matches_remote(RemoteMatches1),
-    {ok, {LocalMatches1, RemoteMatches1}}.
+    case vmq_reg_view:fold(RegView, {MP, ClientId}, Topic, fun publish_fold_fun/3, Acc) of
+        #publish_fold_acc{
+            msg = NewMsg,
+            subscriber_groups = SubscriberGroups,
+            local_matches = LocalMatches0,
+            remote_matches = RemoteMatches0
+        } ->
+            {LocalMatches1, RemoteMatches1} = vmq_shared_subscriptions:publish(
+                NewMsg, SGPolicy, SubscriberGroups, LocalMatches0, RemoteMatches0
+            ),
+            vmq_metrics:incr_router_matches_local(LocalMatches1),
+            vmq_metrics:incr_router_matches_remote(RemoteMatches1),
+            {ok, {LocalMatches1, RemoteMatches1}};
+        {error, _} = Err ->
+            Err
+    end.
 
 %% publish_fold_fun/3 is used as the fold function in RegView:fold/4
-publish_fold_fun({SubscriberId, {_, #{no_local := true}}}, SubscriberId, Acc) ->
-    %% Publisher is the same as subscriber, discard.
-    Acc;
 publish_fold_fun({_, SubscriberId, {_, #{no_local := true}}}, SubscriberId, Acc) ->
     %% Publisher is the same as subscriber, discard.
     Acc;
-publish_fold_fun(
-    {{_, _} = SubscriberId, SubInfo},
-    _FromClientId,
-    #publish_fold_acc{
-        msg = Msg0,
-        local_matches = N
-    } = Acc
-) ->
-    case get_queue_pid(SubscriberId) of
-        not_found ->
-            Acc;
-        QPid ->
-            Msg1 = handle_rap_flag(SubInfo, Msg0),
-            Msg2 = maybe_add_sub_id(SubInfo, Msg1),
-            Msg3 = handle_non_persistence(SubInfo, Msg2),
-            Msg4 = handle_retry_flag(SubInfo, Msg3),
-            QoS = qos(SubInfo),
-            ok = vmq_queue:enqueue(QPid, {deliver, QoS, Msg4}),
-            Acc#publish_fold_acc{local_matches = N + 1}
-    end;
 publish_fold_fun(
     {Node, SubscriberId, SubInfo},
     _FromClientId,
@@ -602,8 +456,8 @@ publish_fold_fun(
     } = Acc
 ) ->
     vmq_redis_queue:enqueue(Node, term_to_binary(SubscriberId), term_to_binary({SubInfo, Msg})),
-    Acc#publish_fold_acc{local_matches = RN + 1};
-publish_fold_fun({_Node, _Group, SubscriberId, #{no_local := true}}, SubscriberId, Acc) ->
+    Acc#publish_fold_acc{remote_matches = RN + 1};
+publish_fold_fun({_Node, _Group, SubscriberId, {_, #{no_local := true}}}, SubscriberId, Acc) ->
     %% Publisher is the same as subscriber, discard.
     Acc;
 publish_fold_fun(
@@ -1155,34 +1009,6 @@ fold_subscribers(FoldFun, Acc) ->
         Acc
     ).
 
--spec add_subscriber(
-    [
-        {topic(), qos() | not_allowed}
-        | {topic(), {qos() | not_allowed, map()}}
-    ],
-    vmq_subscriber:subs(),
-    subscriber_id()
-) -> ok.
-add_subscriber(Topics, OldSubs, SubscriberId) ->
-    NewSubs =
-        lists:filter(
-            fun
-                ({_T, QoS}) when is_integer(QoS) ->
-                    true;
-                ({_T, {QoS, _Opts}}) when is_integer(QoS) ->
-                    true;
-                (_) ->
-                    false
-            end,
-            Topics
-        ),
-    case vmq_subscriber:add(OldSubs, NewSubs) of
-        {NewSubs0, true} ->
-            vmq_subscriber_db:store(SubscriberId, NewSubs0);
-        _ ->
-            ok
-    end.
-
 -spec subscriptions_exist(vmq_subscriber:subs(), [topic()]) -> [boolean()].
 subscriptions_exist(OldSubs, Topics) ->
     [vmq_subscriber:exists(Topic, OldSubs) || {Topic, _} <- Topics].
@@ -1211,8 +1037,8 @@ del_subscriber(vmq_reg_redis_trie, {MP, ClientId} = _SubscriberId) ->
 del_subscriber(_, SubscriberId) ->
     vmq_subscriber_db:delete(SubscriberId).
 
--spec del_subscriptions(atom(), [topic()], subscriber_id()) -> ok.
-del_subscriptions(vmq_reg_redis_trie, Topics, {MP, ClientId} = _SubscriberId) ->
+-spec del_subscriptions([topic()], subscriber_id()) -> ok | {error, _}.
+del_subscriptions(Topics, {MP, ClientId} = _SubscriberId) ->
     lists:foreach(
         fun
             ([<<"$share">>, _Group | Topic]) ->
@@ -1226,38 +1052,35 @@ del_subscriptions(vmq_reg_redis_trie, Topics, {MP, ClientId} = _SubscriberId) ->
         Topics
     ),
     SortedUnwordedTopics = [vmq_topic:unword(T) || T <- lists:usort(Topics)],
-    {ok, <<"1">>} = vmq_redis:query(
-        vmq_redis_client,
-        [
+    case
+        vmq_redis:query(
+            vmq_redis_client,
+            [
+                ?FCALL,
+                ?UNSUBSCRIBE,
+                0,
+                MP,
+                ClientId,
+                node(),
+                os:system_time(nanosecond),
+                length(SortedUnwordedTopics)
+                | SortedUnwordedTopics
+            ],
             ?FCALL,
-            ?UNSUBSCRIBE,
-            0,
-            MP,
-            ClientId,
-            node(),
-            os:system_time(nanosecond),
-            length(SortedUnwordedTopics)
-            | SortedUnwordedTopics
-        ],
-        ?FCALL,
-        ?UNSUBSCRIBE
-    ),
-    ok;
-del_subscriptions(_, Topics, SubscriberId) ->
-    OldSubs = subscriptions_for_subscriber_id(SubscriberId),
-    case vmq_subscriber:remove(OldSubs, Topics) of
-        {NewSubs, true} ->
-            vmq_subscriber_db:store(SubscriberId, NewSubs);
-        _ ->
-            ok
+            ?UNSUBSCRIBE
+        )
+    of
+        {ok, <<"1">>} -> ok;
+        {ok, _} -> {error, unwanted_redis_response};
+        Err -> Err
     end.
 
 %% the return value is used to inform the caller
 %% if a session was already present for the given
 %% subscriber id.
--spec maybe_remap_subscriber(atom(), subscriber_id(), boolean()) ->
-    {boolean(), undefined | vmq_subscriber:subs(), [node()]}.
-maybe_remap_subscriber(vmq_reg_redis_trie, {MP, ClientId}, _StartClean = true) ->
+-spec maybe_remap_subscriber(subscriber_id(), boolean()) ->
+    {boolean(), undefined | vmq_subscriber:subs(), [node()]} | {error, binary | atom()}.
+maybe_remap_subscriber({MP, ClientId}, _StartClean = true) ->
     Subs = vmq_subscriber:new(true),
     case
         vmq_redis:query(
@@ -1278,9 +1101,11 @@ maybe_remap_subscriber(vmq_reg_redis_trie, {MP, ClientId}, _StartClean = true) -
     of
         {ok, [undefined, [_, <<"1">>, []]]} -> {false, Subs, []};
         {ok, [<<"1">>, [_, <<"1">>, []]]} -> {true, Subs, []};
-        {ok, [<<"1">>, [_, <<"1">>, []], OldNode]} -> {true, Subs, [binary_to_atom(OldNode)]}
+        {ok, [<<"1">>, [_, <<"1">>, []], OldNode]} -> {true, Subs, [binary_to_atom(OldNode)]};
+        {ok, _} -> {error, unwanted_redis_response};
+        Err -> Err
     end;
-maybe_remap_subscriber(vmq_reg_redis_trie, {MP, ClientId}, _StartClean = false) ->
+maybe_remap_subscriber({MP, ClientId}, _StartClean = false) ->
     case
         vmq_redis:query(
             vmq_redis_client,
@@ -1312,29 +1137,11 @@ maybe_remap_subscriber(vmq_reg_redis_trie, {MP, ClientId}, _StartClean = false) 
              || [Topic, QoS] <- TopicsWithQoS
             ],
             NewSubs = [{binary_to_atom(NewNode), false, NewTopicsWithQoS}],
-            {true, NewSubs, [binary_to_atom(OldNode)]}
-    end;
-maybe_remap_subscriber(_, SubscriberId, _StartClean = true) ->
-    %% no need to remap, we can delete this subscriber
-    %% we overwrite any other value
-    Subs = vmq_subscriber:new(true),
-    vmq_subscriber_db:store(SubscriberId, Subs),
-    {false, Subs, []};
-maybe_remap_subscriber(_, SubscriberId, _StartClean = false) ->
-    case vmq_subscriber_db:read(SubscriberId) of
-        undefined ->
-            %% Store empty Subscriber Data
-            Subs = vmq_subscriber:new(false),
-            vmq_subscriber_db:store(SubscriberId, Subs),
-            {false, Subs, []};
-        Subs ->
-            case vmq_subscriber:change_node_all(Subs, node(), false) of
-                {NewSubs, ChangedNodes} when length(ChangedNodes) > 0 ->
-                    vmq_subscriber_db:store(SubscriberId, NewSubs),
-                    {true, NewSubs, ChangedNodes};
-                _ ->
-                    {true, Subs, []}
-            end
+            {true, NewSubs, [binary_to_atom(OldNode)]};
+        {ok, _} ->
+            {error, unwanted_redis_response};
+        Err ->
+            Err
     end.
 
 -spec get_session_pids(subscriber_id()) ->

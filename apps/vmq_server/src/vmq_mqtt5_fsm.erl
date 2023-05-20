@@ -626,9 +626,7 @@ connected(#mqtt5_subscribe{message_id = MessageId, topics = Topics, properties =
     SubTopics = vmq_mqtt_fsm_util:to_vmq_subtopics(Topics, get_sub_id(Props0)),
     OnAuthSuccess =
         fun(_User, _SubscriberId, MaybeChangedTopics, Props1) ->
-            case
-                vmq_reg:subscribe(SubscriberId, MaybeChangedTopics)
-            of
+            case vmq_reg:subscribe(SubscriberId, MaybeChangedTopics) of
                 {ok, _QoSs} ->
                     vmq_plugin:all(on_subscribe_m5, [User, SubscriberId, MaybeChangedTopics, Props1]);
                 Res ->
@@ -672,9 +670,7 @@ connected(#mqtt5_unsubscribe{message_id = MessageId, topics = Topics, properties
     _ = vmq_metrics:incr(?MQTT5_UNSUBSCRIBE_RECEIVED),
     OnSuccess =
         fun(_SubscriberId, MaybeChangedTopics) ->
-            case
-                vmq_reg:unsubscribe(SubscriberId, MaybeChangedTopics)
-            of
+            case vmq_reg:unsubscribe(SubscriberId, MaybeChangedTopics) of
                 ok ->
                     vmq_plugin:all(on_topic_unsubscribed, [SubscriberId, MaybeChangedTopics]),
                     ok;
@@ -1307,7 +1303,7 @@ auth_on_register(Password, Props, State) ->
         {ok, Args0} ->
             Args = maps:to_list(Args0),
             set_sock_opts(prop_val(tcp_opts, Args, [])),
-            
+
             ChangedProps = maps:with(
                 [
                     ?P_MAX_QOS,
@@ -1393,7 +1389,7 @@ auth_on_subscribe(User, SubscriberId, Topics, Props0, AuthSuccess) ->
     mqtt5_properties(),
     unsubsuccessfun()
 ) ->
-    {ok, mqtt5_properties()} | {error, not_ready}.
+    {ok, mqtt5_properties()} | {error, _}.
 unsubscribe(User, SubscriberId, Topics0, Props0, UnsubFun) ->
     {Topics2, Props2} =
         case vmq_plugin:all_till_ok(on_unsubscribe_m5, [User, SubscriberId, Topics0, Props0]) of
