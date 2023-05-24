@@ -20,7 +20,8 @@
 -export([
     start_link/0,
     nodes/0,
-    status/0
+    status/0,
+    is_node_alive/1
 ]).
 
 %% gen_server callbacks
@@ -71,6 +72,10 @@ status() ->
      || [{Node, Ready, _}] <-
             ets:match(?VMQ_CLUSTER_STATUS, '$1')
     ].
+
+-spec is_node_alive(atom()) -> boolean().
+is_node_alive(Node) ->
+    ets:lookup_element(?VMQ_CLUSTER_STATUS, Node, 2).
 
 %%%===================================================================
 %%% gen_server callbacks
