@@ -63,6 +63,7 @@ local function migrate_offline_queue(_KEYS, ARGV)
             -- delete this subscriber from redis
             removeTopicsForRouting(MP, currNode, clientId, topicsWithQoS)
             redis.call('DEL', subscriberKey)
+            return nil
         elseif currNode == oldNode and cs == false and tonumber(timestampValue) > tonumber(T) then
             -- remap subscriber
             local subscriptionValue = {newNode, false, topicsWithQoS}
