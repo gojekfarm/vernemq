@@ -63,12 +63,14 @@ local function migrate_offline_queue(_KEYS, ARGV)
             -- delete this subscriber from redis
             removeTopicsForRouting(MP, currNode, clientId, topicsWithQoS)
             redis.call('DEL', subscriberKey)
+            redis.call('SREM', currNode, subscriberKey)
             return nil
         elseif currNode == oldNode and cs == false and tonumber(timestampValue) > tonumber(T) then
             -- remap subscriber
             local subscriptionValue = {newNode, false, topicsWithQoS}
             redis.call('HMSET', subscriberKey, subscriptionField, cmsgpack.pack(subscriptionValue), timestampField, timestampValue)
             updateNodeForRouting(MP, clientId, topicsWithQoS, currNode, newNode)
+            redis.call('SMOVE', currNode, newNode, subscriberKey)
             return true
         else
             return nil

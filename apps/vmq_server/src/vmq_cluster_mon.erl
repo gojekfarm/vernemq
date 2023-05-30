@@ -211,6 +211,8 @@ update_cluster_status([], Acc) ->
     Acc;
 update_cluster_status([BNode | Rest], Acc) ->
     Node = binary_to_atom(BNode),
+    %% TODO: Handle case when node returns before reaping is complete.
+    vmq_redis_reaper_sup:del_reaper(Node),
     ets:insert(?VMQ_CLUSTER_STATUS, {Node, true, 0}),
     update_cluster_status(Rest, [Node | Acc]).
 
@@ -222,7 +224,8 @@ filter_dead_nodes(Nodes, Fall) ->
                     ok;
                 false when FailedAttempts > Fall ->
                     %% Node is not part of the cluster anymore
-                    lager:warning("trigger reapers for node ~p", [Node]),
+                    lager:warning("trigger reaper for node ~p", [Node]),
+                    vmq_redis_reaper_sup:ensure_reaper(Node),
                     ets:delete(?VMQ_CLUSTER_STATUS, Node);
                 false ->
                     ets:update_element(?VMQ_CLUSTER_STATUS, Node, [

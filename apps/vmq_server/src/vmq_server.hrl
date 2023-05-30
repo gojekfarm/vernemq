@@ -78,6 +78,7 @@
 -define(SHARED_SUBS_ETS_TABLE, vmq_shared_subs_local).
 -define(LOCAL_SHARED_SUBS, local_shared_subs).
 -define(MIGRATE_OFFLINE_QUEUE, migrate_offline_queue).
+-define(REAP_SUBSCRIBERS, reap_subscribers).
 
 -define(PRODUCER, "producer").
 -define(CONSUMER, "consumer").

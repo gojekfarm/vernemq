@@ -5,6 +5,21 @@
 {mapping, "redis_sentinel_database", "vmq_server.redis_sentinel_database", [{default, 0}, {datatype, integer}]}.
 {mapping, "redis_lua_dir", "vmq_server.redis_lua_dir", [{default, "./etc/lua"}, {datatype, string}]}.
 
+%% @doc This option specifies the time interval taken by the reaper process to reap the 
+%% messages/subscribers of remote node which went down from redis.
+{mapping, "redis_reaper_interval", "vmq_server.redis_reaper_interval", [{default, 100}, {datatype, integer}]}.
+
+%% @doc This option specifies the max number of subscribers/clients that reaper can reap in one redis call.
+{mapping, "redis_reaper_max_clients", "vmq_server.redis_reaper_max_clients", [{default, 20}, {datatype, integer}]}.
+
+%% @doc This option specifies the max number of messages that can be polled in one redis call 
+%% from the node's main queue.
+{mapping, "redis_main_queue_max_msgs", "vmq_server.redis_main_queue_max_msgs", [{default, 5}, {datatype, integer}]}.
+
+%% @doc This option specifies the number of redis shards used for message passing or node main queues. This number
+%% should be equal to the number of connect options.
+{mapping, "num_redis_main_queue_shards", "vmq_server.num_redis_main_queue_shards", [{default, 1}, {datatype, integer}]}.
+
 %% @doc This option specifies the list of comma separated connect options list
 %% [[{host, "localhost"}, {port, 1234}]] of redis shards used for message passing.
 {mapping,

@@ -40,7 +40,9 @@
     %% used in vmq_server_utils
     total_subscriptions/0,
 
-    enqueue_msg/2
+    enqueue_msg/2,
+
+    migrate_offline_queue/2
 ]).
 
 %% used from plugins
