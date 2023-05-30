@@ -99,6 +99,7 @@ local function subscribe(_KEYS, ARGV)
         local topicsWithQoS = mergeTopics(MP, clientId, newNode, numOfNewTopicsWithQoS, ARGV, {})
         local subscriptionValue = {newNode, true, topicsWithQoS}
         redis.call('HMSET', subscriberKey, subscriptionField, cmsgpack.pack(subscriptionValue), timestampField, timestampValue)
+        redis.call('SADD', newNode, subscriberKey)
         return {}
     elseif tonumber(timestampValue) > tonumber(T) then
         local currSub = cmsgpack.unpack(S)
