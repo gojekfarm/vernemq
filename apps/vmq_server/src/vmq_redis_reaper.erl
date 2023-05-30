@@ -130,11 +130,13 @@ handle_info(
                             case binary_to_term(SubBin) of
                                 {_, _CId} = SId ->
                                     case vmq_reg:migrate_offline_queue(SId, DeadNode) of
-                                        ok ->
+                                        {error, _} ->
+                                            ignore;
+                                        LocalNode when LocalNode == node() ->
                                             {SubInfo, Msg} = binary_to_term(MsgBin),
                                             vmq_reg:enqueue_msg({SId, SubInfo}, Msg);
-                                        _ ->
-                                            message_ignored
+                                        RemoteNode ->
+                                            vmq_redis_queue:enqueue(RemoteNode, SubBin, MsgBin)
                                     end;
                                 RandSubs when is_list(RandSubs) ->
                                     vmq_shared_subscriptions:publish_to_group(

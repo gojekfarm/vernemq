@@ -485,10 +485,10 @@ publish_fold_fun(
             %% 3. If the result was undefined then terminate the queue otherwise initialize offline queue
             %% and then enqueue.
             case migrate_offline_queue(SubscriberId, Node) of
-                ok ->
-                    publish_fold_fun({node(), SubscriberId, SubInfo}, FromClientId, Acc);
-                _ ->
-                    Acc
+                {error, _} ->
+                    Acc;
+                NewNode ->
+                    publish_fold_fun({NewNode, SubscriberId, SubInfo}, FromClientId, Acc)
             end
     end;
 publish_fold_fun({_Node, _Group, SubscriberId, {_, #{no_local := true}}}, SubscriberId, Acc) ->
@@ -993,6 +993,7 @@ update_qos1_metrics(Topics) ->
         Topics
     ).
 
+-spec migrate_offline_queue(subscriber_id(), node()) -> node() | {error, _}.
 migrate_offline_queue({MP, ClientId} = SubscriberId, OldNode) ->
     {ok, _QueuePresent, QPid} = vmq_queue_sup_sup:start_queue(SubscriberId),
     case
@@ -1012,10 +1013,20 @@ migrate_offline_queue({MP, ClientId} = SubscriberId, OldNode) ->
             ?MIGRATE_OFFLINE_QUEUE
         )
     of
-        {ok, <<"1">>} ->
-            vmq_queue:init_offline_queue(QPid),
-            ok;
-        _ ->
+        {ok, undefined} ->
             vmq_queue:terminate(QPid, normal),
-            attempt_failed
+            {error, client_does_not_exist};
+        {ok, NodeBin} when is_binary(NodeBin) ->
+            case binary_to_atom(NodeBin) of
+                LocalNode when LocalNode == node() ->
+                    vmq_queue:init_offline_queue(QPid),
+                    LocalNode;
+                RemoteNode ->
+                    vmq_queue:terminate(QPid, normal),
+                    RemoteNode
+            end;
+        Res ->
+            lager:warning("~p", [Res]),
+            vmq_queue:terminate(QPid, normal),
+            {error, unwanted_response}
     end.

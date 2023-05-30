@@ -71,7 +71,10 @@ local function migrate_offline_queue(_KEYS, ARGV)
             redis.call('HMSET', subscriberKey, subscriptionField, cmsgpack.pack(subscriptionValue), timestampField, timestampValue)
             updateNodeForRouting(MP, clientId, topicsWithQoS, currNode, newNode)
             redis.call('SMOVE', currNode, newNode, subscriberKey)
-            return true
+            return newNode
+        elseif currNode ~= oldNode then
+            -- subscriber reconnected to live node before migration
+            return currNode
         else
             return nil
         end
