@@ -184,11 +184,9 @@ handle_info(
         )
     of
         {ok, ClientList} when is_list(ClientList) ->
-            lager:info("~p", [ClientList]),
             lists:foreach(
                 fun([MP, ClientId]) ->
                     SubscriberId = {binary_to_list(MP), ClientId},
-                    lager:info("~p", [SubscriberId]),
                     {ok, QueuePresent, QPid} = vmq_queue_sup_sup:start_queue(SubscriberId, false),
                     case QueuePresent of
                         true -> ok;
@@ -202,7 +200,7 @@ handle_info(
         {ok, undefined} ->
             {stop, normal, State};
         Res ->
-            lager:error("~p", [Res]),
+            lager:warning("~p", [Res]),
             {noreply, State}
     end;
 handle_info(_Info, State) ->
