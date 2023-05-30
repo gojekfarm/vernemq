@@ -201,7 +201,7 @@ handle_info(
             {stop, normal, State};
         Res ->
             lager:warning("~p", [Res]),
-            {noreply, State}
+            {stop, normal, State}
     end;
 handle_info(_Info, State) ->
     {noreply, State}.
