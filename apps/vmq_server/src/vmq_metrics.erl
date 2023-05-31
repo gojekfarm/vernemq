@@ -1174,6 +1174,27 @@ redis_def() ->
                 {?REDIS_CMD_MISS, ?FIND, ?MSG_STORE_FIND},
                 redis_cmd_miss_total,
                 <<"The number of times redis cmd returned empty/undefined due to entry not exists.">>
+            ),
+            m(
+                counter,
+                [{cmd, rcn_to_str(?SCARD)}, {operation, rcn_to_str(?ENSURE_NO_LOCAL_CLIENT)}],
+                {?REDIS_CMD, ?SCARD, ?ENSURE_NO_LOCAL_CLIENT},
+                redis_cmd_total,
+                <<"The number of redis cmd calls.">>
+            ),
+            m(
+                counter,
+                [{cmd, rcn_to_str(?SCARD)}, {operation, rcn_to_str(?ENSURE_NO_LOCAL_CLIENT)}],
+                {?REDIS_CMD_ERROR, ?SCARD, ?ENSURE_NO_LOCAL_CLIENT},
+                redis_cmd_error_total,
+                <<"The number of times redis cmd call failed.">>
+            ),
+            m(
+                counter,
+                [{cmd, rcn_to_str(?SCARD)}, {operation, rcn_to_str(?ENSURE_NO_LOCAL_CLIENT)}],
+                {?REDIS_CMD_MISS, ?SCARD, ?ENSURE_NO_LOCAL_CLIENT},
+                redis_cmd_miss_total,
+                <<"The number of times redis cmd returned empty/undefined due to entry not exists.">>
             )
         ],
     REDIS_DEF_1 ++ REDIS_DEF_2 ++ REDIS_DEF_3.
@@ -2772,7 +2793,10 @@ met2idx({?REDIS_CMD_MISS, ?FCALL, ?REAP_SUBSCRIBERS}) -> 334;
 met2idx({?REDIS_STALE_CMD, ?FCALL, ?REAP_SUBSCRIBERS}) -> 335;
 met2idx({?UNAUTH_REDIS_CMD, ?FCALL, ?REAP_SUBSCRIBERS}) -> 336;
 met2idx({?REDIS_CMD, ?FUNCTION_LOAD, ?REAP_SUBSCRIBERS}) -> 337;
-met2idx({?REDIS_CMD_ERROR, ?FUNCTION_LOAD, ?REAP_SUBSCRIBERS}) -> 338.
+met2idx({?REDIS_CMD_ERROR, ?FUNCTION_LOAD, ?REAP_SUBSCRIBERS}) -> 338;
+met2idx({?REDIS_CMD, ?SCARD, ?ENSURE_NO_LOCAL_CLIENT}) -> 339;
+met2idx({?REDIS_CMD_ERROR, ?SCARD, ?ENSURE_NO_LOCAL_CLIENT}) -> 340;
+met2idx({?REDIS_CMD_MISS, ?SCARD, ?ENSURE_NO_LOCAL_CLIENT}) -> 341.
 
 -ifdef(TEST).
 clear_stored_rates() ->

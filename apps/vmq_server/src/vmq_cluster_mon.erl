@@ -98,13 +98,17 @@ init([]) ->
     Fall = application:get_env(vmq_server, cluster_node_liveness_fall, 3),
     RecheckInterval = application:get_env(vmq_server, cluster_node_liveness_check_interval, 500),
 
-    Tref = erlang:send_after(0, self(), recheck),
-
-    {ok, #state{
-        fall = Fall,
-        timer = Tref,
-        recheck_interval = RecheckInterval
-    }}.
+    case ensure_no_local_client() of
+        {ok, <<"0">>} ->
+            Tref = erlang:send_after(0, self(), recheck),
+            {ok, #state{
+                fall = Fall,
+                timer = Tref,
+                recheck_interval = RecheckInterval
+            }};
+        _ ->
+            {stop, reaping_in_progress}
+    end.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -237,3 +241,6 @@ filter_dead_nodes(Nodes, Fall) ->
         ?VMQ_CLUSTER_STATUS
     ),
     ok.
+
+ensure_no_local_client() ->
+    vmq_redis:query(vmq_redis_client, ["SCARD", node()], ?SCARD, ?ENSURE_NO_LOCAL_CLIENT).
