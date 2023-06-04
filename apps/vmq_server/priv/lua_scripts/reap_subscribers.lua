@@ -25,7 +25,7 @@ end
 local function reap_subscribers(_KEYS, ARGV)
     local deadNode = ARGV[1]
     local newNode = ARGV[2]
-    local maxClients = ARGV[3]
+    local maxClients = tonumber(ARGV[3])
 
     local subscriptionField = 'subscription'
 

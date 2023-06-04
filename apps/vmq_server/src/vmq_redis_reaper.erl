@@ -176,7 +176,7 @@ handle_info(
             [
                 ?FCALL,
                 ?REAP_SUBSCRIBERS,
-                1,
+                0,
                 DeadNode,
                 node(),
                 MaxClients
@@ -189,11 +189,7 @@ handle_info(
             lists:foreach(
                 fun([MP, ClientId]) ->
                     SubscriberId = {binary_to_list(MP), ClientId},
-                    {ok, QueuePresent, QPid} = vmq_queue_sup_sup:start_queue(SubscriberId, false),
-                    case QueuePresent of
-                        true -> ok;
-                        false -> vmq_queue:init_offline_queue(QPid)
-                    end
+                    {ok, _QueuePresent, _QPid} = vmq_queue_sup_sup:start_queue(SubscriberId, false)
                 end,
                 ClientList
             ),

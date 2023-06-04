@@ -40,6 +40,8 @@
     %% used in vmq_server_utils
     total_subscriptions/0,
 
+    stored/1,
+
     enqueue_msg/2,
 
     migrate_offline_queue/2
@@ -952,6 +954,15 @@ total_subscriptions() ->
             0
         ),
     [{total, Total}].
+
+stored(SubscriberId) ->
+    case get_queue_pid(SubscriberId) of
+        not_found ->
+            0;
+        QPid ->
+            {_, _, Queued, _, _} = vmq_queue:status(QPid),
+            Queued
+    end.
 
 %% retain, pre-versioning
 %% {MPTopic, MsgOrDeleted}

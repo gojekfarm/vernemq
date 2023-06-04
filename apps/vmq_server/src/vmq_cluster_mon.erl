@@ -215,7 +215,6 @@ update_cluster_status([], Acc) ->
     Acc;
 update_cluster_status([BNode | Rest], Acc) ->
     Node = binary_to_atom(BNode),
-    %% TODO: Handle case when node returns before reaping is complete.
     vmq_redis_reaper_sup:del_reaper(Node),
     ets:insert(?VMQ_CLUSTER_STATUS, {Node, true, 0}),
     update_cluster_status(Rest, [Node | Acc]).

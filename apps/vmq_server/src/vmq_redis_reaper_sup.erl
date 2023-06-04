@@ -85,6 +85,6 @@ init([]) ->
 %%% Internal functions
 %%%===================================================================
 child_spec(Node) ->
-    {{vmq_redis_reaper, Node}, {vmq_redis_reaper, start_link, [Node]}, permanent, 5000, worker, [
+    {{vmq_redis_reaper, Node}, {vmq_redis_reaper, start_link, [Node]}, transient, 5000, worker, [
         vmq_redis_reaper
     ]}.

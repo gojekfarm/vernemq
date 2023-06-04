@@ -110,11 +110,75 @@ register_cli_usage() ->
 
 vmq_server_stop_cmd() ->
     Cmd = ["vmq-admin", "node", "stop"],
-    Callback = fun(_, _, _) ->
-        _ = ensure_all_stopped(vmq_server),
-        [clique_status:text("Done")]
+    FlagSpecs = [
+        {summary_interval, [
+            {shortname, "i"},
+            {longname, "summary-interval"},
+            {typecast, fun(StrI) ->
+                case catch list_to_integer(StrI) of
+                    I when is_integer(I), I > 0 ->
+                        I * 1000;
+                    _ ->
+                        {{error, {invalid_flag_value, {'summary-interval', StrI}}}}
+                end
+            end}
+        ]},
+        {timeout, [
+            {shortname, "t"},
+            {longname, "timeout"},
+            {typecast, fun(StrI) ->
+                case catch list_to_integer(StrI) of
+                    I when is_integer(I), I > 0 ->
+                        I * 1000;
+                    _ ->
+                        {error, {invalid_flag_value, {timeout, StrI}}}
+                end
+            end}
+        ]}
+    ],
+    Callback = fun(_, _, Flags) ->
+        Interval = proplists:get_value(summary_interval, Flags, 5000),
+        Timeout = proplists:get_value(timeout, Flags, 60000),
+        %% Make sure Iterations > 0 to it will be
+        %% checked at least once if queue migration is complete.
+        Iterations = max(Timeout div Interval, 1),
+
+        %% stop all MQTT sessions on Node
+        %% Note: ensure loadbalancing will put them on other nodes
+        vmq_ranch_config:stop_all_mqtt_listeners(true),
+
+        %% At this point, client reconnect and will drain
+        %% their queues located at 'Node' migrating them to
+        %% their new node.
+        Text =
+            case wait_till_all_offline(Interval, Iterations) of
+                ok ->
+                    _ = ensure_all_stopped(vmq_server),
+                    "Done";
+                error -> "error, still online queues, check the logs, and retry!"
+            end,
+        [clique_status:text(Text)]
     end,
-    clique:register_command(Cmd, [], [], Callback).
+    clique:register_command(Cmd, [], FlagSpecs, Callback).
+
+wait_till_all_offline(_, 0) ->
+    error;
+wait_till_all_offline(Sleep, N) ->
+    case vmq_queue_sup_sup:summary() of
+        {0, 0, Drain, Offline, Msgs} ->
+            lager:info(
+                "all queues offline: ~p draining, ~p offline, ~p msgs",
+                [Drain, Offline, Msgs]
+            ),
+            ok;
+        {Online, WaitForOffline, Drain, Offline, Msgs} ->
+            lager:info(
+                "intermediate queue summary: ~p online, ~p wait_for_offline, ~p draining, ~p offline, ~p msgs",
+                [Online, WaitForOffline, Drain, Offline, Msgs]
+            ),
+            timer:sleep(Sleep),
+            wait_till_all_offline(Sleep, N - 1)
+    end.
 
 vmq_server_start_cmd() ->
     Cmd = ["vmq-admin", "node", "start"],

@@ -277,6 +277,7 @@ load_redis_functions() ->
     {ok, FetchSubscriberScript} = file:read_file(LuaDir ++ "/fetch_subscriber.lua"),
     {ok, GetLiveNodesScript} = file:read_file(LuaDir ++ "/get_live_nodes.lua"),
     {ok, MigrateOfflineQueueScript} = file:read_file(LuaDir ++ "/migrate_offline_queue.lua"),
+    {ok, ReapSubscribersScript} = file:read_file(LuaDir ++ "/reap_subscribers.lua"),
 
     {ok, <<"remap_subscriber">>} = vmq_redis:query(
         vmq_redis_client,
@@ -325,4 +326,10 @@ load_redis_functions() ->
         [?FUNCTION, "LOAD", "REPLACE", MigrateOfflineQueueScript],
         ?FUNCTION_LOAD,
         ?MIGRATE_OFFLINE_QUEUE
+    ),
+    {ok, <<"reap_subscribers">>} = vmq_redis:query(
+        vmq_redis_client,
+        [?FUNCTION, "LOAD", "REPLACE", ReapSubscribersScript],
+        ?FUNCTION_LOAD,
+        ?REAP_SUBSCRIBERS
     ).
