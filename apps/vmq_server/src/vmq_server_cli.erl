@@ -155,7 +155,8 @@ vmq_server_stop_cmd() ->
                 ok ->
                     _ = ensure_all_stopped(vmq_server),
                     "Done";
-                error -> "error, still online queues, check the logs, and retry!"
+                error ->
+                    "error, still online queues, check the logs, and retry!"
             end,
         [clique_status:text(Text)]
     end,
