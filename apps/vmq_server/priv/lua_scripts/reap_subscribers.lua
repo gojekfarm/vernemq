@@ -1,9 +1,13 @@
 #!lua name=reap_subscribers
 
 --[[
+Input:
 ARGV[1] = deadNode
 ARGV[2] = newNode
 ARGV[3] = maxClients
+
+Output:
+nil | {SubscriberId, ...} | Error
 ]]
 
 local function updateNodeForRouting(MP, clientId, topicsWithQoS, currNode, newNode)

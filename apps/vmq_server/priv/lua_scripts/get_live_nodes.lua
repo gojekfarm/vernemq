@@ -1,7 +1,11 @@
 #!lua name=get_live_nodes
 
 --[[
+Input:
 ARGV[1] = nodeName
+
+Output:
+LiveNodes(Table) | Error
 ]]
 
 local function get_live_nodes(_KEYS, ARGV)

@@ -1,11 +1,15 @@
 #!lua name=remap_subscriber
 
 --[[
+Input:
 ARGV[1] = mountpoint
 ARGV[2] = clientId
 ARGV[3] = node name
 ARGV[4] = clean session
 ARGV[5] = timestamp
+
+Output:
+{SubscriptionPresent(boolean), UpdatedSubscription({Node, CS, TopicsWithQoS}), ChangedNode(nil | node)} | 'stale_request' | Error
 ]]
 
 local function removeTopicsForRouting(MP, node, clientId, topicsWithQoS)

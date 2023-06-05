@@ -1,11 +1,15 @@
 #!lua name=migrate_offline_queue
 
 --[[
+Input:
 ARGV[1] = mountpoint
 ARGV[2] = clientId
 ARGV[3] = old node name
 ARGV[4] = new node name
 ARGV[5] = timestamp
+
+Output:
+nil | Node | Error
 ]]
 
 local function removeTopicsForRouting(MP, node, clientId, topicsWithQoS)

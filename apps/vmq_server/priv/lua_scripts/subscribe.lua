@@ -1,6 +1,7 @@
 #!lua name=subscribe
 
 --[[
+Input:
 ARGV[1] = mountpoint
 ARGV[2] = clientId
 ARGV[3] = node name
@@ -13,6 +14,9 @@ ARGV[9] = qos
 .
 .
 .
+
+Output:
+{} | {Node, CS, {{Topic, QoS}, ...}} | 'stale_request' | 'unauthorized' | Error
 ]]
 
 local function addTopicForRouting(topic, MP, node, clientId, qos)
