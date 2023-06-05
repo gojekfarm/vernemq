@@ -56,7 +56,7 @@ reply(Req, State) ->
     {Output, Req, State}.
 
 cluster_status() ->
-    Nodes0 = nodes(),
+    Nodes0 = vmq_cluster_mon:nodes(),
     {Result0, _BadNodes} = rpc:multicall(Nodes0, ?MODULE, node_status, []),
     Result1 = [{R, N} || {{ok, R}, N} <- lists:zip(Result0, Nodes0)],
     {Result2, Nodes1} = lists:unzip(Result1),
