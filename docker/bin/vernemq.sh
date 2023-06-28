@@ -136,10 +136,6 @@ EOF
         echo "listener.ws.default = ${IP_ADDRESS}:8080" >> /vernemq/etc/vernemq.conf
     fi
 
-    if [ -z "$DOCKER_VERNEMQ_LISTENER__VMQ__CLUSTERING" ]; then
-        echo "listener.vmq.clustering = ${IP_ADDRESS}:44053" >> /vernemq/etc/vernemq.conf
-    fi
-
     if [ -z "$DOCKER_VERNEMQ_LISTENER__HTTP__METRICS" ]; then
         echo "listener.http.metrics = ${IP_ADDRESS}:8888" >> /vernemq/etc/vernemq.conf
     fi
