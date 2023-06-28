@@ -75,7 +75,11 @@ status() ->
 
 -spec is_node_alive(atom()) -> boolean().
 is_node_alive(Node) ->
-    ets:lookup_element(?VMQ_CLUSTER_STATUS, Node, 2).
+    try 
+        ets:lookup_element(?VMQ_CLUSTER_STATUS, Node, 2)
+    catch _:_ -> 
+        false 
+    end.
 
 %%%===================================================================
 %%% gen_server callbacks
