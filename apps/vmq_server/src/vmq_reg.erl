@@ -467,7 +467,7 @@ publish_fold_fun(
             %% The question is how do we know whether the client reconnected or not in this case?
             %% The source of truth is redis and this operation must be atomic on redis. When we
             %% attempt to Xfer the client here, checking on redis for old node comparsion is a must
-            %% before redis remap operations are performed. In case the node value is affected node
+            %% before redis remap operations are performed. In case the node value is unaffected node
             %% then continue with remap otherwise return and initiate the enqueue op on the new
             %% node's mainQueue.
             %%
