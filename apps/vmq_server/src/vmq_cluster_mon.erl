@@ -111,8 +111,12 @@ init([]) ->
                 timer = Tref,
                 recheck_interval = RecheckInterval
             }};
+        {ok, _} ->
+            {stop, reaping_in_progress};
+        {error, Reason} ->
+            {stop, Reason};
         _ ->
-            {stop, reaping_in_progress}
+            {stop, unknown}
     end.
 
 %%--------------------------------------------------------------------
