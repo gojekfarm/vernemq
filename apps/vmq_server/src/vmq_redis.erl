@@ -33,7 +33,9 @@ query(Client, QueryCmd, Cmd, Operation, Timeout) ->
                 Res;
             {error, <<"ERR unauthorized">>} = Res when Cmd == ?FCALL ->
                 vmq_metrics:incr_unauth_redis_cmd({Cmd, Operation}),
-                lager:error("Cannot ~p:~p as client is connected on different node", [Cmd, Operation]),
+                lager:error("Cannot ~p:~p as client is connected on different node", [
+                    Cmd, Operation
+                ]),
                 Res;
             {error, no_connection} ->
                 vmq_metrics:incr_redis_cmd_err({Cmd, Operation}),
@@ -52,7 +54,7 @@ query(Client, QueryCmd, Cmd, Operation, Timeout) ->
             Res ->
                 Res
         catch
-            Type:Exception -> 
+            Type:Exception ->
                 vmq_metrics:incr_redis_cmd_err({Cmd, Operation}),
                 lager:error("Cannot ~p:~p due to ~p:~p", [Cmd, Operation, Type, Exception]),
                 {error, Exception}
@@ -70,7 +72,7 @@ pipelined_query(Client, QueryList, Operation) ->
     [_ | PipelinedCmd] = lists:foldl(
         fun([Cmd | _], Acc) -> "|" ++ atom_to_list(Cmd) ++ Acc end, "", QueryList
     ),
-    
+
     vmq_metrics:incr_redis_cmd({?PIPELINE, Operation}),
     V1 = vmq_util:ts(),
 
@@ -86,16 +88,20 @@ pipelined_query(Client, QueryList, Operation) ->
                 lager:debug("No connection with Redis"),
                 {error, no_connection};
             Res ->
-                IsErrPresent = lists:foldl(fun ({ok, _}, Acc) -> Acc;
-                                               ({error, _Reason}, _Acc) -> true
-                                           end, 
-                                           false, 
-                                           Res ),
-                if IsErrPresent -> vmq_metrics:incr_redis_cmd_err({?PIPELINE, Operation});
-                   true -> ok
+                IsErrPresent = lists:foldl(
+                    fun
+                        ({ok, _}, Acc) -> Acc;
+                        ({error, _Reason}, _Acc) -> true
+                    end,
+                    false,
+                    Res
+                ),
+                if
+                    IsErrPresent -> vmq_metrics:incr_redis_cmd_err({?PIPELINE, Operation});
+                    true -> ok
                 end,
                 Res
-        catch 
+        catch
             Type:Exception ->
                 vmq_metrics:incr_redis_cmd_err({?PIPELINE, Operation}),
                 lager:error("Cannot ~p:~p due to ~p:~p", [?PIPELINE, Operation, Type, Exception]),

@@ -114,9 +114,7 @@ init([]) ->
         {ok, _} ->
             {stop, reaping_in_progress};
         {error, Reason} ->
-            {stop, Reason};
-        _ ->
-            {stop, unknown}
+            {stop, Reason}
     end.
 
 %%--------------------------------------------------------------------
