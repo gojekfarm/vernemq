@@ -513,7 +513,7 @@ publish_fold_fun(
 enqueue_msg({{_, _} = SubscriberId, SubInfo}, Msg0) ->
     case get_queue_pid(SubscriberId) of
         not_found ->
-            ok;
+            vmq_metrics:incr_msg_enqueue_subscriber_not_found();
         QPid ->
             Msg1 = handle_rap_flag(SubInfo, Msg0),
             Msg2 = maybe_add_sub_id(SubInfo, Msg1),

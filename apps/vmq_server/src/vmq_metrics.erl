@@ -94,7 +94,9 @@
     incr_cache_insert/1,
     incr_cache_delete/1,
     incr_cache_hit/1,
-    incr_cache_miss/1
+    incr_cache_miss/1,
+
+    incr_msg_enqueue_subscriber_not_found/0
 ]).
 
 -export([
@@ -321,6 +323,9 @@ incr_cache_hit(NAME) ->
 
 incr_cache_miss(NAME) ->
     incr_item({?CACHE_MISS, NAME}, 1).
+
+incr_msg_enqueue_subscriber_not_found() ->
+    incr_item(msg_enqueue_subscriber_not_found, 1).
 
 incr(Entry) ->
     incr_item(Entry, 1).
@@ -1790,6 +1795,13 @@ counter_entries_def() ->
             {?CACHE_DELETE, ?LOCAL_SHARED_SUBS},
             cache_delete,
             <<"The number of cache delete separate by cache name.">>
+        ),
+        m(
+            counter,
+            [],
+            msg_enqueue_subscriber_not_found,
+            msg_enqueue_subscriber_not_found,
+            <<"The number of times subscriber was not found when message had to be enqueued.">>
         )
     ].
 
@@ -2796,7 +2808,8 @@ met2idx({?REDIS_CMD, ?FUNCTION_LOAD, ?REAP_SUBSCRIBERS}) -> 337;
 met2idx({?REDIS_CMD_ERROR, ?FUNCTION_LOAD, ?REAP_SUBSCRIBERS}) -> 338;
 met2idx({?REDIS_CMD, ?SCARD, ?ENSURE_NO_LOCAL_CLIENT}) -> 339;
 met2idx({?REDIS_CMD_ERROR, ?SCARD, ?ENSURE_NO_LOCAL_CLIENT}) -> 340;
-met2idx({?REDIS_CMD_MISS, ?SCARD, ?ENSURE_NO_LOCAL_CLIENT}) -> 341.
+met2idx({?REDIS_CMD_MISS, ?SCARD, ?ENSURE_NO_LOCAL_CLIENT}) -> 341;
+met2idx(msg_enqueue_subscriber_not_found) -> 342.
 
 -ifdef(TEST).
 clear_stored_rates() ->
