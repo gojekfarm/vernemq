@@ -1736,6 +1736,14 @@
                                                           hidden
                                                          ]}.
 
+%% @doc This parameter allows to set the max mqtt connection rate limit. This is
+%% a global limit for the node across all the mqtt/mqtts listeners. It will NOT
+%% apply per listener.
+{mapping, "max_mqtt_conn_rate_limit", "vmq_server.max_mqtt_conn_rate_limit", [
+                                                          {default, 300},
+                                                          {datatype, integer}
+                                                         ]}.
+
 {validator, "file-exists", "file does not exist",
  fun("") ->
          %% "" is used as the default value in most places, we should

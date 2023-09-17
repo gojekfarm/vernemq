@@ -96,7 +96,9 @@
     incr_cache_hit/1,
     incr_cache_miss/1,
 
-    incr_msg_enqueue_subscriber_not_found/0
+    incr_msg_enqueue_subscriber_not_found/0,
+
+    incr_conn_rate_limit_exceeded/0
 ]).
 
 -export([
@@ -326,6 +328,9 @@ incr_cache_miss(NAME) ->
 
 incr_msg_enqueue_subscriber_not_found() ->
     incr_item(msg_enqueue_subscriber_not_found, 1).
+
+incr_conn_rate_limit_exceeded() ->
+    incr_item(connection_rate_limit_exceeded, 1).
 
 incr(Entry) ->
     incr_item(Entry, 1).
@@ -1802,6 +1807,13 @@ counter_entries_def() ->
             msg_enqueue_subscriber_not_found,
             msg_enqueue_subscriber_not_found,
             <<"The number of times subscriber was not found when message had to be enqueued.">>
+        ),
+        m(
+            counter,
+            [],
+            connection_rate_limit_exceeded,
+            connection_rate_limit_exceeded,
+            <<"The number of times subscriber connection was rejected due to max connection rate limit.">>
         )
     ].
 
@@ -2809,7 +2821,8 @@ met2idx({?REDIS_CMD_ERROR, ?FUNCTION_LOAD, ?REAP_SUBSCRIBERS}) -> 338;
 met2idx({?REDIS_CMD, ?SCARD, ?ENSURE_NO_LOCAL_CLIENT}) -> 339;
 met2idx({?REDIS_CMD_ERROR, ?SCARD, ?ENSURE_NO_LOCAL_CLIENT}) -> 340;
 met2idx({?REDIS_CMD_MISS, ?SCARD, ?ENSURE_NO_LOCAL_CLIENT}) -> 341;
-met2idx(msg_enqueue_subscriber_not_found) -> 342.
+met2idx(msg_enqueue_subscriber_not_found) -> 342;
+met2idx(connection_rate_limit_exceeded) -> 343.
 
 -ifdef(TEST).
 clear_stored_rates() ->

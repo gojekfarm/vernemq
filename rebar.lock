@@ -110,6 +110,7 @@
        {ref,"4835239dca5a5f4ac7202dd94d7effcaa617d575"}},
   0},
  {<<"syslog">>,{pkg,<<"syslog">>,<<"1.1.0">>},0},
+ {<<"throttle">>,{pkg,<<"lambda_throttle">>,<<"0.3.0">>},0},
  {<<"unicode_util_compat">>,{pkg,<<"unicode_util_compat">>,<<"0.7.0">>},1},
  {<<"vernemq_dev">>,
   {git,"https://github.com/gojekfarm/vernemq_dev.git",
@@ -144,5 +145,6 @@
  {<<"ssl_verify_fun">>, <<"CF344F5692C82D2CD7554F5EC8FD961548D4FD09E7D22F5B62482E5AEAEBD4B0">>},
  {<<"stdout_formatter">>, <<"EC24868D8619757A68F0798357C7190807A1CFC42CE90C18C23760E59249A21A">>},
  {<<"syslog">>, <<"6419A232BEA84F07B56DC575225007FFE34D9FDC91ABE6F1B2F254FD71D8EFC2">>},
+ {<<"throttle">>, <<"5F50AC593092B71D85DD1061B9673895532D34C8B4836A5C04A9F8395E183E27">>},
  {<<"unicode_util_compat">>, <<"BC84380C9AB48177092F43AC89E4DFA2C6D62B40B8BD132B1059ECC7232F9A78">>}]}
 ].

@@ -43,8 +43,14 @@
 
 %% API.
 start_link(Ref, _Socket, Transport, Opts) ->
-    Pid = proc_lib:spawn_link(?MODULE, init, [Ref, self(), Transport, Opts]),
-    {ok, Pid}.
+    case throttle:check(connection_rate_limit, global) of
+        {limit_exceeded, _, _} ->
+            vmq_metrics:incr_conn_rate_limit_exceeded(),
+            {error, conn_rate_limit_exceeded};
+        _ ->
+            Pid = proc_lib:spawn_link(?MODULE, init, [Ref, self(), Transport, Opts]),
+            {ok, Pid}
+    end.
 
 init(Ref, Parent, Transport, Opts) ->
     {ok, Socket} = ranch:handshake(Ref),

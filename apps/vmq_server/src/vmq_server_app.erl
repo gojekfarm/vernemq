@@ -26,6 +26,11 @@
 -spec start(_, _) -> {'error', _} | {'ok', pid()} | {'ok', pid(), _}.
 start(_StartType, _StartArgs) ->
     ok = vmq_message_store:start(),
+    throttle:setup(
+        connection_rate_limit,
+        application:get_env(vmq_server, max_mqtt_conn_rate_limit, 300),
+        per_second
+    ),
 
     case vmq_server_sup:start_link() of
         {error, _} = E ->
