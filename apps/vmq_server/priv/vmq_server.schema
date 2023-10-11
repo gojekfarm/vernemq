@@ -1,8 +1,19 @@
 %% -*- mode: erlang -*-
 %% ex: ft=erlang
 
+%% @doc This option specifies the sentinel endpoints for subscription redis.
 {mapping, "redis_sentinel_endpoints", "vmq_server.redis_sentinel_endpoints", [{default, "[{\"127.0.0.1\", 26379}]"}, {datatype, string}]}.
+
+%% @doc This option specifies the subscription redis database number.
 {mapping, "redis_sentinel_database", "vmq_server.redis_sentinel_database", [{default, 0}, {datatype, integer}]}.
+
+%% @doc This option specifies the subscription redis username.
+{mapping, "redis_sentinel_username", "vmq_server.redis_sentinel_username", [{datatype, string}]}.
+
+%% @doc This option specifies the subscription redis password.
+{mapping, "redis_sentinel_password", "vmq_server.redis_sentinel_password", [{datatype, string}]}.
+
+%% @doc This option specifies the directory consisting of all the redis lua scripts used in vmq_server.
 {mapping, "redis_lua_dir", "vmq_server.redis_lua_dir", [{default, "./etc/lua"}, {datatype, string}]}.
 
 %% @doc This option specifies the time interval taken by the reaper process to reap the 
