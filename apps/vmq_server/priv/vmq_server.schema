@@ -37,6 +37,16 @@
     "msg_queue_redis_shards_connect_options",
     "vmq_server.msg_queue_redis_shards_connect_options", [{default, "[[{host,\"127.0.0.1\"},{port,6379},{database,1}]]"}, {datatype, string}]}.
 
+%% @doc This option specifies the list of comma separated usernames of redis shards used for message passing.
+{mapping,
+    "msg_queue_redis_shards_usernames",
+    "vmq_server.msg_queue_redis_shards_usernames", [{default, "[undefined]"}, {datatype, string}]}.
+
+%% @doc This option specifies the list of comma separated passwords of redis shards used for message passing.
+{mapping,
+    "msg_queue_redis_shards_passwords",
+    "vmq_server.msg_queue_redis_shards_passwords", [{default, "[undefined]"}, {datatype, string}]}.
+
 %% @doc This option specifies the number of worker processes per redis shard
 %% that will poll their main queues in message passing redis shard for new messages.
 {mapping,
