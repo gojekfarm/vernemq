@@ -1,0 +1,23 @@
+version: '3'
+services:
+  redis:
+    image: redis
+    container_name: redis
+    ports:
+      - 6379:6379
+  redis-sentinel:
+    image: bitnami/redis-sentinel
+    container_name: redis-sentinel
+    ports:
+      - 26379:26379
+  vernemq:
+    build:
+      context: .
+      dockerfile: .devcontainer/Dockerfile
+    container_name: vernemq
+    volumes:
+      - .:/workspace/vernemq:cached
+    command: /bin/bash -c "while sleep 100; do :; done"
+    depends_on:
+      - redis
+      - redis-sentinel
