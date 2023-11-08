@@ -144,6 +144,8 @@ terminate_reason(?DISCONNECT_MIGRATION) -> normal;
 terminate_reason(?NORMAL_DISCONNECT) -> normal;
 terminate_reason(?SESSION_TAKEN_OVER) -> normal;
 terminate_reason(?REMOTE_SESSION_TAKEN_OVER) -> normal;
+terminate_reason(?INVALID_PUBREC_ERROR) -> normal;
+terminate_reason(?INVALID_PUBCOMP_ERROR) -> normal;
 terminate_reason(Reason) -> Reason.
 
 -spec terminate_proto_reason(any()) -> any().
@@ -160,5 +162,12 @@ terminate_proto_reason(Reason) ->
         mqtt_client_disconnect -> 'REASON_MQTT_CLIENT_DISCONNECT';
         receive_max_exceeded -> 'REASON_RECEIVE_MAX_EXCEEDED';
         protocol_error -> 'REASON_PROTOCOL_ERROR';
+        publish_not_authorized_3_1_1 -> 'REASON_PUBLISH_AUTH_ERROR';
+        invalid_pubrec_error -> 'REASON_INVALID_PUBREC_ERROR';
+        invalid_pubcomp_error -> 'REASON_INVALID_PUBCOMP_ERROR';
+        unexpected_frame_type -> 'REASON_UNEXPECTED_FRAME_TYPE';
+        exit_signal_recived -> 'REASON_EXIT_SIGNAL_RECIVED';
+        tcp_closed -> 'REASON_TCP_CLOSED';
+        normal -> 'REASON_NORMAL_DISCONNECT';
         _ -> 'REASON_UNSPECIFIED'
     end.

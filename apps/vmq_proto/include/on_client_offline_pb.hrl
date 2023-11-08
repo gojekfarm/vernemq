@@ -17,7 +17,7 @@
         client_id = <<>> :: unicode:chardata() | undefined,
         % = 3, optional
         mountpoint = <<>> :: unicode:chardata() | undefined,
-        % = 4, optional, enum eventssidecar.v1.OnClientOffline.Reason
+        % = 4, optional, enum eventssidecar.v1.Reason
         reason = 'REASON_UNSPECIFIED' ::
             'REASON_UNSPECIFIED'
             | 'REASON_NOT_AUTHORIZED'
@@ -31,6 +31,12 @@
             | 'REASON_MQTT_CLIENT_DISCONNECT'
             | 'REASON_RECEIVE_MAX_EXCEEDED'
             | 'REASON_PROTOCOL_ERROR'
+            | 'REASON_PUBLISH_AUTH_ERROR'
+            | 'REASON_INVALID_PUBREC_ERROR'
+            | 'REASON_INVALID_PUBCOMP_ERROR'
+            | 'REASON_UNEXPECTED_FRAME_TYPE'
+            | 'REASON_EXIT_SIGNAL_RECIVED'
+            | 'REASON_TCP_CLOSED'
             | integer()
             | undefined
     }

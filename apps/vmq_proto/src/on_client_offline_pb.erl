@@ -18,8 +18,8 @@
 -export([find_enum_def/1, fetch_enum_def/1]).
 -export([enum_symbol_by_value/2, enum_value_by_symbol/2]).
 -export([
-    'enum_symbol_by_value_eventssidecar.v1.OnClientOffline.Reason'/1,
-    'enum_value_by_symbol_eventssidecar.v1.OnClientOffline.Reason'/1
+    'enum_symbol_by_value_eventssidecar.v1.Reason'/1,
+    'enum_value_by_symbol_eventssidecar.v1.Reason'/1
 ]).
 -export([get_service_names/0]).
 -export([get_service_def/1]).
@@ -54,7 +54,7 @@
 -include("gpb.hrl").
 
 %% enumerated types
--type 'eventssidecar.v1.OnClientOffline.Reason'() ::
+-type 'eventssidecar.v1.Reason'() ::
     'REASON_UNSPECIFIED'
     | 'REASON_NOT_AUTHORIZED'
     | 'REASON_NORMAL_DISCONNECT'
@@ -66,8 +66,14 @@
     | 'REASON_REMOTE_SESSION_TAKEN_OVER'
     | 'REASON_MQTT_CLIENT_DISCONNECT'
     | 'REASON_RECEIVE_MAX_EXCEEDED'
-    | 'REASON_PROTOCOL_ERROR'.
--export_type(['eventssidecar.v1.OnClientOffline.Reason'/0]).
+    | 'REASON_PROTOCOL_ERROR'
+    | 'REASON_PUBLISH_AUTH_ERROR'
+    | 'REASON_INVALID_PUBREC_ERROR'
+    | 'REASON_INVALID_PUBCOMP_ERROR'
+    | 'REASON_UNEXPECTED_FRAME_TYPE'
+    | 'REASON_EXIT_SIGNAL_RECIVED'
+    | 'REASON_TCP_CLOSED'.
+-export_type(['eventssidecar.v1.Reason'/0]).
 
 %% message types
 -type 'eventssidecar.v1.OnClientOffline'() :: #'eventssidecar.v1.OnClientOffline'{}.
@@ -161,12 +167,8 @@ encode_msg(Msg, MsgName, Opts) ->
             begin
                 TrF4 = id(F4, TrUserData),
                 if
-                    TrF4 =:= 'REASON_UNSPECIFIED'; TrF4 =:= 0 ->
-                        B3;
-                    true ->
-                        'e_enum_eventssidecar.v1.OnClientOffline.Reason'(
-                            TrF4, <<B3/binary, 32>>, TrUserData
-                        )
+                    TrF4 =:= 'REASON_UNSPECIFIED'; TrF4 =:= 0 -> B3;
+                    true -> 'e_enum_eventssidecar.v1.Reason'(TrF4, <<B3/binary, 32>>, TrUserData)
                 end
             end
     end.
@@ -208,35 +210,43 @@ encode_msg(Msg, MsgName, Opts) ->
     Bin2 = e_varint(byte_size(SubBin), Bin),
     <<Bin2/binary, SubBin/binary>>.
 
-'e_enum_eventssidecar.v1.OnClientOffline.Reason'('REASON_UNSPECIFIED', Bin, _TrUserData) ->
+'e_enum_eventssidecar.v1.Reason'('REASON_UNSPECIFIED', Bin, _TrUserData) ->
     <<Bin/binary, 0>>;
-'e_enum_eventssidecar.v1.OnClientOffline.Reason'('REASON_NOT_AUTHORIZED', Bin, _TrUserData) ->
+'e_enum_eventssidecar.v1.Reason'('REASON_NOT_AUTHORIZED', Bin, _TrUserData) ->
     <<Bin/binary, 1>>;
-'e_enum_eventssidecar.v1.OnClientOffline.Reason'('REASON_NORMAL_DISCONNECT', Bin, _TrUserData) ->
+'e_enum_eventssidecar.v1.Reason'('REASON_NORMAL_DISCONNECT', Bin, _TrUserData) ->
     <<Bin/binary, 2>>;
-'e_enum_eventssidecar.v1.OnClientOffline.Reason'('REASON_SESSION_TAKEN_OVER', Bin, _TrUserData) ->
+'e_enum_eventssidecar.v1.Reason'('REASON_SESSION_TAKEN_OVER', Bin, _TrUserData) ->
     <<Bin/binary, 3>>;
-'e_enum_eventssidecar.v1.OnClientOffline.Reason'('REASON_ADMINISTRATIVE_ACTION', Bin, _TrUserData) ->
+'e_enum_eventssidecar.v1.Reason'('REASON_ADMINISTRATIVE_ACTION', Bin, _TrUserData) ->
     <<Bin/binary, 4>>;
-'e_enum_eventssidecar.v1.OnClientOffline.Reason'('REASON_DISCONNECT_KEEP_ALIVE', Bin, _TrUserData) ->
+'e_enum_eventssidecar.v1.Reason'('REASON_DISCONNECT_KEEP_ALIVE', Bin, _TrUserData) ->
     <<Bin/binary, 5>>;
-'e_enum_eventssidecar.v1.OnClientOffline.Reason'('REASON_DISCONNECT_MIGRATION', Bin, _TrUserData) ->
+'e_enum_eventssidecar.v1.Reason'('REASON_DISCONNECT_MIGRATION', Bin, _TrUserData) ->
     <<Bin/binary, 6>>;
-'e_enum_eventssidecar.v1.OnClientOffline.Reason'(
-    'REASON_BAD_AUTHENTICATION_METHOD', Bin, _TrUserData
-) ->
+'e_enum_eventssidecar.v1.Reason'('REASON_BAD_AUTHENTICATION_METHOD', Bin, _TrUserData) ->
     <<Bin/binary, 7>>;
-'e_enum_eventssidecar.v1.OnClientOffline.Reason'(
-    'REASON_REMOTE_SESSION_TAKEN_OVER', Bin, _TrUserData
-) ->
+'e_enum_eventssidecar.v1.Reason'('REASON_REMOTE_SESSION_TAKEN_OVER', Bin, _TrUserData) ->
     <<Bin/binary, 8>>;
-'e_enum_eventssidecar.v1.OnClientOffline.Reason'('REASON_MQTT_CLIENT_DISCONNECT', Bin, _TrUserData) ->
+'e_enum_eventssidecar.v1.Reason'('REASON_MQTT_CLIENT_DISCONNECT', Bin, _TrUserData) ->
     <<Bin/binary, 9>>;
-'e_enum_eventssidecar.v1.OnClientOffline.Reason'('REASON_RECEIVE_MAX_EXCEEDED', Bin, _TrUserData) ->
+'e_enum_eventssidecar.v1.Reason'('REASON_RECEIVE_MAX_EXCEEDED', Bin, _TrUserData) ->
     <<Bin/binary, 10>>;
-'e_enum_eventssidecar.v1.OnClientOffline.Reason'('REASON_PROTOCOL_ERROR', Bin, _TrUserData) ->
+'e_enum_eventssidecar.v1.Reason'('REASON_PROTOCOL_ERROR', Bin, _TrUserData) ->
     <<Bin/binary, 11>>;
-'e_enum_eventssidecar.v1.OnClientOffline.Reason'(V, Bin, _TrUserData) ->
+'e_enum_eventssidecar.v1.Reason'('REASON_PUBLISH_AUTH_ERROR', Bin, _TrUserData) ->
+    <<Bin/binary, 12>>;
+'e_enum_eventssidecar.v1.Reason'('REASON_INVALID_PUBREC_ERROR', Bin, _TrUserData) ->
+    <<Bin/binary, 13>>;
+'e_enum_eventssidecar.v1.Reason'('REASON_INVALID_PUBCOMP_ERROR', Bin, _TrUserData) ->
+    <<Bin/binary, 14>>;
+'e_enum_eventssidecar.v1.Reason'('REASON_UNEXPECTED_FRAME_TYPE', Bin, _TrUserData) ->
+    <<Bin/binary, 15>>;
+'e_enum_eventssidecar.v1.Reason'('REASON_EXIT_SIGNAL_RECIVED', Bin, _TrUserData) ->
+    <<Bin/binary, 16>>;
+'e_enum_eventssidecar.v1.Reason'('REASON_TCP_CLOSED', Bin, _TrUserData) ->
+    <<Bin/binary, 17>>;
+'e_enum_eventssidecar.v1.Reason'(V, Bin, _TrUserData) ->
     e_varint(V, Bin).
 
 -compile({nowarn_unused_function, e_type_sint/3}).
@@ -573,7 +583,7 @@ decode_msg_2_doit('google.protobuf.Timestamp', Bin, TrUserData) ->
 ) ->
     {NewFValue, RestF} = {
         id(
-            'd_enum_eventssidecar.v1.OnClientOffline.Reason'(begin
+            'd_enum_eventssidecar.v1.Reason'(begin
                 <<Res:32/signed-native>> = <<(X bsl N + Acc):32/unsigned-native>>,
                 id(Res, TrUserData)
             end),
@@ -761,19 +771,25 @@ decode_msg_2_doit('google.protobuf.Timestamp', Bin, TrUserData) ->
 'skip_64_google.protobuf.Timestamp'(<<_:64, Rest/binary>>, Z1, Z2, F, F@_1, F@_2, TrUserData) ->
     'dfp_read_field_def_google.protobuf.Timestamp'(Rest, Z1, Z2, F, F@_1, F@_2, TrUserData).
 
-'d_enum_eventssidecar.v1.OnClientOffline.Reason'(0) -> 'REASON_UNSPECIFIED';
-'d_enum_eventssidecar.v1.OnClientOffline.Reason'(1) -> 'REASON_NOT_AUTHORIZED';
-'d_enum_eventssidecar.v1.OnClientOffline.Reason'(2) -> 'REASON_NORMAL_DISCONNECT';
-'d_enum_eventssidecar.v1.OnClientOffline.Reason'(3) -> 'REASON_SESSION_TAKEN_OVER';
-'d_enum_eventssidecar.v1.OnClientOffline.Reason'(4) -> 'REASON_ADMINISTRATIVE_ACTION';
-'d_enum_eventssidecar.v1.OnClientOffline.Reason'(5) -> 'REASON_DISCONNECT_KEEP_ALIVE';
-'d_enum_eventssidecar.v1.OnClientOffline.Reason'(6) -> 'REASON_DISCONNECT_MIGRATION';
-'d_enum_eventssidecar.v1.OnClientOffline.Reason'(7) -> 'REASON_BAD_AUTHENTICATION_METHOD';
-'d_enum_eventssidecar.v1.OnClientOffline.Reason'(8) -> 'REASON_REMOTE_SESSION_TAKEN_OVER';
-'d_enum_eventssidecar.v1.OnClientOffline.Reason'(9) -> 'REASON_MQTT_CLIENT_DISCONNECT';
-'d_enum_eventssidecar.v1.OnClientOffline.Reason'(10) -> 'REASON_RECEIVE_MAX_EXCEEDED';
-'d_enum_eventssidecar.v1.OnClientOffline.Reason'(11) -> 'REASON_PROTOCOL_ERROR';
-'d_enum_eventssidecar.v1.OnClientOffline.Reason'(V) -> V.
+'d_enum_eventssidecar.v1.Reason'(0) -> 'REASON_UNSPECIFIED';
+'d_enum_eventssidecar.v1.Reason'(1) -> 'REASON_NOT_AUTHORIZED';
+'d_enum_eventssidecar.v1.Reason'(2) -> 'REASON_NORMAL_DISCONNECT';
+'d_enum_eventssidecar.v1.Reason'(3) -> 'REASON_SESSION_TAKEN_OVER';
+'d_enum_eventssidecar.v1.Reason'(4) -> 'REASON_ADMINISTRATIVE_ACTION';
+'d_enum_eventssidecar.v1.Reason'(5) -> 'REASON_DISCONNECT_KEEP_ALIVE';
+'d_enum_eventssidecar.v1.Reason'(6) -> 'REASON_DISCONNECT_MIGRATION';
+'d_enum_eventssidecar.v1.Reason'(7) -> 'REASON_BAD_AUTHENTICATION_METHOD';
+'d_enum_eventssidecar.v1.Reason'(8) -> 'REASON_REMOTE_SESSION_TAKEN_OVER';
+'d_enum_eventssidecar.v1.Reason'(9) -> 'REASON_MQTT_CLIENT_DISCONNECT';
+'d_enum_eventssidecar.v1.Reason'(10) -> 'REASON_RECEIVE_MAX_EXCEEDED';
+'d_enum_eventssidecar.v1.Reason'(11) -> 'REASON_PROTOCOL_ERROR';
+'d_enum_eventssidecar.v1.Reason'(12) -> 'REASON_PUBLISH_AUTH_ERROR';
+'d_enum_eventssidecar.v1.Reason'(13) -> 'REASON_INVALID_PUBREC_ERROR';
+'d_enum_eventssidecar.v1.Reason'(14) -> 'REASON_INVALID_PUBCOMP_ERROR';
+'d_enum_eventssidecar.v1.Reason'(15) -> 'REASON_UNEXPECTED_FRAME_TYPE';
+'d_enum_eventssidecar.v1.Reason'(16) -> 'REASON_EXIT_SIGNAL_RECIVED';
+'d_enum_eventssidecar.v1.Reason'(17) -> 'REASON_TCP_CLOSED';
+'d_enum_eventssidecar.v1.Reason'(V) -> V.
 
 read_group(Bin, FieldNum) ->
     {NumBytes, EndTagLen} = read_gr_b(Bin, 0, 0, 0, 0, FieldNum),
@@ -968,7 +984,7 @@ verify_msg(Msg, MsgName, Opts) ->
     end,
     if
         F4 == undefined -> ok;
-        true -> 'v_enum_eventssidecar.v1.OnClientOffline.Reason'(F4, [reason | Path], TrUserData)
+        true -> 'v_enum_eventssidecar.v1.Reason'(F4, [reason | Path], TrUserData)
     end,
     ok;
 'v_msg_eventssidecar.v1.OnClientOffline'(X, Path, _TrUserData) ->
@@ -996,48 +1012,50 @@ verify_msg(Msg, MsgName, Opts) ->
 'v_msg_google.protobuf.Timestamp'(X, Path, _TrUserData) ->
     mk_type_error({expected_msg, 'google.protobuf.Timestamp'}, X, Path).
 
--compile({nowarn_unused_function, 'v_enum_eventssidecar.v1.OnClientOffline.Reason'/3}).
--dialyzer({nowarn_function, 'v_enum_eventssidecar.v1.OnClientOffline.Reason'/3}).
-'v_enum_eventssidecar.v1.OnClientOffline.Reason'('REASON_UNSPECIFIED', _Path, _TrUserData) ->
+-compile({nowarn_unused_function, 'v_enum_eventssidecar.v1.Reason'/3}).
+-dialyzer({nowarn_function, 'v_enum_eventssidecar.v1.Reason'/3}).
+'v_enum_eventssidecar.v1.Reason'('REASON_UNSPECIFIED', _Path, _TrUserData) ->
     ok;
-'v_enum_eventssidecar.v1.OnClientOffline.Reason'('REASON_NOT_AUTHORIZED', _Path, _TrUserData) ->
+'v_enum_eventssidecar.v1.Reason'('REASON_NOT_AUTHORIZED', _Path, _TrUserData) ->
     ok;
-'v_enum_eventssidecar.v1.OnClientOffline.Reason'('REASON_NORMAL_DISCONNECT', _Path, _TrUserData) ->
+'v_enum_eventssidecar.v1.Reason'('REASON_NORMAL_DISCONNECT', _Path, _TrUserData) ->
     ok;
-'v_enum_eventssidecar.v1.OnClientOffline.Reason'('REASON_SESSION_TAKEN_OVER', _Path, _TrUserData) ->
+'v_enum_eventssidecar.v1.Reason'('REASON_SESSION_TAKEN_OVER', _Path, _TrUserData) ->
     ok;
-'v_enum_eventssidecar.v1.OnClientOffline.Reason'(
-    'REASON_ADMINISTRATIVE_ACTION', _Path, _TrUserData
-) ->
+'v_enum_eventssidecar.v1.Reason'('REASON_ADMINISTRATIVE_ACTION', _Path, _TrUserData) ->
     ok;
-'v_enum_eventssidecar.v1.OnClientOffline.Reason'(
-    'REASON_DISCONNECT_KEEP_ALIVE', _Path, _TrUserData
-) ->
+'v_enum_eventssidecar.v1.Reason'('REASON_DISCONNECT_KEEP_ALIVE', _Path, _TrUserData) ->
     ok;
-'v_enum_eventssidecar.v1.OnClientOffline.Reason'('REASON_DISCONNECT_MIGRATION', _Path, _TrUserData) ->
+'v_enum_eventssidecar.v1.Reason'('REASON_DISCONNECT_MIGRATION', _Path, _TrUserData) ->
     ok;
-'v_enum_eventssidecar.v1.OnClientOffline.Reason'(
-    'REASON_BAD_AUTHENTICATION_METHOD', _Path, _TrUserData
-) ->
+'v_enum_eventssidecar.v1.Reason'('REASON_BAD_AUTHENTICATION_METHOD', _Path, _TrUserData) ->
     ok;
-'v_enum_eventssidecar.v1.OnClientOffline.Reason'(
-    'REASON_REMOTE_SESSION_TAKEN_OVER', _Path, _TrUserData
-) ->
+'v_enum_eventssidecar.v1.Reason'('REASON_REMOTE_SESSION_TAKEN_OVER', _Path, _TrUserData) ->
     ok;
-'v_enum_eventssidecar.v1.OnClientOffline.Reason'(
-    'REASON_MQTT_CLIENT_DISCONNECT', _Path, _TrUserData
-) ->
+'v_enum_eventssidecar.v1.Reason'('REASON_MQTT_CLIENT_DISCONNECT', _Path, _TrUserData) ->
     ok;
-'v_enum_eventssidecar.v1.OnClientOffline.Reason'('REASON_RECEIVE_MAX_EXCEEDED', _Path, _TrUserData) ->
+'v_enum_eventssidecar.v1.Reason'('REASON_RECEIVE_MAX_EXCEEDED', _Path, _TrUserData) ->
     ok;
-'v_enum_eventssidecar.v1.OnClientOffline.Reason'('REASON_PROTOCOL_ERROR', _Path, _TrUserData) ->
+'v_enum_eventssidecar.v1.Reason'('REASON_PROTOCOL_ERROR', _Path, _TrUserData) ->
     ok;
-'v_enum_eventssidecar.v1.OnClientOffline.Reason'(V, _Path, _TrUserData) when
+'v_enum_eventssidecar.v1.Reason'('REASON_PUBLISH_AUTH_ERROR', _Path, _TrUserData) ->
+    ok;
+'v_enum_eventssidecar.v1.Reason'('REASON_INVALID_PUBREC_ERROR', _Path, _TrUserData) ->
+    ok;
+'v_enum_eventssidecar.v1.Reason'('REASON_INVALID_PUBCOMP_ERROR', _Path, _TrUserData) ->
+    ok;
+'v_enum_eventssidecar.v1.Reason'('REASON_UNEXPECTED_FRAME_TYPE', _Path, _TrUserData) ->
+    ok;
+'v_enum_eventssidecar.v1.Reason'('REASON_EXIT_SIGNAL_RECIVED', _Path, _TrUserData) ->
+    ok;
+'v_enum_eventssidecar.v1.Reason'('REASON_TCP_CLOSED', _Path, _TrUserData) ->
+    ok;
+'v_enum_eventssidecar.v1.Reason'(V, _Path, _TrUserData) when
     -2147483648 =< V, V =< 2147483647, is_integer(V)
 ->
     ok;
-'v_enum_eventssidecar.v1.OnClientOffline.Reason'(X, Path, _TrUserData) ->
-    mk_type_error({invalid_enum, 'eventssidecar.v1.OnClientOffline.Reason'}, X, Path).
+'v_enum_eventssidecar.v1.Reason'(X, Path, _TrUserData) ->
+    mk_type_error({invalid_enum, 'eventssidecar.v1.Reason'}, X, Path).
 
 -compile({nowarn_unused_function, v_type_int32/3}).
 -dialyzer({nowarn_function, v_type_int32/3}).
@@ -1108,7 +1126,7 @@ cons(Elem, Acc, _TrUserData) -> [Elem | Acc].
 
 get_msg_defs() ->
     [
-        {{enum, 'eventssidecar.v1.OnClientOffline.Reason'}, [
+        {{enum, 'eventssidecar.v1.Reason'}, [
             {'REASON_UNSPECIFIED', 0},
             {'REASON_NOT_AUTHORIZED', 1},
             {'REASON_NORMAL_DISCONNECT', 2},
@@ -1120,7 +1138,13 @@ get_msg_defs() ->
             {'REASON_REMOTE_SESSION_TAKEN_OVER', 8},
             {'REASON_MQTT_CLIENT_DISCONNECT', 9},
             {'REASON_RECEIVE_MAX_EXCEEDED', 10},
-            {'REASON_PROTOCOL_ERROR', 11}
+            {'REASON_PROTOCOL_ERROR', 11},
+            {'REASON_PUBLISH_AUTH_ERROR', 12},
+            {'REASON_INVALID_PUBREC_ERROR', 13},
+            {'REASON_INVALID_PUBCOMP_ERROR', 14},
+            {'REASON_UNEXPECTED_FRAME_TYPE', 15},
+            {'REASON_EXIT_SIGNAL_RECIVED', 16},
+            {'REASON_TCP_CLOSED', 17}
         ]},
         {{msg, 'eventssidecar.v1.OnClientOffline'}, [
             #field{
@@ -1151,7 +1175,7 @@ get_msg_defs() ->
                 name = reason,
                 fnum = 4,
                 rnum = 5,
-                type = {enum, 'eventssidecar.v1.OnClientOffline.Reason'},
+                type = {enum, 'eventssidecar.v1.Reason'},
                 occurrence = optional,
                 opts = []
             }
@@ -1170,7 +1194,7 @@ get_group_names() -> [].
 
 get_msg_or_group_names() -> ['eventssidecar.v1.OnClientOffline', 'google.protobuf.Timestamp'].
 
-get_enum_names() -> ['eventssidecar.v1.OnClientOffline.Reason'].
+get_enum_names() -> ['eventssidecar.v1.Reason'].
 
 fetch_msg_def(MsgName) ->
     case find_msg_def(MsgName) of
@@ -1204,7 +1228,7 @@ find_msg_def('eventssidecar.v1.OnClientOffline') ->
             name = reason,
             fnum = 4,
             rnum = 5,
-            type = {enum, 'eventssidecar.v1.OnClientOffline.Reason'},
+            type = {enum, 'eventssidecar.v1.Reason'},
             occurrence = optional,
             opts = []
         }
@@ -1217,7 +1241,7 @@ find_msg_def('google.protobuf.Timestamp') ->
 find_msg_def(_) ->
     error.
 
-find_enum_def('eventssidecar.v1.OnClientOffline.Reason') ->
+find_enum_def('eventssidecar.v1.Reason') ->
     [
         {'REASON_UNSPECIFIED', 0},
         {'REASON_NOT_AUTHORIZED', 1},
@@ -1230,66 +1254,60 @@ find_enum_def('eventssidecar.v1.OnClientOffline.Reason') ->
         {'REASON_REMOTE_SESSION_TAKEN_OVER', 8},
         {'REASON_MQTT_CLIENT_DISCONNECT', 9},
         {'REASON_RECEIVE_MAX_EXCEEDED', 10},
-        {'REASON_PROTOCOL_ERROR', 11}
+        {'REASON_PROTOCOL_ERROR', 11},
+        {'REASON_PUBLISH_AUTH_ERROR', 12},
+        {'REASON_INVALID_PUBREC_ERROR', 13},
+        {'REASON_INVALID_PUBCOMP_ERROR', 14},
+        {'REASON_UNEXPECTED_FRAME_TYPE', 15},
+        {'REASON_EXIT_SIGNAL_RECIVED', 16},
+        {'REASON_TCP_CLOSED', 17}
     ];
 find_enum_def(_) ->
     error.
 
-enum_symbol_by_value('eventssidecar.v1.OnClientOffline.Reason', Value) ->
-    'enum_symbol_by_value_eventssidecar.v1.OnClientOffline.Reason'(Value).
+enum_symbol_by_value('eventssidecar.v1.Reason', Value) ->
+    'enum_symbol_by_value_eventssidecar.v1.Reason'(Value).
 
-enum_value_by_symbol('eventssidecar.v1.OnClientOffline.Reason', Sym) ->
-    'enum_value_by_symbol_eventssidecar.v1.OnClientOffline.Reason'(Sym).
+enum_value_by_symbol('eventssidecar.v1.Reason', Sym) ->
+    'enum_value_by_symbol_eventssidecar.v1.Reason'(Sym).
 
-'enum_symbol_by_value_eventssidecar.v1.OnClientOffline.Reason'(0) ->
-    'REASON_UNSPECIFIED';
-'enum_symbol_by_value_eventssidecar.v1.OnClientOffline.Reason'(1) ->
-    'REASON_NOT_AUTHORIZED';
-'enum_symbol_by_value_eventssidecar.v1.OnClientOffline.Reason'(2) ->
-    'REASON_NORMAL_DISCONNECT';
-'enum_symbol_by_value_eventssidecar.v1.OnClientOffline.Reason'(3) ->
-    'REASON_SESSION_TAKEN_OVER';
-'enum_symbol_by_value_eventssidecar.v1.OnClientOffline.Reason'(4) ->
-    'REASON_ADMINISTRATIVE_ACTION';
-'enum_symbol_by_value_eventssidecar.v1.OnClientOffline.Reason'(5) ->
-    'REASON_DISCONNECT_KEEP_ALIVE';
-'enum_symbol_by_value_eventssidecar.v1.OnClientOffline.Reason'(6) ->
-    'REASON_DISCONNECT_MIGRATION';
-'enum_symbol_by_value_eventssidecar.v1.OnClientOffline.Reason'(7) ->
-    'REASON_BAD_AUTHENTICATION_METHOD';
-'enum_symbol_by_value_eventssidecar.v1.OnClientOffline.Reason'(8) ->
-    'REASON_REMOTE_SESSION_TAKEN_OVER';
-'enum_symbol_by_value_eventssidecar.v1.OnClientOffline.Reason'(9) ->
-    'REASON_MQTT_CLIENT_DISCONNECT';
-'enum_symbol_by_value_eventssidecar.v1.OnClientOffline.Reason'(10) ->
-    'REASON_RECEIVE_MAX_EXCEEDED';
-'enum_symbol_by_value_eventssidecar.v1.OnClientOffline.Reason'(11) ->
-    'REASON_PROTOCOL_ERROR'.
+'enum_symbol_by_value_eventssidecar.v1.Reason'(0) -> 'REASON_UNSPECIFIED';
+'enum_symbol_by_value_eventssidecar.v1.Reason'(1) -> 'REASON_NOT_AUTHORIZED';
+'enum_symbol_by_value_eventssidecar.v1.Reason'(2) -> 'REASON_NORMAL_DISCONNECT';
+'enum_symbol_by_value_eventssidecar.v1.Reason'(3) -> 'REASON_SESSION_TAKEN_OVER';
+'enum_symbol_by_value_eventssidecar.v1.Reason'(4) -> 'REASON_ADMINISTRATIVE_ACTION';
+'enum_symbol_by_value_eventssidecar.v1.Reason'(5) -> 'REASON_DISCONNECT_KEEP_ALIVE';
+'enum_symbol_by_value_eventssidecar.v1.Reason'(6) -> 'REASON_DISCONNECT_MIGRATION';
+'enum_symbol_by_value_eventssidecar.v1.Reason'(7) -> 'REASON_BAD_AUTHENTICATION_METHOD';
+'enum_symbol_by_value_eventssidecar.v1.Reason'(8) -> 'REASON_REMOTE_SESSION_TAKEN_OVER';
+'enum_symbol_by_value_eventssidecar.v1.Reason'(9) -> 'REASON_MQTT_CLIENT_DISCONNECT';
+'enum_symbol_by_value_eventssidecar.v1.Reason'(10) -> 'REASON_RECEIVE_MAX_EXCEEDED';
+'enum_symbol_by_value_eventssidecar.v1.Reason'(11) -> 'REASON_PROTOCOL_ERROR';
+'enum_symbol_by_value_eventssidecar.v1.Reason'(12) -> 'REASON_PUBLISH_AUTH_ERROR';
+'enum_symbol_by_value_eventssidecar.v1.Reason'(13) -> 'REASON_INVALID_PUBREC_ERROR';
+'enum_symbol_by_value_eventssidecar.v1.Reason'(14) -> 'REASON_INVALID_PUBCOMP_ERROR';
+'enum_symbol_by_value_eventssidecar.v1.Reason'(15) -> 'REASON_UNEXPECTED_FRAME_TYPE';
+'enum_symbol_by_value_eventssidecar.v1.Reason'(16) -> 'REASON_EXIT_SIGNAL_RECIVED';
+'enum_symbol_by_value_eventssidecar.v1.Reason'(17) -> 'REASON_TCP_CLOSED'.
 
-'enum_value_by_symbol_eventssidecar.v1.OnClientOffline.Reason'('REASON_UNSPECIFIED') ->
-    0;
-'enum_value_by_symbol_eventssidecar.v1.OnClientOffline.Reason'('REASON_NOT_AUTHORIZED') ->
-    1;
-'enum_value_by_symbol_eventssidecar.v1.OnClientOffline.Reason'('REASON_NORMAL_DISCONNECT') ->
-    2;
-'enum_value_by_symbol_eventssidecar.v1.OnClientOffline.Reason'('REASON_SESSION_TAKEN_OVER') ->
-    3;
-'enum_value_by_symbol_eventssidecar.v1.OnClientOffline.Reason'('REASON_ADMINISTRATIVE_ACTION') ->
-    4;
-'enum_value_by_symbol_eventssidecar.v1.OnClientOffline.Reason'('REASON_DISCONNECT_KEEP_ALIVE') ->
-    5;
-'enum_value_by_symbol_eventssidecar.v1.OnClientOffline.Reason'('REASON_DISCONNECT_MIGRATION') ->
-    6;
-'enum_value_by_symbol_eventssidecar.v1.OnClientOffline.Reason'('REASON_BAD_AUTHENTICATION_METHOD') ->
-    7;
-'enum_value_by_symbol_eventssidecar.v1.OnClientOffline.Reason'('REASON_REMOTE_SESSION_TAKEN_OVER') ->
-    8;
-'enum_value_by_symbol_eventssidecar.v1.OnClientOffline.Reason'('REASON_MQTT_CLIENT_DISCONNECT') ->
-    9;
-'enum_value_by_symbol_eventssidecar.v1.OnClientOffline.Reason'('REASON_RECEIVE_MAX_EXCEEDED') ->
-    10;
-'enum_value_by_symbol_eventssidecar.v1.OnClientOffline.Reason'('REASON_PROTOCOL_ERROR') ->
-    11.
+'enum_value_by_symbol_eventssidecar.v1.Reason'('REASON_UNSPECIFIED') -> 0;
+'enum_value_by_symbol_eventssidecar.v1.Reason'('REASON_NOT_AUTHORIZED') -> 1;
+'enum_value_by_symbol_eventssidecar.v1.Reason'('REASON_NORMAL_DISCONNECT') -> 2;
+'enum_value_by_symbol_eventssidecar.v1.Reason'('REASON_SESSION_TAKEN_OVER') -> 3;
+'enum_value_by_symbol_eventssidecar.v1.Reason'('REASON_ADMINISTRATIVE_ACTION') -> 4;
+'enum_value_by_symbol_eventssidecar.v1.Reason'('REASON_DISCONNECT_KEEP_ALIVE') -> 5;
+'enum_value_by_symbol_eventssidecar.v1.Reason'('REASON_DISCONNECT_MIGRATION') -> 6;
+'enum_value_by_symbol_eventssidecar.v1.Reason'('REASON_BAD_AUTHENTICATION_METHOD') -> 7;
+'enum_value_by_symbol_eventssidecar.v1.Reason'('REASON_REMOTE_SESSION_TAKEN_OVER') -> 8;
+'enum_value_by_symbol_eventssidecar.v1.Reason'('REASON_MQTT_CLIENT_DISCONNECT') -> 9;
+'enum_value_by_symbol_eventssidecar.v1.Reason'('REASON_RECEIVE_MAX_EXCEEDED') -> 10;
+'enum_value_by_symbol_eventssidecar.v1.Reason'('REASON_PROTOCOL_ERROR') -> 11;
+'enum_value_by_symbol_eventssidecar.v1.Reason'('REASON_PUBLISH_AUTH_ERROR') -> 12;
+'enum_value_by_symbol_eventssidecar.v1.Reason'('REASON_INVALID_PUBREC_ERROR') -> 13;
+'enum_value_by_symbol_eventssidecar.v1.Reason'('REASON_INVALID_PUBCOMP_ERROR') -> 14;
+'enum_value_by_symbol_eventssidecar.v1.Reason'('REASON_UNEXPECTED_FRAME_TYPE') -> 15;
+'enum_value_by_symbol_eventssidecar.v1.Reason'('REASON_EXIT_SIGNAL_RECIVED') -> 16;
+'enum_value_by_symbol_eventssidecar.v1.Reason'('REASON_TCP_CLOSED') -> 17.
 
 get_service_names() -> [].
 
@@ -1332,15 +1350,11 @@ msg_name_to_fqbin('eventssidecar.v1.OnClientOffline') -> <<"eventssidecar.v1.OnC
 msg_name_to_fqbin('google.protobuf.Timestamp') -> <<"google.protobuf.Timestamp">>;
 msg_name_to_fqbin(E) -> error({gpb_error, {badmsg, E}}).
 
-fqbin_to_enum_name(<<"eventssidecar.v1.OnClientOffline.Reason">>) ->
-    'eventssidecar.v1.OnClientOffline.Reason';
-fqbin_to_enum_name(E) ->
-    error({gpb_error, {badenum, E}}).
+fqbin_to_enum_name(<<"eventssidecar.v1.Reason">>) -> 'eventssidecar.v1.Reason';
+fqbin_to_enum_name(E) -> error({gpb_error, {badenum, E}}).
 
-enum_name_to_fqbin('eventssidecar.v1.OnClientOffline.Reason') ->
-    <<"eventssidecar.v1.OnClientOffline.Reason">>;
-enum_name_to_fqbin(E) ->
-    error({gpb_error, {badenum, E}}).
+enum_name_to_fqbin('eventssidecar.v1.Reason') -> <<"eventssidecar.v1.Reason">>;
+enum_name_to_fqbin(E) -> error({gpb_error, {badenum, E}}).
 
 get_package_name() -> 'eventssidecar.v1'.
 
@@ -1355,33 +1369,39 @@ source_basename() -> "on_client_offline.proto".
 %% source file. The files are returned with extension,
 %% see get_all_proto_names/0 for a version that returns
 %% the basenames sans extension
-get_all_source_basenames() -> ["on_client_offline.proto", "timestamp.proto"].
+get_all_source_basenames() ->
+    ["on_client_offline.proto", "timestamp.proto", "disconnect_reason.proto"].
 
 %% Retrieve all proto file names, also imported ones.
 %% The order is top-down. The first element is always the main
 %% source file. The files are returned sans .proto extension,
 %% to make it easier to use them with the various get_xyz_containment
 %% functions.
-get_all_proto_names() -> ["on_client_offline", "timestamp"].
+get_all_proto_names() -> ["on_client_offline", "timestamp", "disconnect_reason"].
 
 get_msg_containment("on_client_offline") -> ['eventssidecar.v1.OnClientOffline'];
 get_msg_containment("timestamp") -> ['google.protobuf.Timestamp'];
+get_msg_containment("disconnect_reason") -> [];
 get_msg_containment(P) -> error({gpb_error, {badproto, P}}).
 
 get_pkg_containment("on_client_offline") -> 'eventssidecar.v1';
 get_pkg_containment("timestamp") -> 'google.protobuf';
+get_pkg_containment("disconnect_reason") -> 'eventssidecar.v1';
 get_pkg_containment(P) -> error({gpb_error, {badproto, P}}).
 
 get_service_containment("on_client_offline") -> [];
 get_service_containment("timestamp") -> [];
+get_service_containment("disconnect_reason") -> [];
 get_service_containment(P) -> error({gpb_error, {badproto, P}}).
 
 get_rpc_containment("on_client_offline") -> [];
 get_rpc_containment("timestamp") -> [];
+get_rpc_containment("disconnect_reason") -> [];
 get_rpc_containment(P) -> error({gpb_error, {badproto, P}}).
 
-get_enum_containment("on_client_offline") -> ['eventssidecar.v1.OnClientOffline.Reason'];
+get_enum_containment("on_client_offline") -> [];
 get_enum_containment("timestamp") -> [];
+get_enum_containment("disconnect_reason") -> ['eventssidecar.v1.Reason'];
 get_enum_containment(P) -> error({gpb_error, {badproto, P}}).
 
 get_proto_by_msg_name_as_fqbin(<<"google.protobuf.Timestamp">>) -> "timestamp";
@@ -1391,14 +1411,15 @@ get_proto_by_msg_name_as_fqbin(E) -> error({gpb_error, {badmsg, E}}).
 -spec get_proto_by_service_name_as_fqbin(_) -> no_return().
 get_proto_by_service_name_as_fqbin(E) -> error({gpb_error, {badservice, E}}).
 
-get_proto_by_enum_name_as_fqbin(<<"eventssidecar.v1.OnClientOffline.Reason">>) ->
-    "on_client_offline";
-get_proto_by_enum_name_as_fqbin(E) ->
-    error({gpb_error, {badenum, E}}).
+get_proto_by_enum_name_as_fqbin(<<"eventssidecar.v1.Reason">>) -> "disconnect_reason";
+get_proto_by_enum_name_as_fqbin(E) -> error({gpb_error, {badenum, E}}).
 
-get_protos_by_pkg_name_as_fqbin(<<"eventssidecar.v1">>) -> ["on_client_offline"];
-get_protos_by_pkg_name_as_fqbin(<<"google.protobuf">>) -> ["timestamp"];
-get_protos_by_pkg_name_as_fqbin(E) -> error({gpb_error, {badpkg, E}}).
+get_protos_by_pkg_name_as_fqbin(<<"eventssidecar.v1">>) ->
+    ["disconnect_reason", "on_client_offline"];
+get_protos_by_pkg_name_as_fqbin(<<"google.protobuf">>) ->
+    ["timestamp"];
+get_protos_by_pkg_name_as_fqbin(E) ->
+    error({gpb_error, {badpkg, E}}).
 
 gpb_version_as_string() ->
     "4.20.0".

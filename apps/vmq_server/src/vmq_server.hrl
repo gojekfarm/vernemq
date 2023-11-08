@@ -86,4 +86,6 @@
 -define(CONSUMER, "consumer").
 
 -define(REMOTE_SESSION_TAKEN_OVER, remote_session_taken_over).
+-define(INVALID_PUBREC_ERROR, invalid_pubrec_error).
+-define(INVALID_PUBCOMP_ERROR, invalid_pubcomp_error).
 -endif.

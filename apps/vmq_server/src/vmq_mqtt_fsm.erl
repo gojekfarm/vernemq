@@ -372,7 +372,7 @@ connected(#mqtt_pubrec{message_id = MessageId}, State) ->
         not_found ->
             lager:debug("stopped connected session, due to unknown qos2 pubrec ~p", [MessageId]),
             _ = vmq_metrics:incr_mqtt_error_invalid_pubrec(),
-            terminate(normal, State)
+            terminate(?INVALID_PUBREC_ERROR, State)
     end;
 connected(#mqtt_pubrel{message_id = MessageId}, State) ->
     #state{waiting_acks = WAcks} = State,
@@ -406,7 +406,7 @@ connected(#mqtt_pubcomp{message_id = MessageId}, State) ->
         not_found ->
             lager:debug("stopped connected session, due to qos2 pubrel missing ~p", [MessageId]),
             _ = vmq_metrics:incr_mqtt_error_invalid_pubcomp(),
-            terminate(normal, State)
+            terminate(?INVALID_PUBCOMP_ERROR, State)
     end;
 connected(
     #mqtt_subscribe{message_id = MessageId, topics = Topics},
@@ -515,7 +515,7 @@ connected(
                 SubscriberId, UserName
             ]),
             _ = vmq_metrics:incr(?MQTT4_CLIENT_KEEPALIVE_EXPIRED),
-            terminate(normal, State);
+            terminate(?DISCONNECT_KEEP_ALIVE, State);
         false ->
             set_keepalive_check_timer(KeepAlive),
             {State, []}
@@ -562,10 +562,16 @@ terminate(Reason, #state{clean_session = CleanSession, queue_pid = QueuePid} = S
             true -> ok;
             false -> handle_waiting_acks_and_msgs(State)
         end,
+
+    NewReason =
+        case Reason of
+            {error, unexpected_message, _} -> unexpected_frame_type;
+            _ -> Reason
+        end,
     %% TODO: the counter update is missing the last will message
     maybe_publish_last_will(State, Reason),
     vmq_queue:set_last_disconnect_reason(
-        QueuePid, vmq_mqtt_fsm_util:terminate_proto_reason(Reason)
+        QueuePid, vmq_mqtt_fsm_util:terminate_proto_reason(NewReason)
     ),
     {stop, terminate_reason(Reason), []}.
 
