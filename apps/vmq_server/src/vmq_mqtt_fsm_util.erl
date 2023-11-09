@@ -146,6 +146,8 @@ terminate_reason(?SESSION_TAKEN_OVER) -> normal;
 terminate_reason(?REMOTE_SESSION_TAKEN_OVER) -> normal;
 terminate_reason(?INVALID_PUBREC_ERROR) -> normal;
 terminate_reason(?INVALID_PUBCOMP_ERROR) -> normal;
+terminate_reason(?TCP_CLOSED) -> normal;
+terminate_reason(?EXIT_SIGNAL_RECEIVED) -> normal;
 terminate_reason(Reason) -> Reason.
 
 -spec terminate_proto_reason(any()) -> any().
@@ -166,7 +168,7 @@ terminate_proto_reason(Reason) ->
         invalid_pubrec_error -> 'REASON_INVALID_PUBREC_ERROR';
         invalid_pubcomp_error -> 'REASON_INVALID_PUBCOMP_ERROR';
         unexpected_frame_type -> 'REASON_UNEXPECTED_FRAME_TYPE';
-        exit_signal_recived -> 'REASON_EXIT_SIGNAL_RECIVED';
+        exit_signal_received -> 'REASON_EXIT_SIGNAL_RECEIVED';
         tcp_closed -> 'REASON_TCP_CLOSED';
         normal -> 'REASON_NORMAL_DISCONNECT';
         _ -> 'REASON_UNSPECIFIED'

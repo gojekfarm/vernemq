@@ -71,7 +71,7 @@
     | 'REASON_INVALID_PUBREC_ERROR'
     | 'REASON_INVALID_PUBCOMP_ERROR'
     | 'REASON_UNEXPECTED_FRAME_TYPE'
-    | 'REASON_EXIT_SIGNAL_RECIVED'
+    | 'REASON_EXIT_SIGNAL_RECEIVED'
     | 'REASON_TCP_CLOSED'.
 -export_type(['eventssidecar.v1.Reason'/0]).
 
@@ -240,7 +240,7 @@ encode_msg(Msg, MsgName, Opts) ->
     <<Bin/binary, 14>>;
 'e_enum_eventssidecar.v1.Reason'('REASON_UNEXPECTED_FRAME_TYPE', Bin, _TrUserData) ->
     <<Bin/binary, 15>>;
-'e_enum_eventssidecar.v1.Reason'('REASON_EXIT_SIGNAL_RECIVED', Bin, _TrUserData) ->
+'e_enum_eventssidecar.v1.Reason'('REASON_EXIT_SIGNAL_RECEIVED', Bin, _TrUserData) ->
     <<Bin/binary, 16>>;
 'e_enum_eventssidecar.v1.Reason'('REASON_TCP_CLOSED', Bin, _TrUserData) ->
     <<Bin/binary, 17>>;
@@ -785,7 +785,7 @@ decode_msg_2_doit('google.protobuf.Timestamp', Bin, TrUserData) ->
 'd_enum_eventssidecar.v1.Reason'(13) -> 'REASON_INVALID_PUBREC_ERROR';
 'd_enum_eventssidecar.v1.Reason'(14) -> 'REASON_INVALID_PUBCOMP_ERROR';
 'd_enum_eventssidecar.v1.Reason'(15) -> 'REASON_UNEXPECTED_FRAME_TYPE';
-'d_enum_eventssidecar.v1.Reason'(16) -> 'REASON_EXIT_SIGNAL_RECIVED';
+'d_enum_eventssidecar.v1.Reason'(16) -> 'REASON_EXIT_SIGNAL_RECEIVED';
 'd_enum_eventssidecar.v1.Reason'(17) -> 'REASON_TCP_CLOSED';
 'd_enum_eventssidecar.v1.Reason'(V) -> V.
 
@@ -1042,7 +1042,7 @@ verify_msg(Msg, MsgName, Opts) ->
     ok;
 'v_enum_eventssidecar.v1.Reason'('REASON_UNEXPECTED_FRAME_TYPE', _Path, _TrUserData) ->
     ok;
-'v_enum_eventssidecar.v1.Reason'('REASON_EXIT_SIGNAL_RECIVED', _Path, _TrUserData) ->
+'v_enum_eventssidecar.v1.Reason'('REASON_EXIT_SIGNAL_RECEIVED', _Path, _TrUserData) ->
     ok;
 'v_enum_eventssidecar.v1.Reason'('REASON_TCP_CLOSED', _Path, _TrUserData) ->
     ok;
@@ -1139,7 +1139,7 @@ get_msg_defs() ->
             {'REASON_INVALID_PUBREC_ERROR', 13},
             {'REASON_INVALID_PUBCOMP_ERROR', 14},
             {'REASON_UNEXPECTED_FRAME_TYPE', 15},
-            {'REASON_EXIT_SIGNAL_RECIVED', 16},
+            {'REASON_EXIT_SIGNAL_RECEIVED', 16},
             {'REASON_TCP_CLOSED', 17}
         ]},
         {{msg, 'eventssidecar.v1.OnClientGone'}, [
@@ -1255,7 +1255,7 @@ find_enum_def('eventssidecar.v1.Reason') ->
         {'REASON_INVALID_PUBREC_ERROR', 13},
         {'REASON_INVALID_PUBCOMP_ERROR', 14},
         {'REASON_UNEXPECTED_FRAME_TYPE', 15},
-        {'REASON_EXIT_SIGNAL_RECIVED', 16},
+        {'REASON_EXIT_SIGNAL_RECEIVED', 16},
         {'REASON_TCP_CLOSED', 17}
     ];
 find_enum_def(_) ->
@@ -1283,7 +1283,7 @@ enum_value_by_symbol('eventssidecar.v1.Reason', Sym) ->
 'enum_symbol_by_value_eventssidecar.v1.Reason'(13) -> 'REASON_INVALID_PUBREC_ERROR';
 'enum_symbol_by_value_eventssidecar.v1.Reason'(14) -> 'REASON_INVALID_PUBCOMP_ERROR';
 'enum_symbol_by_value_eventssidecar.v1.Reason'(15) -> 'REASON_UNEXPECTED_FRAME_TYPE';
-'enum_symbol_by_value_eventssidecar.v1.Reason'(16) -> 'REASON_EXIT_SIGNAL_RECIVED';
+'enum_symbol_by_value_eventssidecar.v1.Reason'(16) -> 'REASON_EXIT_SIGNAL_RECEIVED';
 'enum_symbol_by_value_eventssidecar.v1.Reason'(17) -> 'REASON_TCP_CLOSED'.
 
 'enum_value_by_symbol_eventssidecar.v1.Reason'('REASON_UNSPECIFIED') -> 0;
@@ -1302,7 +1302,7 @@ enum_value_by_symbol('eventssidecar.v1.Reason', Sym) ->
 'enum_value_by_symbol_eventssidecar.v1.Reason'('REASON_INVALID_PUBREC_ERROR') -> 13;
 'enum_value_by_symbol_eventssidecar.v1.Reason'('REASON_INVALID_PUBCOMP_ERROR') -> 14;
 'enum_value_by_symbol_eventssidecar.v1.Reason'('REASON_UNEXPECTED_FRAME_TYPE') -> 15;
-'enum_value_by_symbol_eventssidecar.v1.Reason'('REASON_EXIT_SIGNAL_RECIVED') -> 16;
+'enum_value_by_symbol_eventssidecar.v1.Reason'('REASON_EXIT_SIGNAL_RECEIVED') -> 16;
 'enum_value_by_symbol_eventssidecar.v1.Reason'('REASON_TCP_CLOSED') -> 17.
 
 get_service_names() -> [].

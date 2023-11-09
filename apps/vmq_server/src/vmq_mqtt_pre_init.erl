@@ -166,7 +166,7 @@ get_protocol_info(<<0:8, 6:8, "MQIsdp", _:8, _/binary>>) ->
 get_protocol_info(_) ->
     more.
 
--spec msg_in('close_timeout' | 'disconnect' | {'disconnect', 'normal_disconnect'}, _) ->
+-spec msg_in('close_timeout' | 'disconnect' | {'disconnect', _}, _) ->
     'ignore' | {'stop', 'normal', []}.
 msg_in({disconnect, _}, _FsmState0) ->
     {stop, normal, []};

@@ -265,7 +265,7 @@ connected(
         end,
     case Ret of
         {error, not_allowed} ->
-            terminate(publish_not_authorized_3_1_1, State);
+            terminate(?PUBLISH_AUTH_ERROR, State);
         Out when is_list(Out) ->
             case do_throttle(#{}, State) of
                 false ->
@@ -485,7 +485,7 @@ connected(#mqtt_pingreq{}, State) ->
     {State, [Frame]};
 connected(#mqtt_disconnect{}, State) ->
     _ = vmq_metrics:incr_mqtt_disconnect_received(),
-    terminate(mqtt_client_disconnect, State);
+    terminate(?CLIENT_DISCONNECT, State);
 connected(
     retry,
     #state{
@@ -575,7 +575,7 @@ terminate(Reason, #state{clean_session = CleanSession, queue_pid = QueuePid} = S
     ),
     {stop, terminate_reason(Reason), []}.
 
-terminate_reason(publish_not_authorized_3_1_1) -> normal;
+terminate_reason(?PUBLISH_AUTH_ERROR) -> normal;
 terminate_reason(Reason) -> vmq_mqtt_fsm_util:terminate_reason(Reason).
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%

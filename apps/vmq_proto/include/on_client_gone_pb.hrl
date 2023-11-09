@@ -35,7 +35,7 @@
             | 'REASON_INVALID_PUBREC_ERROR'
             | 'REASON_INVALID_PUBCOMP_ERROR'
             | 'REASON_UNEXPECTED_FRAME_TYPE'
-            | 'REASON_EXIT_SIGNAL_RECIVED'
+            | 'REASON_EXIT_SIGNAL_RECEIVED'
             | 'REASON_TCP_CLOSED'
             | integer()
             | undefined

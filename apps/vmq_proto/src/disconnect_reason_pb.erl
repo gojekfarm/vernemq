@@ -71,7 +71,7 @@
     | 'REASON_INVALID_PUBREC_ERROR'
     | 'REASON_INVALID_PUBCOMP_ERROR'
     | 'REASON_UNEXPECTED_FRAME_TYPE'
-    | 'REASON_EXIT_SIGNAL_RECIVED'
+    | 'REASON_EXIT_SIGNAL_RECEIVED'
     | 'REASON_TCP_CLOSED'.
 -export_type(['eventssidecar.v1.Reason'/0]).
 
@@ -262,7 +262,7 @@ get_msg_defs() ->
             {'REASON_INVALID_PUBREC_ERROR', 13},
             {'REASON_INVALID_PUBCOMP_ERROR', 14},
             {'REASON_UNEXPECTED_FRAME_TYPE', 15},
-            {'REASON_EXIT_SIGNAL_RECIVED', 16},
+            {'REASON_EXIT_SIGNAL_RECEIVED', 16},
             {'REASON_TCP_CLOSED', 17}
         ]}
     ].
@@ -304,7 +304,7 @@ find_enum_def('eventssidecar.v1.Reason') ->
         {'REASON_INVALID_PUBREC_ERROR', 13},
         {'REASON_INVALID_PUBCOMP_ERROR', 14},
         {'REASON_UNEXPECTED_FRAME_TYPE', 15},
-        {'REASON_EXIT_SIGNAL_RECIVED', 16},
+        {'REASON_EXIT_SIGNAL_RECEIVED', 16},
         {'REASON_TCP_CLOSED', 17}
     ];
 find_enum_def(_) ->
@@ -332,7 +332,7 @@ enum_value_by_symbol('eventssidecar.v1.Reason', Sym) ->
 'enum_symbol_by_value_eventssidecar.v1.Reason'(13) -> 'REASON_INVALID_PUBREC_ERROR';
 'enum_symbol_by_value_eventssidecar.v1.Reason'(14) -> 'REASON_INVALID_PUBCOMP_ERROR';
 'enum_symbol_by_value_eventssidecar.v1.Reason'(15) -> 'REASON_UNEXPECTED_FRAME_TYPE';
-'enum_symbol_by_value_eventssidecar.v1.Reason'(16) -> 'REASON_EXIT_SIGNAL_RECIVED';
+'enum_symbol_by_value_eventssidecar.v1.Reason'(16) -> 'REASON_EXIT_SIGNAL_RECEIVED';
 'enum_symbol_by_value_eventssidecar.v1.Reason'(17) -> 'REASON_TCP_CLOSED'.
 
 'enum_value_by_symbol_eventssidecar.v1.Reason'('REASON_UNSPECIFIED') -> 0;
@@ -351,7 +351,7 @@ enum_value_by_symbol('eventssidecar.v1.Reason', Sym) ->
 'enum_value_by_symbol_eventssidecar.v1.Reason'('REASON_INVALID_PUBREC_ERROR') -> 13;
 'enum_value_by_symbol_eventssidecar.v1.Reason'('REASON_INVALID_PUBCOMP_ERROR') -> 14;
 'enum_value_by_symbol_eventssidecar.v1.Reason'('REASON_UNEXPECTED_FRAME_TYPE') -> 15;
-'enum_value_by_symbol_eventssidecar.v1.Reason'('REASON_EXIT_SIGNAL_RECIVED') -> 16;
+'enum_value_by_symbol_eventssidecar.v1.Reason'('REASON_EXIT_SIGNAL_RECEIVED') -> 16;
 'enum_value_by_symbol_eventssidecar.v1.Reason'('REASON_TCP_CLOSED') -> 17.
 
 get_service_names() -> [].
