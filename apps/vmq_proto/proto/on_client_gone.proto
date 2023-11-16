@@ -3,8 +3,6 @@ syntax = "proto3";
 import "google/protobuf/timestamp.proto";
 import "disconnect_reason.proto";
 
-option go_package = "source.golabs.io/courier/apis-go/eventssidecar/v1";
-
 package eventssidecar.v1;
 
 message OnClientGone {
