@@ -575,7 +575,6 @@ terminate(Reason, #state{clean_session = CleanSession, queue_pid = QueuePid} = S
     ),
     {stop, terminate_reason(Reason), []}.
 
-terminate_reason(?PUBLISH_AUTH_ERROR) -> normal;
 terminate_reason(Reason) -> vmq_mqtt_fsm_util:terminate_reason(Reason).
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%

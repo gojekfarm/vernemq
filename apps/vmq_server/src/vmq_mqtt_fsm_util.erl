@@ -148,6 +148,7 @@ terminate_reason(?INVALID_PUBREC_ERROR) -> normal;
 terminate_reason(?INVALID_PUBCOMP_ERROR) -> normal;
 terminate_reason(?TCP_CLOSED) -> normal;
 terminate_reason(?EXIT_SIGNAL_RECEIVED) -> normal;
+terminate_reason(?PUBLISH_AUTH_ERROR) -> normal;
 terminate_reason(Reason) -> Reason.
 
 -spec terminate_proto_reason(any()) -> any().
