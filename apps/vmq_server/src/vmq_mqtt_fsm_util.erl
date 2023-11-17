@@ -14,6 +14,7 @@
 
 -module(vmq_mqtt_fsm_util).
 -include("vmq_server.hrl").
+-include("vmq_metrics.hrl").
 -include_lib("vmq_commons/include/vmq_types.hrl").
 
 -export([
@@ -154,23 +155,23 @@ terminate_reason(Reason) -> Reason.
 -spec terminate_proto_reason(any()) -> any().
 terminate_proto_reason(Reason) ->
     case Reason of
-        not_authorized -> 'REASON_NOT_AUTHORIZED';
-        normal_disconnect -> 'REASON_NORMAL_DISCONNECT';
-        session_taken_over -> 'REASON_SESSION_TAKEN_OVER';
-        administrative_action -> 'REASON_ADMINISTRATIVE_ACTION';
-        disconnect_keep_alive -> 'REASON_DISCONNECT_KEEP_ALIVE';
-        disconnect_migration -> 'REASON_DISCONNECT_MIGRATION';
-        bad_authentication_method -> 'REASON_BAD_AUTHENTICATION_METHOD';
-        remote_session_taken_over -> 'REASON_REMOTE_SESSION_TAKEN_OVER';
-        mqtt_client_disconnect -> 'REASON_MQTT_CLIENT_DISCONNECT';
-        receive_max_exceeded -> 'REASON_RECEIVE_MAX_EXCEEDED';
-        protocol_error -> 'REASON_PROTOCOL_ERROR';
-        publish_not_authorized_3_1_1 -> 'REASON_PUBLISH_AUTH_ERROR';
-        invalid_pubrec_error -> 'REASON_INVALID_PUBREC_ERROR';
-        invalid_pubcomp_error -> 'REASON_INVALID_PUBCOMP_ERROR';
-        unexpected_frame_type -> 'REASON_UNEXPECTED_FRAME_TYPE';
-        exit_signal_received -> 'REASON_EXIT_SIGNAL_RECEIVED';
-        tcp_closed -> 'REASON_TCP_CLOSED';
-        normal -> 'REASON_NORMAL_DISCONNECT';
-        _ -> 'REASON_UNSPECIFIED'
+        ?NOT_AUTHORIZED -> ?REASON_NOT_AUTHORIZED;
+        ?NORMAL_DISCONNECT -> ?REASON_NORMAL_DISCONNECT;
+        ?SESSION_TAKEN_OVER -> ?REASON_SESSION_TAKEN_OVER;
+        ?ADMINISTRATIVE_ACTION -> ?REASON_ADMINISTRATIVE_ACTION;
+        ?DISCONNECT_KEEP_ALIVE -> ?REASON_DISCONNECT_KEEP_ALIVE;
+        ?DISCONNECT_MIGRATION -> ?REASON_DISCONNECT_MIGRATION;
+        ?BAD_AUTHENTICATION_METHOD -> ?REASON_BAD_AUTHENTICATION_METHOD;
+        ?REMOTE_SESSION_TAKEN_OVER -> ?REASON_REMOTE_SESSION_TAKEN_OVER;
+        ?CLIENT_DISCONNECT -> ?REASON_MQTT_CLIENT_DISCONNECT;
+        ?RECEIVE_MAX_EXCEEDED -> ?REASON_RECEIVE_MAX_EXCEEDED;
+        ?PROTOCOL_ERROR -> ?REASON_PROTOCOL_ERROR;
+        ?PUBLISH_AUTH_ERROR -> ?REASON_PUBLISH_AUTH_ERROR;
+        ?INVALID_PUBREC_ERROR -> ?REASON_INVALID_PUBREC_ERROR;
+        ?INVALID_PUBCOMP_ERROR -> ?REASON_INVALID_PUBCOMP_ERROR;
+        ?UNEXPECTED_FRAME_TYPE -> ?REASON_UNEXPECTED_FRAME_TYPE;
+        ?EXIT_SIGNAL_RECEIVED -> ?REASON_EXIT_SIGNAL_RECEIVED;
+        ?TCP_CLOSED -> ?REASON_TCP_CLOSED;
+        ?NORMAL -> ?REASON_NORMAL_DISCONNECT;
+        _ -> ?REASON_UNSPECIFIED
     end.

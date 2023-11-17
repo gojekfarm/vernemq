@@ -91,4 +91,6 @@
 -define(PUBLISH_AUTH_ERROR, publish_not_authorized_3_1_1).
 -define(TCP_CLOSED, tcp_closed).
 -define(EXIT_SIGNAL_RECEIVED, exit_signal_received).
+-define(UNEXPECTED_FRAME_TYPE, unexpected_frame_type).
+-define(NORMAL, normal).
 -endif.

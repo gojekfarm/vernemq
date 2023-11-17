@@ -565,7 +565,7 @@ terminate(Reason, #state{clean_session = CleanSession, queue_pid = QueuePid} = S
 
     NewReason =
         case Reason of
-            {error, unexpected_message, _} -> unexpected_frame_type;
+            {error, unexpected_message, _} -> ?UNEXPECTED_FRAME_TYPE;
             _ -> Reason
         end,
     %% TODO: the counter update is missing the last will message
