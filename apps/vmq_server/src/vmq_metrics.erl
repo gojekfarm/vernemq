@@ -1848,7 +1848,7 @@ mqtt_disconnect_def() ->
             [{mqtt_version, "4"}, {reason_code, rcn_to_str(RCN)}],
             RCN,
             mqtt_disconnect,
-            <<"The number of DISCONNECT packets received.">>
+            <<"The number of client disconnects seperated by reason codes.">>
         )
      || RCN <- RCNs
     ].
