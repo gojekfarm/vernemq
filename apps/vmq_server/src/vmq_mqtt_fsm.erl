@@ -570,10 +570,9 @@ terminate(Reason, #state{clean_session = CleanSession, queue_pid = QueuePid} = S
         end,
     %% TODO: the counter update is missing the last will message
     maybe_publish_last_will(State, Reason),
-    _ = vmq_metrics:incr(vmq_mqtt_fsm_util:mqtt_terminate_reason(NewReason)),
-    vmq_queue:set_last_disconnect_reason(
-        QueuePid, vmq_mqtt_fsm_util:terminate_proto_reason(NewReason)
-    ),
+    ProtoReason = vmq_mqtt_fsm_util:terminate_proto_reason(NewReason),
+    _ = vmq_metrics:incr({?MQTT_DISONNECT, ProtoReason}),
+    vmq_queue:set_last_disconnect_reason(QueuePid, ProtoReason),
     {stop, terminate_reason(Reason), []}.
 
 terminate_reason(Reason) -> vmq_mqtt_fsm_util:terminate_reason(Reason).
