@@ -890,7 +890,8 @@ internal_defs() ->
             mqtt5_auth_received_def(),
             sidecar_events_def(),
             redis_def(),
-            msg_store_ops_def()
+            msg_store_ops_def(),
+            mqtt_disconnect_def()
         ],
         []
     ).
@@ -1817,6 +1818,40 @@ flatten([H | T], Acc) ->
 rcn_to_str(RNC) ->
     %% TODO: replace this with a real textual representation
     atom_to_list(RNC).
+
+mqtt_disconnect_def() ->
+    RCNs =
+        [
+            ?REASON_NOT_AUTHORIZED,
+            ?REASON_NORMAL_DISCONNECT,
+            ?REASON_SESSION_TAKEN_OVER,
+            ?REASON_ADMINISTRATIVE_ACTION,
+            ?REASON_DISCONNECT_KEEP_ALIVE,
+            ?REASON_DISCONNECT_MIGRATION,
+            ?REASON_BAD_AUTHENTICATION_METHOD,
+            ?REASON_REMOTE_SESSION_TAKEN_OVER,
+            ?REASON_MQTT_CLIENT_DISCONNECT,
+            ?REASON_RECEIVE_MAX_EXCEEDED,
+            ?REASON_PROTOCOL_ERROR,
+            ?REASON_PUBLISH_AUTH_ERROR,
+            ?REASON_INVALID_PUBREC_ERROR,
+            ?REASON_INVALID_PUBCOMP_ERROR,
+            ?REASON_UNEXPECTED_FRAME_TYPE,
+            ?REASON_EXIT_SIGNAL_RECEIVED,
+            ?REASON_TCP_CLOSED,
+            ?REASON_NORMAL,
+            ?REASON_UNSPECIFIED
+        ],
+    [
+        m(
+            counter,
+            [{mqtt_version, "4"}, {reason_code, rcn_to_str(RCN)}],
+            RCN,
+            mqtt_disconnect,
+            <<"The number of DISCONNECT packets received.">>
+        )
+     || RCN <- RCNs
+    ].
 
 mqtt5_disconnect_recv_def() ->
     RCNs =
@@ -2809,7 +2844,26 @@ met2idx({?REDIS_CMD_ERROR, ?FUNCTION_LOAD, ?REAP_SUBSCRIBERS}) -> 338;
 met2idx({?REDIS_CMD, ?SCARD, ?ENSURE_NO_LOCAL_CLIENT}) -> 339;
 met2idx({?REDIS_CMD_ERROR, ?SCARD, ?ENSURE_NO_LOCAL_CLIENT}) -> 340;
 met2idx({?REDIS_CMD_MISS, ?SCARD, ?ENSURE_NO_LOCAL_CLIENT}) -> 341;
-met2idx(msg_enqueue_subscriber_not_found) -> 342.
+met2idx(msg_enqueue_subscriber_not_found) -> 342;
+met2idx(?REASON_NOT_AUTHORIZED) -> 343;
+met2idx(?REASON_NORMAL_DISCONNECT) -> 344;
+met2idx(?REASON_SESSION_TAKEN_OVER) -> 345;
+met2idx(?REASON_ADMINISTRATIVE_ACTION) -> 346;
+met2idx(?REASON_DISCONNECT_KEEP_ALIVE) -> 347;
+met2idx(?REASON_DISCONNECT_MIGRATION) -> 348;
+met2idx(?REASON_BAD_AUTHENTICATION_METHOD) -> 349;
+met2idx(?REASON_REMOTE_SESSION_TAKEN_OVER) -> 350;
+met2idx(?REASON_MQTT_CLIENT_DISCONNECT) -> 351;
+met2idx(?REASON_RECEIVE_MAX_EXCEEDED) -> 352;
+met2idx(?REASON_PROTOCOL_ERROR) -> 353;
+met2idx(?REASON_PUBLISH_AUTH_ERROR) -> 354;
+met2idx(?REASON_INVALID_PUBREC_ERROR) -> 355;
+met2idx(?REASON_INVALID_PUBCOMP_ERROR) -> 356;
+met2idx(?REASON_UNEXPECTED_FRAME_TYPE) -> 357;
+met2idx(?REASON_EXIT_SIGNAL_RECEIVED) -> 358;
+met2idx(?REASON_TCP_CLOSED) -> 359;
+met2idx(?REASON_NORMAL) -> 360;
+met2idx(?REASON_UNSPECIFIED) -> 361.
 
 -ifdef(TEST).
 clear_stored_rates() ->

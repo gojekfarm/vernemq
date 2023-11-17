@@ -24,7 +24,8 @@
     to_vmq_subtopics/2,
     peertoa/1,
     terminate_reason/1,
-    terminate_proto_reason/1
+    terminate_proto_reason/1,
+    mqtt_terminate_reason/1
 ]).
 
 -define(TO_SESSION, to_session_fsm).
@@ -173,4 +174,32 @@ terminate_proto_reason(Reason) ->
         tcp_closed -> 'REASON_TCP_CLOSED';
         normal -> 'REASON_NORMAL_DISCONNECT';
         _ -> 'REASON_UNSPECIFIED'
+    end.
+
+allowed_reasons() ->
+    [
+        not_authorized,
+        normal_disconnect,
+        session_taken_over,
+        administrative_action,
+        disconnect_keep_alive,
+        disconnect_migration,
+        bad_authentication_method,
+        remote_session_taken_over,
+        mqtt_client_disconnect,
+        receive_max_exceeded,
+        protocol_error,
+        publish_not_authorized_3_1_1,
+        invalid_pubrec_error,
+        invalid_pubcomp_error,
+        unexpected_frame_type,
+        exit_signal_received,
+        tcp_closed,
+        normal
+    ].
+
+mqtt_terminate_reason(Reason) ->
+    case lists:member(Reason, allowed_reasons()) of
+        true -> Reason;
+        false -> unspecified
     end.
