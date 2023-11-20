@@ -48,7 +48,6 @@
 -define(M5_MAX_CONNECT_TIME, 16#A0).
 -define(M5_SUBSCRIPTION_IDS_NOT_SUPPORTED, 16#A1).
 -define(M5_WILDCARD_SUBS_NOT_SUPPORTED, 16#A2).
--define(M5_TCP_CLOSED, 16#A3).
 
 -type mqtt5_properties() :: map().
 

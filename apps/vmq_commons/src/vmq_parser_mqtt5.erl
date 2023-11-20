@@ -1171,8 +1171,7 @@ rcn2rc(shared_subs_not_supported) -> ?M5_SHARED_SUBS_NOT_SUPPORTED;
 rcn2rc(connection_rate_exceeded) -> ?M5_CONNECTION_RATE_EXCEEDED;
 rcn2rc(max_connect_time) -> ?M5_MAX_CONNECT_TIME;
 rcn2rc(subscription_ids_not_supported) -> ?M5_SUBSCRIPTION_IDS_NOT_SUPPORTED;
-rcn2rc(wildcard_subs_not_supported) -> ?M5_WILDCARD_SUBS_NOT_SUPPORTED;
-rcn2rc(tcp_closed) -> ?M5_TCP_CLOSED.
+rcn2rc(wildcard_subs_not_supported) -> ?M5_WILDCARD_SUBS_NOT_SUPPORTED.
 
 -spec rc2rcn(reason_code()) -> reason_code_name().
 rc2rcn(?M5_SUCCESS) -> success;
