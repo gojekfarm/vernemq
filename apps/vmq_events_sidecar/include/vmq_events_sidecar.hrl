@@ -7,4 +7,5 @@
 -type event() :: {atom(), integer(), tuple()}.
 -type pool_size() :: pos_integer().
 -type reason() :: atom().
+-type label() :: binary().
 -endif.

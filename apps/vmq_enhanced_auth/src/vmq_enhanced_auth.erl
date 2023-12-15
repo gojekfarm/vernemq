@@ -105,8 +105,9 @@ auth_on_subscribe(RegView, User, SubscriberId, [{Topic, Qos} | Rest], Modifiers)
             next;
         true ->
             case check(read, Topic, User, SubscriberId) of
-                true ->
-                    auth_on_subscribe(User, SubscriberId, Rest, [{Topic, Qos} | Modifiers]);
+                {true, Label} ->
+                    NewModifiers = [{label, Label}] ++ Modifiers,
+                    auth_on_subscribe(User, SubscriberId, Rest, [{Topic, Qos} | NewModifiers]);
                 false ->
                     ModTopic = {Topic, not_allowed},
                     auth_on_subscribe(User, SubscriberId, Rest, [ModTopic | Modifiers])
@@ -120,8 +121,8 @@ auth_on_publish(User, SubscriberId, _, Topic, _, _) ->
             next;
         true ->
             case check(write, Topic, User, SubscriberId) of
-                true ->
-                    ok;
+                {true, Label} ->
+                    {ok, [{label, Label}]};
                 false ->
                     next
             end
@@ -131,7 +132,7 @@ auth_on_subscribe_m5(_, _, []) ->
     ok;
 auth_on_subscribe_m5(User, SubscriberId, [{Topic, _Qos} | Rest]) ->
     case check(read, Topic, User, SubscriberId) of
-        true ->
+        {true, _} ->
             auth_on_subscribe(User, SubscriberId, Rest);
         false ->
             next
@@ -291,16 +292,20 @@ parse_acl_line({F, eof}, _User) ->
 
 check(Type, [Word | _] = Topic, User, SubscriberId) when is_binary(Word) ->
     case check_all_acl(Type, Topic) of
-        true ->
-            true;
+        {true, Label} ->
+            {true, Label};
         false when User == all -> false;
         false ->
             case check_user_acl(Type, User, Topic) of
-                true ->
-                    true;
+                {true, Label} ->
+                    {true, Label};
                 false ->
-                    check_pattern_acl(Type, Topic, User, SubscriberId) or
-                        check_token_acl(Type, Topic, User, SubscriberId)
+                    case check_pattern_acl(Type, Topic, User, SubscriberId) of
+                        {true, Label} ->
+                            {true, Label};
+                        false ->
+                            check_token_acl(Type, Topic, User, SubscriberId)
+                    end
             end
     end.
 
@@ -340,7 +345,7 @@ match_and_process_topic_metrics(TIn, T, Tbl, Type, Key) ->
             case ets:lookup(Tbl, Key) of
                 [{_, _, Label}] ->
                     check_label_and_incr_metrics(Label, Type),
-                    true;
+                    {true, Label};
                 _ ->
                     false
             end;
@@ -459,7 +464,7 @@ iterate_ets_until_true(_, '$end_of_table', _) ->
     false;
 iterate_ets_until_true(Table, K, Fun) ->
     case Fun(K) of
-        true -> true;
+        {true, Label} -> {true, Label};
         false -> iterate_ets_until_true(Table, ets:next(Table, K), Fun)
     end.
 
@@ -467,7 +472,7 @@ iterate_list_until_true([], _) ->
     false;
 iterate_list_until_true([T | Rest], Fun) ->
     case Fun(T) of
-        true -> true;
+        {true, Label} -> {true, Label};
         false -> iterate_list_until_true(Rest, Fun)
     end.
 
@@ -681,7 +686,9 @@ simple_acl(_) ->
         %% positive auth_on_subscribe
         ?_assertEqual(
             {ok, [
+                {label, <<"token_write">>},
                 {[<<"a">>, <<"b">>, <<"id">>, <<"c">>], 0},
+                {label, <<"token_read_u2">>},
                 {[<<"a">>, <<"b">>, <<"1">>, <<"c">>], 0}
             ]},
             auth_on_subscribe(
@@ -695,8 +702,11 @@ simple_acl(_) ->
         ),
         ?_assertEqual(
             {ok, [
+                {label, <<>>},
                 {[<<"a">>, <<"b">>, <<"c">>], 0},
+                {label, <<>>},
                 {[<<"x">>, <<"y">>, <<"z">>, <<"#">>], 0},
+                {label, <<"pattern_read">>},
                 {[<<>>, <<"test">>, <<"my-client-id">>], 0}
             ]},
             auth_on_subscribe(
@@ -711,8 +721,11 @@ simple_acl(_) ->
         ),
         ?_assertEqual(
             {ok, [
+                {label, <<>>},
                 {[<<"a">>, <<"b">>, <<"c">>], 0},
+                {label, <<>>},
                 {[<<"x">>, <<"y">>, <<"z">>, <<"#">>], 0},
+                {label, <<"token_read">>},
                 {[<<"example">>, <<"profile-id">>], 0}
             ]},
             auth_on_subscribe(
@@ -729,8 +742,11 @@ simple_acl(_) ->
         %% colon separated username
         ?_assertEqual(
             {ok, [
+                {label, <<>>},
                 {[<<"a">>, <<"b">>, <<"c">>], 0},
+                {label, <<>>},
                 {[<<"x">>, <<"y">>, <<"z">>, <<"#">>], 0},
+                {label, <<"pattern_read">>},
                 {[<<>>, <<"test">>, <<"my-client-id">>], 0}
             ]},
             auth_on_subscribe(
@@ -745,6 +761,7 @@ simple_acl(_) ->
         ),
         ?_assertEqual(
             {ok, [
+                {label, <<>>},
                 {[<<"a">>, <<"b">>, <<"c">>], 0},
                 {[<<"x">>, <<"y">>, <<"z">>, <<"#">>], not_allowed},
                 {[<<>>, <<"test">>, <<"my-client-id">>], not_allowed}
@@ -760,7 +777,7 @@ simple_acl(_) ->
             )
         ),
         ?_assertEqual(
-            ok,
+            {ok, [{label, <<>>}]},
             auth_on_publish(
                 <<"test">>,
                 {"", <<"my-client-id">>},
@@ -771,7 +788,7 @@ simple_acl(_) ->
             )
         ),
         ?_assertEqual(
-            ok,
+            {ok, [{label, <<"token_write_c3">>}]},
             auth_on_publish(
                 <<"test">>,
                 {"", <<"my:client:id">>},
@@ -782,7 +799,7 @@ simple_acl(_) ->
             )
         ),
         ?_assertEqual(
-            ok,
+            {ok, [{label, <<>>}]},
             auth_on_publish(
                 <<"test">>,
                 {"", <<"my-client-id">>},
@@ -793,7 +810,7 @@ simple_acl(_) ->
             )
         ),
         ?_assertEqual(
-            ok,
+            {ok, [{label, <<"pattern_write">>}]},
             auth_on_publish(
                 <<"test">>,
                 {"", <<"my-client-id">>},

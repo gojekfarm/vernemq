@@ -46,7 +46,7 @@ encode({on_register, Timestamp, {MP, ClientId, PPeer, Port, UserName, #{}}}) ->
             timestamp = convert_timestamp(Timestamp)
         })
     );
-encode({on_publish, Timestamp, {MP, ClientId, UserName, QoS, Topic, Payload, IsRetain}}) ->
+encode({on_publish, Timestamp, {MP, ClientId, UserName, QoS, Topic, Payload, IsRetain, Label}}) ->
     encode_envelope(
         "OnPublish",
         on_publish_pb:encode_msg(#'eventssidecar.v1.OnPublish'{
@@ -57,10 +57,11 @@ encode({on_publish, Timestamp, {MP, ClientId, UserName, QoS, Topic, Payload, IsR
             topic = Topic,
             payload = Payload,
             retain = IsRetain,
-            timestamp = convert_timestamp(Timestamp)
+            timestamp = convert_timestamp(Timestamp),
+            label = binary_to_list(Label)
         })
     );
-encode({on_subscribe, Timestamp, {MP, ClientId, UserName, Topics}}) ->
+encode({on_subscribe, Timestamp, {MP, ClientId, UserName, Topics, Label}}) ->
     encode_envelope(
         "OnSubscribe",
         on_subscribe_pb:encode_msg(#'eventssidecar.v1.OnSubscribe'{
@@ -68,7 +69,8 @@ encode({on_subscribe, Timestamp, {MP, ClientId, UserName, Topics}}) ->
             mountpoint = MP,
             username = UserName,
             topics = [#'eventssidecar.v1.TopicInfo'{topic = T, qos = QoS} || [T, QoS] <- Topics],
-            timestamp = convert_timestamp(Timestamp)
+            timestamp = convert_timestamp(Timestamp),
+            label = binary_to_list(Label)
         })
     );
 encode({on_unsubscribe, Timestamp, {MP, ClientId, UserName, Topics}}) ->
