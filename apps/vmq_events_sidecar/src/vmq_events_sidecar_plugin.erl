@@ -20,8 +20,8 @@
 
 -export([
     on_register/4,
-    on_publish/6,
-    on_subscribe/3,
+    on_publish/7,
+    on_subscribe/4,
     on_unsubscribe/3,
     on_deliver/6,
     on_offline_message/5,
@@ -206,22 +206,25 @@ on_register(Peer, SubscriberId, UserName, Props) ->
     {MP, ClientId} = subscriber_id(SubscriberId),
     send_event({on_register, {MP, ClientId, PPeer, Port, normalise(UserName), Props}}).
 
--spec on_publish(username(), subscriber_id(), qos(), topic(), payload(), flag()) -> 'next'.
-on_publish(UserName, SubscriberId, QoS, Topic, Payload, IsRetain) ->
+-spec on_publish(username(), subscriber_id(), qos(), topic(), payload(), flag(), label()) -> 'next'.
+on_publish(UserName, SubscriberId, QoS, Topic, Payload, IsRetain, Label) ->
     {MP, ClientId} = subscriber_id(SubscriberId),
     send_event(
-        {on_publish, {MP, ClientId, normalise(UserName), QoS, unword(Topic), Payload, IsRetain}}
+        {on_publish,
+            {MP, ClientId, normalise(UserName), QoS, unword(Topic), Payload, IsRetain, Label}}
     ).
 
--spec on_subscribe(username(), subscriber_id(), [topic()]) -> 'next'.
-on_subscribe(UserName, SubscriberId, Topics) ->
+-spec on_subscribe(username(), subscriber_id(), [topic()], label()) -> 'next'.
+on_subscribe(UserName, SubscriberId, Topics, Label) ->
     {MP, ClientId} = subscriber_id(SubscriberId),
     send_event(
         {on_subscribe,
-            {MP, ClientId, normalise(UserName), [
-                [unword(T), from_internal_qos(QoS)]
-             || {T, QoS} <- Topics
-            ]}}
+            {MP, ClientId, normalise(UserName),
+                [
+                    [unword(T), from_internal_qos(QoS)]
+                 || {T, QoS} <- Topics
+                ],
+                Label}}
     ).
 
 -spec on_unsubscribe(username(), subscriber_id(), [topic()]) ->

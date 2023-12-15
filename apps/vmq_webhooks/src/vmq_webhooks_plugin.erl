@@ -46,8 +46,8 @@
     auth_on_publish/6,
     auth_on_subscribe/3,
     on_register/4,
-    on_publish/6,
-    on_subscribe/3,
+    on_publish/7,
+    on_subscribe/4,
     on_unsubscribe/3,
     on_deliver/6,
     on_offline_message/5,
@@ -402,8 +402,8 @@ on_register_m5(Peer, SubscriberId, UserName, Props) ->
         {properties, Props}
     ]).
 
--spec on_publish(username(), subscriber_id(), qos(), topic(), payload(), flag()) -> 'next'.
-on_publish(UserName, SubscriberId, QoS, Topic, Payload, IsRetain) ->
+-spec on_publish(username(), subscriber_id(), qos(), topic(), payload(), flag(), _) -> 'next'.
+on_publish(UserName, SubscriberId, QoS, Topic, Payload, IsRetain, _) ->
     {MP, ClientId} = subscriber_id(SubscriberId),
     all(on_publish, [
         {username, nullify(UserName)},
@@ -430,8 +430,8 @@ on_publish_m5(UserName, SubscriberId, QoS, Topic, Payload, IsRetain, Props) ->
         {properties, Props}
     ]).
 
--spec on_subscribe(username(), subscriber_id(), [topic()]) -> 'next'.
-on_subscribe(UserName, SubscriberId, Topics) ->
+-spec on_subscribe(username(), subscriber_id(), [topic()], _) -> 'next'.
+on_subscribe(UserName, SubscriberId, Topics, _) ->
     {MP, ClientId} = subscriber_id(SubscriberId),
     all(on_subscribe, [
         {username, nullify(UserName)},

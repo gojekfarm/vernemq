@@ -420,12 +420,20 @@ connected(
     SubTopics = subtopics(Topics, ProtoVer),
     OnAuthSuccess =
         fun(_User, _SubscriberId, MaybeChangedTopics) ->
-            case vmq_reg:subscribe(SubscriberId, MaybeChangedTopics) of
+            {FilteredMaybeChangedTopics, LabelValue} =
+                case lists:keyfind(label, 1, MaybeChangedTopics) of
+                    {label, Label} ->
+                        {[Item || Item <- MaybeChangedTopics, not is_label_tuple(Item)], Label};
+                    _ ->
+                        {MaybeChangedTopics, <<>>}
+                end,
+            lager:info("lol on_subscribe LabelValue ~p", [LabelValue]),
+            case vmq_reg:subscribe(SubscriberId, FilteredMaybeChangedTopics) of
                 {ok, _} = Res ->
                     T = lists:foldr(
                         fun({Topic, Sub}, Acc) -> [{Topic, extract_qos(Sub)} | Acc] end,
                         [],
-                        MaybeChangedTopics
+                        FilteredMaybeChangedTopics
                     ),
                     vmq_plugin:all(on_subscribe, [User, SubscriberId, T]),
                     Res;
@@ -890,6 +898,11 @@ auth_on_publish(
             HookArgs1 = [User, SubscriberId, QoS, Topic, ChangedPayload, unflag(IsRetain)],
             AuthSuccess(Msg#vmq_msg{payload = ChangedPayload}, HookArgs1, #{});
         {ok, Args} when is_list(Args) ->
+            Lable =
+                case Args of
+                    [{label, L}] -> L;
+                    _ -> <<>>
+                end,
             #vmq_msg{mountpoint = MP} = Msg,
             ChangedTopic = proplists:get_value(topic, Args, Topic),
             ChangedPayload = proplists:get_value(payload, Args, Payload),
@@ -902,7 +915,8 @@ auth_on_publish(
                 ChangedQoS,
                 ChangedTopic,
                 ChangedPayload,
-                ChangedIsRetain
+                ChangedIsRetain,
+                Lable
             ],
             SessCtrl = session_ctrl(Args),
             AuthSuccess(
@@ -1682,3 +1696,6 @@ check_mqtt_auth_errors(QoSTable) ->
 extract_qos(not_allowed) -> not_allowed;
 extract_qos(QoS) when is_integer(QoS) -> QoS;
 extract_qos({QoS, _SubInfo}) -> QoS.
+
+is_label_tuple({label, _}) -> true;
+is_label_tuple(_) -> false.
