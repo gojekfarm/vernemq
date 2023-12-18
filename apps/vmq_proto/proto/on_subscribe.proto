@@ -12,10 +12,15 @@ message OnSubscribe {
     string mountpoint = 3;
     string username = 4;
     repeated TopicInfo topics = 5;
-    string label = 6;
+    repeated MatchedAcl matched_acl = 7;
 }
 
 message TopicInfo {
     string topic = 1;
     int32 qos = 2;
+}
+
+message MatchedAcl {
+    string label = 1;
+    string pattern = 2;
 }

@@ -206,16 +206,17 @@ on_register(Peer, SubscriberId, UserName, Props) ->
     {MP, ClientId} = subscriber_id(SubscriberId),
     send_event({on_register, {MP, ClientId, PPeer, Port, normalise(UserName), Props}}).
 
--spec on_publish(username(), subscriber_id(), qos(), topic(), payload(), flag(), label()) -> 'next'.
-on_publish(UserName, SubscriberId, QoS, Topic, Payload, IsRetain, Label) ->
+-spec on_publish(username(), subscriber_id(), qos(), topic(), payload(), flag(), matched_acl()) ->
+    'next'.
+on_publish(UserName, SubscriberId, QoS, Topic, Payload, IsRetain, MatchedAcl) ->
     {MP, ClientId} = subscriber_id(SubscriberId),
     send_event(
         {on_publish,
-            {MP, ClientId, normalise(UserName), QoS, unword(Topic), Payload, IsRetain, Label}}
+            {MP, ClientId, normalise(UserName), QoS, unword(Topic), Payload, IsRetain, MatchedAcl}}
     ).
 
--spec on_subscribe(username(), subscriber_id(), [topic()], label()) -> 'next'.
-on_subscribe(UserName, SubscriberId, Topics, Label) ->
+-spec on_subscribe(username(), subscriber_id(), [topic()], matched_acl()) -> 'next'.
+on_subscribe(UserName, SubscriberId, Topics, MatchedAcl) ->
     {MP, ClientId} = subscriber_id(SubscriberId),
     send_event(
         {on_subscribe,
@@ -224,7 +225,7 @@ on_subscribe(UserName, SubscriberId, Topics, Label) ->
                     [unword(T), from_internal_qos(QoS)]
                  || {T, QoS} <- Topics
                 ],
-                Label}}
+                MatchedAcl}}
     ).
 
 -spec on_unsubscribe(username(), subscriber_id(), [topic()]) ->

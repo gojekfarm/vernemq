@@ -21,8 +21,8 @@
         username = <<>> :: unicode:chardata() | undefined,
         % = 5, repeated
         topics = [] :: [on_subscribe_pb:'eventssidecar.v1.TopicInfo'()] | undefined,
-        % = 6, optional
-        label = <<>> :: unicode:chardata() | undefined
+        % = 7, repeated
+        matched_acl = [] :: [on_subscribe_pb:'eventssidecar.v1.MatchedAcl'()] | undefined
     }
 ).
 -endif.
@@ -35,6 +35,18 @@
         topic = <<>> :: unicode:chardata() | undefined,
         % = 2, optional, 32 bits
         qos = 0 :: integer() | undefined
+    }
+).
+-endif.
+
+-ifndef('EVENTSSIDECAR.V1.MATCHEDACL_PB_H').
+-define('EVENTSSIDECAR.V1.MATCHEDACL_PB_H', true).
+-record('eventssidecar.v1.MatchedAcl',
+    % = 1, optional
+    {
+        label = <<>> :: unicode:chardata() | undefined,
+        % = 2, optional
+        pattern = <<>> :: unicode:chardata() | undefined
     }
 ).
 -endif.

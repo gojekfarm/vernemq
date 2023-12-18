@@ -46,7 +46,10 @@ encode({on_register, Timestamp, {MP, ClientId, PPeer, Port, UserName, #{}}}) ->
             timestamp = convert_timestamp(Timestamp)
         })
     );
-encode({on_publish, Timestamp, {MP, ClientId, UserName, QoS, Topic, Payload, IsRetain, Label}}) ->
+encode(
+    {on_publish, Timestamp,
+        {MP, ClientId, UserName, QoS, Topic, Payload, IsRetain, {Label, Pattern}}}
+) ->
     encode_envelope(
         "OnPublish",
         on_publish_pb:encode_msg(#'eventssidecar.v1.OnPublish'{
@@ -58,10 +61,14 @@ encode({on_publish, Timestamp, {MP, ClientId, UserName, QoS, Topic, Payload, IsR
             payload = Payload,
             retain = IsRetain,
             timestamp = convert_timestamp(Timestamp),
-            label = binary_to_list(Label)
+            matched_acl = [
+                #'eventssidecar.v1.MatchedAcl'{
+                    label = Label, pattern = format_pattern(Pattern)
+                }
+            ]
         })
     );
-encode({on_subscribe, Timestamp, {MP, ClientId, UserName, Topics, Label}}) ->
+encode({on_subscribe, Timestamp, {MP, ClientId, UserName, Topics, {Label, Pattern}}}) ->
     encode_envelope(
         "OnSubscribe",
         on_subscribe_pb:encode_msg(#'eventssidecar.v1.OnSubscribe'{
@@ -69,8 +76,10 @@ encode({on_subscribe, Timestamp, {MP, ClientId, UserName, Topics, Label}}) ->
             mountpoint = MP,
             username = UserName,
             topics = [#'eventssidecar.v1.TopicInfo'{topic = T, qos = QoS} || [T, QoS] <- Topics],
-            timestamp = convert_timestamp(Timestamp),
-            label = binary_to_list(Label)
+            matched_acl = [
+                #'eventssidecar.v1.MatchedAcl'{label = Label, pattern = format_pattern(Pattern)}
+            ],
+            timestamp = convert_timestamp(Timestamp)
         })
     );
 encode({on_unsubscribe, Timestamp, {MP, ClientId, UserName, Topics}}) ->
@@ -174,3 +183,6 @@ encode_envelope(Name, Value) ->
 
 convert_timestamp(Now) ->
     #'google.protobuf.Timestamp'{seconds = Now div 1000000000, nanos = Now rem 1000000000}.
+
+format_pattern(Pattern) ->
+    iolist_to_binary([string:join([binary_to_list(B) || B <- Pattern], "/")]).

@@ -105,8 +105,8 @@ auth_on_subscribe(RegView, User, SubscriberId, [{Topic, Qos} | Rest], Modifiers)
             next;
         true ->
             case check(read, Topic, User, SubscriberId) of
-                {true, Label} ->
-                    NewModifiers = [{label, Label}] ++ Modifiers,
+                {true, {Label, Pattern}} ->
+                    NewModifiers = [{matched_acl, {Label, Pattern}}] ++ Modifiers,
                     auth_on_subscribe(User, SubscriberId, Rest, [{Topic, Qos} | NewModifiers]);
                 false ->
                     ModTopic = {Topic, not_allowed},
@@ -121,8 +121,8 @@ auth_on_publish(User, SubscriberId, _, Topic, _, _) ->
             next;
         true ->
             case check(write, Topic, User, SubscriberId) of
-                {true, Label} ->
-                    {ok, [{label, Label}]};
+                {true, {Label, Pattern}} ->
+                    {ok, [{matched_acl, {Label, Pattern}}]};
                 false ->
                     next
             end
@@ -292,17 +292,17 @@ parse_acl_line({F, eof}, _User) ->
 
 check(Type, [Word | _] = Topic, User, SubscriberId) when is_binary(Word) ->
     case check_all_acl(Type, Topic) of
-        {true, Label} ->
-            {true, Label};
+        {true, {Label, Pattern}} ->
+            {true, {Label, Pattern}};
         false when User == all -> false;
         false ->
             case check_user_acl(Type, User, Topic) of
-                {true, Label} ->
-                    {true, Label};
+                {true, {Label, Pattern}} ->
+                    {true, {Label, Pattern}};
                 false ->
                     case check_pattern_acl(Type, Topic, User, SubscriberId) of
-                        {true, Label} ->
-                            {true, Label};
+                        {true, {Label, Pattern}} ->
+                            {true, {Label, Pattern}};
                         false ->
                             check_token_acl(Type, Topic, User, SubscriberId)
                     end
@@ -345,7 +345,7 @@ match_and_process_topic_metrics(TIn, T, Tbl, Type, Key) ->
             case ets:lookup(Tbl, Key) of
                 [{_, _, Label}] ->
                     check_label_and_incr_metrics(Label, Type),
-                    {true, Label};
+                    {true, {Label, T}};
                 _ ->
                     false
             end;
@@ -686,9 +686,9 @@ simple_acl(_) ->
         %% positive auth_on_subscribe
         ?_assertEqual(
             {ok, [
-                {label, <<"token_write">>},
+                {matched_acl, {<<"token_write">>, [<<"a">>, <<"b">>, <<"id">>, <<"+">>]}},
                 {[<<"a">>, <<"b">>, <<"id">>, <<"c">>], 0},
-                {label, <<"token_read_u2">>},
+                {matched_acl, {<<"token_read_u2">>, [<<"a">>, <<"b">>, <<"1">>, <<"c">>]}},
                 {[<<"a">>, <<"b">>, <<"1">>, <<"c">>], 0}
             ]},
             auth_on_subscribe(
@@ -702,11 +702,11 @@ simple_acl(_) ->
         ),
         ?_assertEqual(
             {ok, [
-                {label, <<>>},
+                {matched_acl, {<<>>, [<<"a">>, <<"b">>, <<"c">>]}},
                 {[<<"a">>, <<"b">>, <<"c">>], 0},
-                {label, <<>>},
+                {matched_acl, {<<>>, [<<"x">>, <<"y">>, <<"z">>, <<"#">>]}},
                 {[<<"x">>, <<"y">>, <<"z">>, <<"#">>], 0},
-                {label, <<"pattern_read">>},
+                {matched_acl, {<<"pattern_read">>, [<<>>, <<"test">>, <<"my-client-id">>]}},
                 {[<<>>, <<"test">>, <<"my-client-id">>], 0}
             ]},
             auth_on_subscribe(
@@ -721,11 +721,11 @@ simple_acl(_) ->
         ),
         ?_assertEqual(
             {ok, [
-                {label, <<>>},
+                {matched_acl, {<<>>, [<<"a">>, <<"b">>, <<"c">>]}},
                 {[<<"a">>, <<"b">>, <<"c">>], 0},
-                {label, <<>>},
+                {matched_acl, {<<>>, [<<"x">>, <<"y">>, <<"z">>, <<"#">>]}},
                 {[<<"x">>, <<"y">>, <<"z">>, <<"#">>], 0},
-                {label, <<"token_read">>},
+                {matched_acl, {<<"token_read">>, [<<"example">>, <<"profile-id">>]}},
                 {[<<"example">>, <<"profile-id">>], 0}
             ]},
             auth_on_subscribe(
@@ -742,11 +742,11 @@ simple_acl(_) ->
         %% colon separated username
         ?_assertEqual(
             {ok, [
-                {label, <<>>},
+                {matched_acl, {<<>>, [<<"a">>, <<"b">>, <<"c">>]}},
                 {[<<"a">>, <<"b">>, <<"c">>], 0},
-                {label, <<>>},
+                {matched_acl, {<<>>, [<<"x">>, <<"y">>, <<"z">>, <<"#">>]}},
                 {[<<"x">>, <<"y">>, <<"z">>, <<"#">>], 0},
-                {label, <<"pattern_read">>},
+                {matched_acl, {<<"pattern_read">>, [<<>>, <<"test">>, <<"my-client-id">>]}},
                 {[<<>>, <<"test">>, <<"my-client-id">>], 0}
             ]},
             auth_on_subscribe(
@@ -761,7 +761,7 @@ simple_acl(_) ->
         ),
         ?_assertEqual(
             {ok, [
-                {label, <<>>},
+                {matched_acl, {<<>>, [<<"a">>, <<"b">>, <<"c">>]}},
                 {[<<"a">>, <<"b">>, <<"c">>], 0},
                 {[<<"x">>, <<"y">>, <<"z">>, <<"#">>], not_allowed},
                 {[<<>>, <<"test">>, <<"my-client-id">>], not_allowed}
@@ -777,7 +777,7 @@ simple_acl(_) ->
             )
         ),
         ?_assertEqual(
-            {ok, [{label, <<>>}]},
+            {ok, [{matched_acl, {<<>>, [<<"a">>, <<"b">>, <<"c">>]}}]},
             auth_on_publish(
                 <<"test">>,
                 {"", <<"my-client-id">>},
@@ -788,7 +788,10 @@ simple_acl(_) ->
             )
         ),
         ?_assertEqual(
-            {ok, [{label, <<"token_write_c3">>}]},
+            {ok, [
+                {matched_acl,
+                    {<<"token_write_c3">>, [<<"write-topic">>, <<"a">>, <<"b">>, <<"id">>, <<"+">>]}}
+            ]},
             auth_on_publish(
                 <<"test">>,
                 {"", <<"my:client:id">>},
@@ -799,7 +802,7 @@ simple_acl(_) ->
             )
         ),
         ?_assertEqual(
-            {ok, [{label, <<>>}]},
+            {ok, [{matched_acl, {<<>>, [<<"x">>, <<"y">>, <<"z">>, <<"#">>]}}]},
             auth_on_publish(
                 <<"test">>,
                 {"", <<"my-client-id">>},
@@ -810,7 +813,7 @@ simple_acl(_) ->
             )
         ),
         ?_assertEqual(
-            {ok, [{label, <<"pattern_write">>}]},
+            {ok, [{matched_acl, {<<"pattern_write">>, [<<>>, <<"test">>, <<"my-client-id">>]}}]},
             auth_on_publish(
                 <<"test">>,
                 {"", <<"my-client-id">>},
