@@ -15,5 +15,10 @@ message OnPublish {
     string topic = 6;
     bytes payload = 7;
     bool retain = 8;
-    string label = 9;
+    repeated MatchedAcl matched_acl = 9;
+}
+
+message MatchedAcl {
+    string label = 1;
+    string pattern = 2;
 }

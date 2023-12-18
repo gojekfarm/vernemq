@@ -112,7 +112,9 @@ on_publish(#'eventssidecar.v1.OnPublish'{username = BinPid,
              topic = ?TOPIC,
              qos = 1,
              payload = ?PAYLOAD,
-             retain = false}) ->
+             retain = false,
+             matched_acl = [#'eventssidecar.v1.MatchedAcl'{label = ?LABEL, pattern = ?PATTERN}]
+            }) ->
     Pid = list_to_pid(binary_to_list(BinPid)),
     Pid ! on_publish_ok.
     
@@ -121,7 +123,8 @@ on_subscribe(#'eventssidecar.v1.OnSubscribe'{username = BinPid,
                mountpoint = ?MOUNTPOINT_BIN,
                client_id = ?ALLOWED_CLIENT_ID,
                topics = [#'eventssidecar.v1.TopicInfo'{topic = ?TOPIC, qos = 1},
-                          #'eventssidecar.v1.TopicInfo'{topic = ?TOPIC, qos = 128}]
+                          #'eventssidecar.v1.TopicInfo'{topic = ?TOPIC, qos = 128}],
+               matched_acl = [#'eventssidecar.v1.MatchedAcl'{label = ?LABEL, pattern = ?PATTERN}]
               }) ->
     Pid = list_to_pid(binary_to_list(BinPid)),
     Pid ! on_subscribe_ok.

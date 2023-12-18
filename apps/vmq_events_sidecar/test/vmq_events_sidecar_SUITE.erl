@@ -83,7 +83,7 @@ on_publish_test(_) ->
     enable_hook(on_publish),
     Self = pid_to_bin(self()),
     [ok] = vmq_plugin:all(on_publish,
-                           [Self, {?MOUNTPOINT, ?ALLOWED_CLIENT_ID}, 1, ?TOPIC, ?PAYLOAD, false]),
+                           [Self, {?MOUNTPOINT, ?ALLOWED_CLIENT_ID}, 1, ?TOPIC, ?PAYLOAD, false, {?LABEL, [?PATTERN]}]),
     ok = exp_response(on_publish_ok),
     disable_hook(on_publish).
 
@@ -92,7 +92,7 @@ on_subscribe_test(_) ->
     Self = pid_to_bin(self()),
     [ok] = vmq_plugin:all(on_subscribe,
                             [Self, {?MOUNTPOINT, ?ALLOWED_CLIENT_ID}, [{?TOPIC, 1},
-                                                                       {?TOPIC, not_allowed}]]),
+                                                                       {?TOPIC, not_allowed}], {?LABEL, [?PATTERN]}]),
     ok = exp_response(on_subscribe_ok),
     disable_hook(on_subscribe).
 

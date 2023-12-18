@@ -217,7 +217,7 @@ on_publish_test(_) ->
     register_hook(on_publish, ?ENDPOINT),
     Self = pid_to_bin(self()),
     [next] = vmq_plugin:all(on_publish,
-                           [Self, {?MOUNTPOINT, ?ALLOWED_CLIENT_ID}, 1, ?TOPIC, ?PAYLOAD, false]),
+                           [Self, {?MOUNTPOINT, ?ALLOWED_CLIENT_ID}, 1, ?TOPIC, ?PAYLOAD, false, {?LABEL, [?PATTERN]}]),
     ok = exp_response(on_publish_ok),
     deregister_hook(on_publish, ?ENDPOINT).
 
@@ -226,7 +226,7 @@ on_subscribe_test(_) ->
     Self = pid_to_bin(self()),
     [next] = vmq_plugin:all(on_subscribe,
                             [Self, {?MOUNTPOINT, ?ALLOWED_CLIENT_ID}, [{?TOPIC, 1},
-                                                                       {?TOPIC, not_allowed}]]),
+                                                                       {?TOPIC, not_allowed}], {?LABEL, [?PATTERN]}]),
     ok = exp_response(on_subscribe_ok),
     deregister_hook(on_subscribe, ?ENDPOINT).
 

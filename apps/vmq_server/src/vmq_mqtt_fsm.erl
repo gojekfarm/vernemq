@@ -420,14 +420,16 @@ connected(
     SubTopics = subtopics(Topics, ProtoVer),
     OnAuthSuccess =
         fun(_User, _SubscriberId, MaybeChangedTopics) ->
-            {FilteredMaybeChangedTopics, LabelValue} =
-                case lists:keyfind(label, 1, MaybeChangedTopics) of
-                    {label, Label} ->
-                        {[Item || Item <- MaybeChangedTopics, not is_label_tuple(Item)], Label};
+            {FilteredMaybeChangedTopics, MatchedAcl} =
+                case lists:keyfind(matched_acl, 1, MaybeChangedTopics) of
+                    {matched_acl, {Label, Pattern}} ->
+                        {
+                            [Item || Item <- MaybeChangedTopics, not is_label_tuple(Item)],
+                            {Label, Pattern}
+                        };
                     _ ->
-                        {MaybeChangedTopics, <<>>}
+                        {MaybeChangedTopics, {<<>>, []}}
                 end,
-            lager:info("lol on_subscribe LabelValue ~p", [LabelValue]),
             case vmq_reg:subscribe(SubscriberId, FilteredMaybeChangedTopics) of
                 {ok, _} = Res ->
                     T = lists:foldr(
@@ -435,7 +437,7 @@ connected(
                         [],
                         FilteredMaybeChangedTopics
                     ),
-                    vmq_plugin:all(on_subscribe, [User, SubscriberId, T]),
+                    vmq_plugin:all(on_subscribe, [User, SubscriberId, T, MatchedAcl]),
                     Res;
                 Res ->
                     Res
@@ -898,10 +900,12 @@ auth_on_publish(
             HookArgs1 = [User, SubscriberId, QoS, Topic, ChangedPayload, unflag(IsRetain)],
             AuthSuccess(Msg#vmq_msg{payload = ChangedPayload}, HookArgs1, #{});
         {ok, Args} when is_list(Args) ->
-            Lable =
+            MatchedAcl =
                 case Args of
-                    [{label, L}] -> L;
-                    _ -> <<>>
+                    [{matched_acl, {Label, Pattern}}] ->
+                        {Label, Pattern};
+                    _ ->
+                        {<<>>, []}
                 end,
             #vmq_msg{mountpoint = MP} = Msg,
             ChangedTopic = proplists:get_value(topic, Args, Topic),
@@ -916,7 +920,7 @@ auth_on_publish(
                 ChangedTopic,
                 ChangedPayload,
                 ChangedIsRetain,
-                Lable
+                MatchedAcl
             ],
             SessCtrl = session_ctrl(Args),
             AuthSuccess(
@@ -1697,5 +1701,5 @@ extract_qos(not_allowed) -> not_allowed;
 extract_qos(QoS) when is_integer(QoS) -> QoS;
 extract_qos({QoS, _SubInfo}) -> QoS.
 
-is_label_tuple({label, _}) -> true;
+is_label_tuple({matched_acl, _}) -> true;
 is_label_tuple(_) -> false.
