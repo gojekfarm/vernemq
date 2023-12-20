@@ -1,0 +1,8 @@
+syntax = "proto3";
+
+package eventssidecar.v1;
+
+message MatchedAcl {
+    string label = 1;
+    string pattern = 2;
+}

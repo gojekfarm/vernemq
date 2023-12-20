@@ -61,11 +61,9 @@ encode(
             payload = Payload,
             retain = IsRetain,
             timestamp = convert_timestamp(Timestamp),
-            matched_acl = [
-                #'eventssidecar.v1.MatchedAcl'{
-                    label = Label, pattern = format_pattern(Pattern)
-                }
-            ]
+            matched_acl = #'eventssidecar.v1.MatchedAcl'{
+                label = Label, pattern = format_pattern(Pattern)
+            }
         })
     );
 encode({on_subscribe, Timestamp, {MP, ClientId, UserName, Topics, {Label, Pattern}}}) ->
@@ -76,9 +74,9 @@ encode({on_subscribe, Timestamp, {MP, ClientId, UserName, Topics, {Label, Patter
             mountpoint = MP,
             username = UserName,
             topics = [#'eventssidecar.v1.TopicInfo'{topic = T, qos = QoS} || [T, QoS] <- Topics],
-            matched_acl = [
-                #'eventssidecar.v1.MatchedAcl'{label = Label, pattern = format_pattern(Pattern)}
-            ],
+            matched_acl = #'eventssidecar.v1.MatchedAcl'{
+                label = Label, pattern = format_pattern(Pattern)
+            },
             timestamp = convert_timestamp(Timestamp)
         })
     );
