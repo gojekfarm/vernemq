@@ -21,8 +21,8 @@
         username = <<>> :: unicode:chardata() | undefined,
         % = 5, repeated
         topics = [] :: [on_subscribe_pb:'eventssidecar.v1.TopicInfo'()] | undefined,
-        % = 7, repeated
-        matched_acl = [] :: [on_subscribe_pb:'eventssidecar.v1.MatchedAcl'()] | undefined
+        % = 6, optional
+        matched_acl = undefined :: on_subscribe_pb:'eventssidecar.v1.MatchedAcl'() | undefined
     }
 ).
 -endif.
@@ -39,18 +39,6 @@
 ).
 -endif.
 
--ifndef('EVENTSSIDECAR.V1.MATCHEDACL_PB_H').
--define('EVENTSSIDECAR.V1.MATCHEDACL_PB_H', true).
--record('eventssidecar.v1.MatchedAcl',
-    % = 1, optional
-    {
-        label = <<>> :: unicode:chardata() | undefined,
-        % = 2, optional
-        pattern = <<>> :: unicode:chardata() | undefined
-    }
-).
--endif.
-
 -ifndef('GOOGLE.PROTOBUF.TIMESTAMP_PB_H').
 -define('GOOGLE.PROTOBUF.TIMESTAMP_PB_H', true).
 -record('google.protobuf.Timestamp',
@@ -59,6 +47,18 @@
         seconds = 0 :: integer() | undefined,
         % = 2, optional, 32 bits
         nanos = 0 :: integer() | undefined
+    }
+).
+-endif.
+
+-ifndef('EVENTSSIDECAR.V1.MATCHEDACL_PB_H').
+-define('EVENTSSIDECAR.V1.MATCHEDACL_PB_H', true).
+-record('eventssidecar.v1.MatchedAcl',
+    % = 1, optional
+    {
+        label = <<>> :: unicode:chardata() | undefined,
+        % = 2, optional
+        pattern = <<>> :: unicode:chardata() | undefined
     }
 ).
 -endif.
