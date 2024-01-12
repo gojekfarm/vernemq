@@ -126,8 +126,8 @@
 ]).
 
 -define(TIMER_TABLE, vmq_metrics_timers).
-
 -define(TOPIC_LABEL_TABLE, topic_labels).
+
 -record(state, {
     info = #{}
 }).
@@ -2942,6 +2942,6 @@ topic_metric_name({Metric, Labels}) ->
             _ -> {Metric, Metric}
         end,
     Description = list_to_binary(
-        "The number of " ++ atom_to_list(element(2, MetricName)) ++ " packers on matched topics."
+        "The number of " ++ atom_to_list(OperationName) ++ " packets on ACL matched topics."
     ),
     {[Metric | Labels], element(1, MetricName), Description, Labels}.

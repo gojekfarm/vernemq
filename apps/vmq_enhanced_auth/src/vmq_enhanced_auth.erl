@@ -223,15 +223,15 @@ load_from_list(List) ->
     parse_acl_line(F(F, read), all),
     del_aged_entries().
 
-get_topic_label(Rest) ->
+split_topic_label(Rest) ->
     case binary:split(Rest, <<"label ">>) of
         [Topic, Label] ->
             case string:lexemes(Label, " ") of
                 [_] ->
                     {Topic, string:trim(Label)};
-                _ ->
-                    error_logger:error_msg("can't add multiple label value!"),
-                    {Topic, <<>>}
+                [FisrtLabel | _] ->
+                    error_logger:warning_msg("can't add multiple label values!"),
+                    {Topic, FisrtLabel}
             end;
         _ ->
             {Rest, <<>>}
@@ -241,15 +241,15 @@ parse_acl_line({F, <<"#", _/binary>>}, User) ->
     %% comment
     parse_acl_line(F(F, read), User);
 parse_acl_line({F, <<"topic read ", Rest/binary>>}, User) ->
-    {Topic, Label} = get_topic_label(Rest),
+    {Topic, Label} = split_topic_label(Rest),
     in(read, User, Topic, Label),
     parse_acl_line(F(F, read), User);
 parse_acl_line({F, <<"topic write ", Rest/binary>>}, User) ->
-    {Topic, Label} = get_topic_label(Rest),
+    {Topic, Label} = split_topic_label(Rest),
     in(write, User, Topic, Label),
     parse_acl_line(F(F, read), User);
 parse_acl_line({F, <<"topic ", Rest/binary>>}, User) ->
-    {Topic, Label} = get_topic_label(Rest),
+    {Topic, Label} = split_topic_label(Rest),
     in(read, User, Topic, Label),
     in(write, User, Topic, Label),
     parse_acl_line(F(F, read), User);
@@ -258,28 +258,28 @@ parse_acl_line({F, <<"user ", User/binary>>}, _) ->
     <<SUser:UserLen/binary, _/binary>> = User,
     parse_acl_line(F(F, read), SUser);
 parse_acl_line({F, <<"pattern read ", Rest/binary>>}, User) ->
-    {Topic, Label} = get_topic_label(Rest),
+    {Topic, Label} = split_topic_label(Rest),
     in(read, pattern, Topic, Label),
     parse_acl_line(F(F, read), User);
 parse_acl_line({F, <<"pattern write ", Rest/binary>>}, User) ->
-    {Topic, Label} = get_topic_label(Rest),
+    {Topic, Label} = split_topic_label(Rest),
     in(write, pattern, Topic, Label),
     parse_acl_line(F(F, read), User);
 parse_acl_line({F, <<"pattern ", Rest/binary>>}, User) ->
-    {Topic, Label} = get_topic_label(Rest),
+    {Topic, Label} = split_topic_label(Rest),
     in(read, pattern, Topic, Label),
     in(write, pattern, Topic, Label),
     parse_acl_line(F(F, read), User);
 parse_acl_line({F, <<"token read ", Rest/binary>>}, User) ->
-    {Topic, Label} = get_topic_label(Rest),
+    {Topic, Label} = split_topic_label(Rest),
     insert_token(read, regex, string:trim(Topic), Label),
     parse_acl_line(F(F, read), User);
 parse_acl_line({F, <<"token write ", Rest/binary>>}, User) ->
-    {Topic, Label} = get_topic_label(Rest),
+    {Topic, Label} = split_topic_label(Rest),
     insert_token(write, regex, string:trim(Topic), Label),
     parse_acl_line(F(F, read), User);
 parse_acl_line({F, <<"token ", Rest/binary>>}, User) ->
-    {Topic, Label} = get_topic_label(Rest),
+    {Topic, Label} = split_topic_label(Rest),
     insert_token(read, regex, string:trim(Topic), Label),
     insert_token(write, regex, string:trim(Topic), Label),
     parse_acl_line(F(F, read), User);
@@ -391,8 +391,8 @@ in(Type, User, Topic, Label) when is_binary(Topic) ->
     case validate(STopic) of
         {ok, Words} ->
             {Tbl, Obj} = t(Type, User, Words),
-            LabelObj = merge_tuples(Obj, {Label}),
-            ets:insert(Tbl, LabelObj);
+            TopicLabelObj = merge_tuples(Obj, {Label}),
+            ets:insert(Tbl, TopicLabelObj);
         {error, Reason} ->
             error_logger:warning_msg("can't validate ~p acl topic ~p for user ~p due to ~p", [
                 Type, STopic, User, Reason
@@ -405,8 +405,8 @@ insert_token(Type, _, Topic, Label) when is_binary(Topic) ->
             ok;
         Words ->
             {Tbl, Obj} = t(Type, token, Words),
-            LabelObj = merge_tuples(Obj, {Label}),
-            ets:insert(Tbl, LabelObj)
+            TopicLabelObj = merge_tuples(Obj, {Label}),
+            ets:insert(Tbl, TopicLabelObj)
     end.
 
 parse_topic(Topic) ->
@@ -850,15 +850,15 @@ simple_acl(_) ->
         ),
         ?_assertEqual(
             {<<"a/b ">>, <<"ab_topic">>},
-            get_topic_label(<<"a/b label ab_topic\n">>)
+            split_topic_label(<<"a/b label ab_topic\n">>)
         ),
         ?_assertEqual(
             {<<"a/b label\n">>, <<>>},
-            get_topic_label(<<"a/b label\n">>)
+            split_topic_label(<<"a/b label\n">>)
         ),
         ?_assertEqual(
             {<<"a/b ">>, <<>>},
-            get_topic_label(<<"a/b label a b\n">>)
+            split_topic_label(<<"a/b label a b\n">>)
         )
     ].
 -endif.
