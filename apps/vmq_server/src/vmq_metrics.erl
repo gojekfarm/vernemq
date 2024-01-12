@@ -527,22 +527,15 @@ topic_metric_defs() ->
     Defs.
 
 topic_metrics() ->
-    Topic_metrics = ets:foldl(
-        fun({Metric, TotalCount}, Acc) ->
+    ets:foldl(
+        fun({Metric, TotalCount}, {DefsAcc, ValsAcc}) ->
             {UniqueId, MetricName, Description, Labels} = topic_metric_name(Metric),
-            [
-                {counter, Labels, UniqueId, MetricName, Description, TotalCount} | Acc
-            ]
-        end,
-        [],
-        ?TOPIC_LABEL_TABLE
-    ),
-    lists:foldl(
-        fun({Type, Labels, UniqueId, Name, Description, Value}, {DefsAcc, ValsAcc}) ->
-            {[m(Type, Labels, UniqueId, Name, Description) | DefsAcc], [{UniqueId, Value} | ValsAcc]}
+            {[m(counter, Labels, UniqueId, MetricName, Description) | DefsAcc], [
+                {UniqueId, TotalCount} | ValsAcc
+            ]}
         end,
         {[], []},
-        Topic_metrics
+        ?TOPIC_LABEL_TABLE
     ).
 
 incr_bucket_ops(V) when V =< 10 ->
@@ -581,6 +574,8 @@ incr_histogram_buckets(Metric, BucketOps) ->
                     lager:warning("couldn't initialize tables", [])
             end
     end.
+
+-spec incr_topic_counter(Metric :: {atom(), [{atom(), any()}]}) -> ok.
 
 incr_topic_counter(Metric) ->
     try
@@ -2934,14 +2929,20 @@ metric_name({Metric, SubMetric}) ->
     ),
     {Name, Name, Description, []}.
 
-topic_metric_name({Metric, Labels}) ->
+topic_metric_name({OperationType, Labels}) ->
     MetricName =
-        case Metric of
-            read -> {mqtt_subscribe_topic_matches, subscribe};
-            write -> {mqtt_publish_topic_matches, publish};
-            _ -> {Metric, Metric}
+        case OperationType of
+            read -> mqtt_subscribe_topic_matches;
+            write -> mqtt_publish_topic_matches;
+            _ -> OperationType
+        end,
+    OperationName =
+        case OperationType of
+            read -> subscribe;
+            write -> publish;
+            _ -> OperationType
         end,
     Description = list_to_binary(
         "The number of " ++ atom_to_list(OperationName) ++ " packets on ACL matched topics."
     ),
-    {[Metric | Labels], element(1, MetricName), Description, Labels}.
+    {[OperationType | Labels], MetricName, Description, Labels}.
