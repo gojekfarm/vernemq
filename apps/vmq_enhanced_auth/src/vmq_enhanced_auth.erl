@@ -229,9 +229,9 @@ split_topic_label(Rest) ->
             case string:lexemes(Label, " ") of
                 [_] ->
                     {Topic, string:trim(Label)};
-                [FisrtLabel | _] ->
+                [FirstLabel | _] ->
                     error_logger:warning_msg("can't add multiple label values!"),
-                    {Topic, FisrtLabel}
+                    {Topic, FirstLabel}
             end;
         _ ->
             {Rest, <<>>}
@@ -305,13 +305,13 @@ check(Type, [Word | _] = Topic, User, SubscriberId) when is_binary(Word) ->
     end.
 
 check_all_acl(Type, TIn) ->
-    {Tbl, _} = t(Type, all, TIn),
+    Tbl = t(Type, all),
     iterate_until_true(Tbl, fun(T) ->
         match_and_process_topic_metrics(TIn, T, Tbl, Type, T)
     end).
 
 check_user_acl(Type, User, TIn) ->
-    {Tbl, _} = t(Type, User, TIn),
+    Tbl = t(Type, User),
     iterate_until_true(
         ets:match(Tbl, {{User, '$1'}, '_', '_'}),
         fun([T]) ->
@@ -321,14 +321,14 @@ check_user_acl(Type, User, TIn) ->
     ).
 
 check_pattern_acl(Type, TIn, User, SubscriberId) ->
-    {Tbl, _} = t(Type, pattern, TIn),
+    Tbl = t(Type, pattern),
     iterate_until_true(Tbl, fun(P) ->
         T = topic(User, SubscriberId, P),
         match_and_process_topic_metrics(TIn, T, Tbl, Type, P)
     end).
 
 check_token_acl(Type, TIn, User, SubscriberId) ->
-    {Tbl, _} = t(Type, token, TIn),
+    Tbl = t(Type, token),
     iterate_until_true(Tbl, fun(P) ->
         T = topic(User, SubscriberId, P),
         match_and_process_topic_metrics(TIn, T, Tbl, Type, P)
@@ -351,9 +351,9 @@ match_and_process_topic_metrics(TIn, T, Tbl, Type, Key) ->
 check_label_and_incr_metrics(Label, Type) ->
     case Label of
         <<>> ->
-            error_logger:warning_msg("no label found.");
+            ok;
         _ ->
-            _ = vmq_metrics:incr_topic_counter({Type, [{acl_matched, binary_to_atom(Label)}]})
+            _ = vmq_metrics:incr_topic_counter({Type, [{acl_matched, Label}]})
     end.
 
 topic(User, {MP, ClientId}, Topic) ->
@@ -382,17 +382,13 @@ subst(MP, User, ClientId, [W | Rest], Acc) ->
 subst(_, _, _, [], Acc) ->
     lists:reverse(Acc).
 
-merge_tuples(T1, T2) ->
-    list_to_tuple(tuple_to_list(T1) ++ tuple_to_list(T2)).
-
 in(Type, User, Topic, Label) when is_binary(Topic) ->
     TopicLen = byte_size(Topic) - 1,
     <<STopic:TopicLen/binary, _/binary>> = Topic,
     case validate(STopic) of
         {ok, Words} ->
-            {Tbl, Obj} = t(Type, User, Words),
-            TopicLabelObj = merge_tuples(Obj, {Label}),
-            ets:insert(Tbl, TopicLabelObj);
+            {Tbl, Obj} = t(Type, User, Words, Label),
+            ets:insert(Tbl, Obj);
         {error, Reason} ->
             error_logger:warning_msg("can't validate ~p acl topic ~p for user ~p due to ~p", [
                 Type, STopic, User, Reason
@@ -404,9 +400,8 @@ insert_token(Type, _, Topic, Label) when is_binary(Topic) ->
         [] ->
             ok;
         Words ->
-            {Tbl, Obj} = t(Type, token, Words),
-            TopicLabelObj = merge_tuples(Obj, {Label}),
-            ets:insert(Tbl, TopicLabelObj)
+            {Tbl, Obj} = t(Type, token, Words, Label),
+            ets:insert(Tbl, Obj)
     end.
 
 parse_topic(Topic) ->
@@ -441,14 +436,23 @@ parse_tokens([Word | Words], Acc) ->
 validate(Topic) ->
     vmq_topic:validate_topic(subscribe, Topic).
 
-t(read, token, Topic) -> {vmq_enhanced_auth_acl_read_token, {Topic, 1}};
-t(write, token, Topic) -> {vmq_enhanced_auth_acl_write_token, {Topic, 1}};
-t(read, all, Topic) -> {vmq_enhanced_auth_acl_read_all, {Topic, 1}};
-t(write, all, Topic) -> {vmq_enhanced_auth_acl_write_all, {Topic, 1}};
-t(read, pattern, Topic) -> {vmq_enhanced_auth_acl_read_pattern, {Topic, 1}};
-t(write, pattern, Topic) -> {vmq_enhanced_auth_acl_write_pattern, {Topic, 1}};
-t(read, User, Topic) -> {vmq_enhanced_auth_acl_read_user, {{User, Topic}, 1}};
-t(write, User, Topic) -> {vmq_enhanced_auth_acl_write_user, {{User, Topic}, 1}}.
+t(read, token) -> vmq_enhanced_auth_acl_read_token;
+t(write, token) -> vmq_enhanced_auth_acl_write_token;
+t(read, all) -> vmq_enhanced_auth_acl_read_all;
+t(write, all) -> vmq_enhanced_auth_acl_write_all;
+t(read, pattern) -> vmq_enhanced_auth_acl_read_pattern;
+t(write, pattern) -> vmq_enhanced_auth_acl_write_pattern;
+t(read, _User) -> vmq_enhanced_auth_acl_read_user;
+t(write, _User) -> vmq_enhanced_auth_acl_write_user.
+
+t(read, token, Topic, Label) -> {vmq_enhanced_auth_acl_read_token, {Topic, 1, Label}};
+t(write, token, Topic, Label) -> {vmq_enhanced_auth_acl_write_token, {Topic, 1, Label}};
+t(read, all, Topic, Label) -> {vmq_enhanced_auth_acl_read_all, {Topic, 1, Label}};
+t(write, all, Topic, Label) -> {vmq_enhanced_auth_acl_write_all, {Topic, 1, Label}};
+t(read, pattern, Topic, Label) -> {vmq_enhanced_auth_acl_read_pattern, {Topic, 1, Label}};
+t(write, pattern, Topic, Label) -> {vmq_enhanced_auth_acl_write_pattern, {Topic, 1, Label}};
+t(read, User, Topic, Label) -> {vmq_enhanced_auth_acl_read_user, {{User, Topic}, 1, Label}};
+t(write, User, Topic, Label) -> {vmq_enhanced_auth_acl_write_user, {{User, Topic}, 1, Label}}.
 
 iterate_until_true(T, Fun) when is_atom(T) ->
     iterate_ets_until_true(T, ets:first(T), Fun);
