@@ -307,7 +307,7 @@ check(Type, [Word | _] = Topic, User, SubscriberId) when is_binary(Word) ->
 check_all_acl(Type, TIn) ->
     Tbl = t(Type, all),
     iterate_until_true(Tbl, fun(T) ->
-        match_and_process_topic_metrics(TIn, T, Tbl, Type, T)
+        match(TIn, T, Tbl, Type, T)
     end).
 
 check_user_acl(Type, User, TIn) ->
@@ -316,7 +316,7 @@ check_user_acl(Type, User, TIn) ->
         ets:match(Tbl, {{User, '$1'}, '_', '_'}),
         fun([T]) ->
             Key = {User, T},
-            match_and_process_topic_metrics(TIn, T, Tbl, Type, Key)
+            match(TIn, T, Tbl, Type, Key)
         end
     ).
 
@@ -324,17 +324,17 @@ check_pattern_acl(Type, TIn, User, SubscriberId) ->
     Tbl = t(Type, pattern),
     iterate_until_true(Tbl, fun(P) ->
         T = topic(User, SubscriberId, P),
-        match_and_process_topic_metrics(TIn, T, Tbl, Type, P)
+        match(TIn, T, Tbl, Type, P)
     end).
 
 check_token_acl(Type, TIn, User, SubscriberId) ->
     Tbl = t(Type, token),
     iterate_until_true(Tbl, fun(P) ->
         T = topic(User, SubscriberId, P),
-        match_and_process_topic_metrics(TIn, T, Tbl, Type, P)
+        match(TIn, T, Tbl, Type, P)
     end).
 
-match_and_process_topic_metrics(TIn, T, Tbl, Type, Key) ->
+match(TIn, T, Tbl, Type, Key) ->
     case match(TIn, T) of
         true ->
             case ets:lookup(Tbl, Key) of
@@ -342,7 +342,7 @@ match_and_process_topic_metrics(TIn, T, Tbl, Type, Key) ->
                     check_label_and_incr_metrics(Label, Type),
                     true;
                 _ ->
-                    false
+                    true
             end;
         _ ->
             false
@@ -353,7 +353,14 @@ check_label_and_incr_metrics(Label, Type) ->
         <<>> ->
             ok;
         _ ->
-            _ = vmq_metrics:incr_topic_counter({Type, [{acl_matched, Label}]})
+            OperationName =
+                case Type of
+                    read -> subscribe;
+                    write -> publish
+                end,
+            _ = vmq_metrics:incr_topic_counter(
+                {topic_matches, OperationName, [{acl_matched, Label}]}
+            )
     end.
 
 topic(User, {MP, ClientId}, Topic) ->
@@ -624,9 +631,9 @@ simple_acl(_) ->
         <<"user test_user\n">>,
         <<"topic a/b/c/# label simple_read_write\n">>,
         <<"# some patterns\n">>,
-        <<"pattern read %m/%u/%c\n">>,
+        <<"pattern read a/%m/%u/%c\n">>,
         <<"token read example_pattern/%(c, :, 3)\n">>,
-        <<"pattern write %m/%u/%c\n">>,
+        <<"pattern write a/%m/%u/%c\n">>,
         <<"token read p/q/%( u  , :, 2)/r">>,
         <<"token read p/q/%( c  , :, 3)/+">>,
         <<"token write write-topic/p/q/%( c  , :, 3)/+">>,
@@ -682,11 +689,17 @@ simple_acl(_) ->
             ets:match(vmq_enhanced_auth_acl_write_user, '$1')
         ),
         ?_assertEqual(
-            [[{[<<"%m">>, <<"%u">>, <<"%c">>], 1, <<"pattern_read">>}]],
+            [
+                [{[<<"%m">>, <<"%u">>, <<"%c">>], 1, <<"pattern_read">>}],
+                [{[<<"a">>, <<"%m">>, <<"%u">>, <<"%c">>], 1, <<>>}]
+            ],
             ets:match(vmq_enhanced_auth_acl_read_pattern, '$1')
         ),
         ?_assertEqual(
-            [[{[<<"%m">>, <<"%u">>, <<"%c">>], 1, <<"pattern_write">>}]],
+            [
+                [{[<<"%m">>, <<"%u">>, <<"%c">>], 1, <<"pattern_write">>}],
+                [{[<<"a">>, <<"%m">>, <<"%u">>, <<"%c">>], 1, <<>>}]
+            ],
             ets:match(vmq_enhanced_auth_acl_write_pattern, '$1')
         ),
         %% positive auth_on_subscribe

@@ -575,8 +575,9 @@ incr_histogram_buckets(Metric, BucketOps) ->
             end
     end.
 
--spec incr_topic_counter(Metric :: {atom(), [{atom(), any()}]}) -> ok.
-
+-spec incr_topic_counter(
+    Metric :: {topic_matches, subscribe | publish, Labels :: [{atom(), atom() | list() | binary()}]}
+) -> ok.
 incr_topic_counter(Metric) ->
     try
         ets:update_counter(?TOPIC_LABEL_TABLE, Metric, 1)
@@ -2929,20 +2930,11 @@ metric_name({Metric, SubMetric}) ->
     ),
     {Name, Name, Description, []}.
 
-topic_metric_name({OperationType, Labels}) ->
-    MetricName =
-        case OperationType of
-            read -> mqtt_subscribe_topic_matches;
-            write -> mqtt_publish_topic_matches;
-            _ -> OperationType
-        end,
-    OperationName =
-        case OperationType of
-            read -> subscribe;
-            write -> publish;
-            _ -> OperationType
-        end,
+topic_metric_name({Metric, SubMetric, Labels}) ->
+    LMetric = atom_to_list(Metric),
+    LSubMetric = atom_to_list(SubMetric),
+    MetricName = list_to_atom(LSubMetric ++ "_" ++ LMetric),
     Description = list_to_binary(
-        "The number of " ++ atom_to_list(OperationName) ++ " packets on ACL matched topics."
+        "The number of " ++ LSubMetric ++ " packets on ACL matched topics."
     ),
-    {[OperationType | Labels], MetricName, Description, Labels}.
+    {[SubMetric | Labels], MetricName, Description, Labels}.
