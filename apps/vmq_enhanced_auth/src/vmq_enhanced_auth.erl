@@ -620,6 +620,13 @@ simple_acl(_) ->
         <<"user test_user\n">>,
         <<"topic a/b/c/# label simple_read_write\n">>,
         <<"# some patterns\n">>,
+        <<"pattern read %m/%u/%c\n">>,
+        <<"token read example_pattern/%(c, :, 3)\n">>,
+        <<"pattern write %m/%u/%c\n">>,
+        <<"token read p/q/%( u  , :, 2)/r">>,
+        <<"token read p/q/%( c  , :, 3)/+">>,
+        <<"token write write-topic/p/q/%( c  , :, 3)/+">>,
+        <<"# some patterns with label\n">>,
         <<"pattern read %m/%u/%c label pattern_read\n">>,
         <<"token read example/%(c, :, 3) label token_read\n">>,
         <<"pattern write %m/%u/%c label pattern_write\n">>,
@@ -828,15 +835,19 @@ simple_acl(_) ->
         %% ACL with Labels
         ?_assertEqual(
             [
+                [{[<<"example_pattern">>, {<<"c">>, <<":">>, 3}], 1, <<>>}],
                 [{[<<"example">>, {<<"c">>, <<":">>, 3}], 1, <<"token_read">>}],
+                [{[<<"p">>, <<"q">>, {<<"c">>, <<":">>, 3}, <<"+">>], 1, <<>>}],
                 [{[<<"a">>, <<"b label">>], 1, <<>>}],
                 [{[<<"a">>, <<"b">>, {<<"u">>, <<":">>, 2}, <<"c">>], 1, <<"token_read_u2">>}],
-                [{[<<"a">>, <<"b">>, {<<"c">>, <<":">>, 3}, <<"+">>], 1, <<"token_write">>}]
+                [{[<<"a">>, <<"b">>, {<<"c">>, <<":">>, 3}, <<"+">>], 1, <<"token_write">>}],
+                [{[<<"p">>, <<"q">>, {<<"u">>, <<":">>, 2}, <<"r">>], 1, <<>>}]
             ],
             ets:match(vmq_enhanced_auth_acl_read_token, '$1')
         ),
         ?_assertEqual(
             [
+                [{[<<"write-topic">>, <<"p">>, <<"q">>, {<<"c">>, <<":">>, 3}, <<"+">>], 1, <<>>}],
                 [
                     {
                         [<<"write-topic">>, <<"a">>, <<"b">>, {<<"c">>, <<":">>, 3}, <<"+">>],
@@ -844,7 +855,7 @@ simple_acl(_) ->
                         <<"token_write_c3">>
                     }
                 ],
-                [{[<<"a">>, <<"b">>], 1, <<>>}]
+                [{[<<"a">>, <<"b">>], 1, <<"a">>}]
             ],
             ets:match(vmq_enhanced_auth_acl_write_token, '$1')
         ),
@@ -857,7 +868,7 @@ simple_acl(_) ->
             split_topic_label(<<"a/b label\n">>)
         ),
         ?_assertEqual(
-            {<<"a/b ">>, <<>>},
+            {<<"a/b ">>, <<"a">>},
             split_topic_label(<<"a/b label a b\n">>)
         )
     ].
