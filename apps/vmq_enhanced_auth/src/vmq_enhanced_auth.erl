@@ -26,7 +26,7 @@
     init/0,
     load_from_file/1,
     load_from_list/1,
-    check/4
+    check/5
 ]).
 
 -export([
@@ -57,6 +57,7 @@
 -define(USER_SUP, <<"%u">>).
 -define(CLIENT_SUP, <<"%c">>).
 -define(MOUNTPOINT_SUP, <<"%m">>).
+-define(QOS_0, 0).
 
 -ifdef(TEST).
 -include_lib("eunit/include/eunit.hrl").
@@ -104,7 +105,12 @@ auth_on_subscribe(RegView, User, SubscriberId, [{Topic, Qos} | Rest], Modifiers)
         D ->
             next;
         true ->
-            case check(read, Topic, User, SubscriberId) of
+            QosValue =
+                case Qos of
+                    N when is_integer(N) -> N;
+                    {N, _} when is_integer(N) -> N
+                end,
+            case check(read, Topic, User, SubscriberId, QosValue) of
                 true ->
                     auth_on_subscribe(User, SubscriberId, Rest, [{Topic, Qos} | Modifiers]);
                 false ->
@@ -113,13 +119,13 @@ auth_on_subscribe(RegView, User, SubscriberId, [{Topic, Qos} | Rest], Modifiers)
             end
     end.
 
-auth_on_publish(User, SubscriberId, _, Topic, _, _) ->
+auth_on_publish(User, SubscriberId, Qos, Topic, _, _) ->
     D = is_acl_auth_disabled(),
     if
         D ->
             next;
         true ->
-            case check(write, Topic, User, SubscriberId) of
+            case check(write, Topic, User, SubscriberId, Qos) of
                 true ->
                     ok;
                 false ->
@@ -130,7 +136,7 @@ auth_on_publish(User, SubscriberId, _, Topic, _, _) ->
 auth_on_subscribe_m5(_, _, []) ->
     ok;
 auth_on_subscribe_m5(User, SubscriberId, [{Topic, _Qos} | Rest]) ->
-    case check(read, Topic, User, SubscriberId) of
+    case check(read, Topic, User, SubscriberId, _Qos) of
         true ->
             auth_on_subscribe(User, SubscriberId, Rest);
         false ->
@@ -289,57 +295,57 @@ parse_acl_line({F, eof}, _User) ->
     F(F, close),
     ok.
 
-check(Type, [Word | _] = Topic, User, SubscriberId) when is_binary(Word) ->
-    case check_all_acl(Type, Topic) of
+check(Type, [Word | _] = Topic, User, SubscriberId, Qos) when is_binary(Word) ->
+    case check_all_acl(Type, Topic, Qos) of
         true ->
             true;
         false when User == all -> false;
         false ->
-            case check_user_acl(Type, User, Topic) of
+            case check_user_acl(Type, User, Topic, Qos) of
                 true ->
                     true;
                 false ->
-                    check_pattern_acl(Type, Topic, User, SubscriberId) or
-                        check_token_acl(Type, Topic, User, SubscriberId)
+                    check_pattern_acl(Type, Topic, User, SubscriberId, Qos) or
+                        check_token_acl(Type, Topic, User, SubscriberId, Qos)
             end
     end.
 
-check_all_acl(Type, TIn) ->
+check_all_acl(Type, TIn, Qos) ->
     Tbl = t(Type, all),
     iterate_until_true(Tbl, fun(T) ->
-        match(TIn, T, Tbl, Type, T)
+        match(TIn, T, Tbl, Type, T, Qos)
     end).
 
-check_user_acl(Type, User, TIn) ->
+check_user_acl(Type, User, TIn, Qos) ->
     Tbl = t(Type, User),
     iterate_until_true(
         ets:match(Tbl, {{User, '$1'}, '_', '_'}),
         fun([T]) ->
             Key = {User, T},
-            match(TIn, T, Tbl, Type, Key)
+            match(TIn, T, Tbl, Type, Key, Qos)
         end
     ).
 
-check_pattern_acl(Type, TIn, User, SubscriberId) ->
+check_pattern_acl(Type, TIn, User, SubscriberId, Qos) ->
     Tbl = t(Type, pattern),
     iterate_until_true(Tbl, fun(P) ->
         T = topic(User, SubscriberId, P),
-        match(TIn, T, Tbl, Type, P)
+        match(TIn, T, Tbl, Type, P, Qos)
     end).
 
-check_token_acl(Type, TIn, User, SubscriberId) ->
+check_token_acl(Type, TIn, User, SubscriberId, Qos) ->
     Tbl = t(Type, token),
     iterate_until_true(Tbl, fun(P) ->
         T = topic(User, SubscriberId, P),
-        match(TIn, T, Tbl, Type, P)
+        match(TIn, T, Tbl, Type, P, Qos)
     end).
 
-match(TIn, T, Tbl, Type, Key) ->
+match(TIn, T, Tbl, Type, Key, Qos) ->
     case match(TIn, T) of
         true ->
             case ets:lookup(Tbl, Key) of
                 [{_, _, Label}] ->
-                    check_label_and_incr_metrics(Label, Type),
+                    check_label_and_incr_metrics(Label, Type, Qos),
                     true;
                 _ ->
                     true
@@ -348,7 +354,7 @@ match(TIn, T, Tbl, Type, Key) ->
             false
     end.
 
-check_label_and_incr_metrics(Label, Type) ->
+check_label_and_incr_metrics(Label, Type, Qos) ->
     case Label of
         <<>> ->
             ok;
@@ -359,7 +365,9 @@ check_label_and_incr_metrics(Label, Type) ->
                     write -> publish
                 end,
             _ = vmq_metrics:incr_topic_counter(
-                {topic_matches, OperationName, [{acl_matched, Label}]}
+                {topic_matches, OperationName, [
+                    {acl_matched, Label}, {qos, integer_to_list(Qos)}
+                ]}
             )
     end.
 
