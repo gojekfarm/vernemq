@@ -2937,4 +2937,4 @@ topic_metric_name({Metric, SubMetric, Labels}) ->
     Description = list_to_binary(
         "The number of " ++ LSubMetric ++ " packets on ACL matched topics."
     ),
-    {[SubMetric | Labels], MetricName, Description, Labels}.
+    {[MetricName | Labels], MetricName, Description, Labels}.
