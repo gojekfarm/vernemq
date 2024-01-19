@@ -58,6 +58,7 @@
 -define(CLIENT_SUP, <<"%c">>).
 -define(MOUNTPOINT_SUP, <<"%m">>).
 -define(QOS_0, 0).
+-define(TOPIC_LABEL_TABLE, topic_labels).
 
 -ifdef(TEST).
 -include_lib("eunit/include/eunit.hrl").
@@ -596,12 +597,14 @@ acl_test_() ->
 
 setup() ->
     ok = application:set_env(vmq_enhanced_auth, enable_acl_hooks, true),
+    ets:new(?TOPIC_LABEL_TABLE, [named_table, public, {write_concurrency, true}]),
     insert_regex(),
     init().
 setup_vmq_reg_redis_trie() ->
     ok = application:set_env(vmq_enhanced_auth, enable_acl_hooks, true),
     ok = application:set_env(vmq_server, default_reg_view, vmq_reg_redis_trie),
     init(),
+    ets:new(?TOPIC_LABEL_TABLE, [named_table, public, {write_concurrency, true}]),
     ets:new(vmq_redis_trie_node, [{keypos, 2} | ?TABLE_OPTS]),
     ets:insert(
         vmq_redis_trie_node,
@@ -619,6 +622,7 @@ teardown(RegView) ->
     ets:delete(vmq_enhanced_auth_acl_write_all),
     ets:delete(vmq_enhanced_auth_acl_read_user),
     ets:delete(vmq_enhanced_auth_acl_write_user),
+    ets:delete(?TOPIC_LABEL_TABLE),
     application:unset_env(vmq_enhanced_auth, enable_acl_hooks),
     application:unset_env(vmq_server, default_reg_view).
 
