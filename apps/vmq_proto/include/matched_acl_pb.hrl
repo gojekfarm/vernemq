@@ -9,10 +9,10 @@
 
 -ifndef('EVENTSSIDECAR.V1.MATCHEDACL_PB_H').
 -define('EVENTSSIDECAR.V1.MATCHEDACL_PB_H', true).
--record('eventssidecar.v1.MatchedAcl',
+-record('eventssidecar.v1.MatchedACL',
     % = 1, optional
     {
-        label = <<>> :: unicode:chardata() | undefined,
+        name = <<>> :: unicode:chardata() | undefined,
         % = 2, optional
         pattern = <<>> :: unicode:chardata() | undefined
     }

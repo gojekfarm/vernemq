@@ -28,7 +28,7 @@
         % = 8, optional
         retain = false :: boolean() | 0 | 1 | undefined,
         % = 9, optional
-        matched_acl = undefined :: on_publish_pb:'eventssidecar.v1.MatchedAcl'() | undefined
+        matched_acl = undefined :: on_publish_pb:'eventssidecar.v1.MatchedACL'() | undefined
     }
 ).
 -endif.
@@ -47,10 +47,10 @@
 
 -ifndef('EVENTSSIDECAR.V1.MATCHEDACL_PB_H').
 -define('EVENTSSIDECAR.V1.MATCHEDACL_PB_H', true).
--record('eventssidecar.v1.MatchedAcl',
+-record('eventssidecar.v1.MatchedACL',
     % = 1, optional
     {
-        label = <<>> :: unicode:chardata() | undefined,
+        name = <<>> :: unicode:chardata() | undefined,
         % = 2, optional
         pattern = <<>> :: unicode:chardata() | undefined
     }

@@ -16,5 +16,5 @@ message OnPublish {
     string topic = 6;
     bytes payload = 7;
     bool retain = 8;
-    MatchedAcl matched_acl = 9;
+    MatchedACL matched_acl = 9;
 }

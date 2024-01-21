@@ -60,24 +60,24 @@
 
 -type 'google.protobuf.Timestamp'() :: #'google.protobuf.Timestamp'{}.
 
--type 'eventssidecar.v1.MatchedAcl'() :: #'eventssidecar.v1.MatchedAcl'{}.
+-type 'eventssidecar.v1.MatchedACL'() :: #'eventssidecar.v1.MatchedACL'{}.
 
 -export_type([
     'eventssidecar.v1.OnSubscribe'/0,
     'eventssidecar.v1.TopicInfo'/0,
     'google.protobuf.Timestamp'/0,
-    'eventssidecar.v1.MatchedAcl'/0
+    'eventssidecar.v1.MatchedACL'/0
 ]).
 -type '$msg_name'() ::
     'eventssidecar.v1.OnSubscribe'
     | 'eventssidecar.v1.TopicInfo'
     | 'google.protobuf.Timestamp'
-    | 'eventssidecar.v1.MatchedAcl'.
+    | 'eventssidecar.v1.MatchedACL'.
 -type '$msg'() ::
     'eventssidecar.v1.OnSubscribe'()
     | 'eventssidecar.v1.TopicInfo'()
     | 'google.protobuf.Timestamp'()
-    | 'eventssidecar.v1.MatchedAcl'().
+    | 'eventssidecar.v1.MatchedACL'().
 -export_type(['$msg_name'/0, '$msg'/0]).
 
 -spec encode_msg('$msg'()) -> binary().
@@ -102,8 +102,8 @@ encode_msg(Msg, MsgName, Opts) ->
             'encode_msg_eventssidecar.v1.TopicInfo'(id(Msg, TrUserData), TrUserData);
         'google.protobuf.Timestamp' ->
             'encode_msg_google.protobuf.Timestamp'(id(Msg, TrUserData), TrUserData);
-        'eventssidecar.v1.MatchedAcl' ->
-            'encode_msg_eventssidecar.v1.MatchedAcl'(id(Msg, TrUserData), TrUserData)
+        'eventssidecar.v1.MatchedACL' ->
+            'encode_msg_eventssidecar.v1.MatchedACL'(id(Msg, TrUserData), TrUserData)
     end.
 
 'encode_msg_eventssidecar.v1.OnSubscribe'(Msg, TrUserData) ->
@@ -265,11 +265,11 @@ encode_msg(Msg, MsgName, Opts) ->
             end
     end.
 
-'encode_msg_eventssidecar.v1.MatchedAcl'(Msg, TrUserData) ->
-    'encode_msg_eventssidecar.v1.MatchedAcl'(Msg, <<>>, TrUserData).
+'encode_msg_eventssidecar.v1.MatchedACL'(Msg, TrUserData) ->
+    'encode_msg_eventssidecar.v1.MatchedACL'(Msg, <<>>, TrUserData).
 
-'encode_msg_eventssidecar.v1.MatchedAcl'(
-    #'eventssidecar.v1.MatchedAcl'{label = F1, pattern = F2}, Bin, TrUserData
+'encode_msg_eventssidecar.v1.MatchedACL'(
+    #'eventssidecar.v1.MatchedACL'{name = F1, pattern = F2}, Bin, TrUserData
 ) ->
     B1 =
         if
@@ -315,7 +315,7 @@ encode_msg(Msg, MsgName, Opts) ->
     Bin.
 
 'e_mfield_eventssidecar.v1.OnSubscribe_matched_acl'(Msg, Bin, TrUserData) ->
-    SubBin = 'encode_msg_eventssidecar.v1.MatchedAcl'(Msg, <<>>, TrUserData),
+    SubBin = 'encode_msg_eventssidecar.v1.MatchedACL'(Msg, <<>>, TrUserData),
     Bin2 = e_varint(byte_size(SubBin), Bin),
     <<Bin2/binary, SubBin/binary>>.
 
@@ -472,8 +472,8 @@ decode_msg_2_doit('eventssidecar.v1.TopicInfo', Bin, TrUserData) ->
     id('decode_msg_eventssidecar.v1.TopicInfo'(Bin, TrUserData), TrUserData);
 decode_msg_2_doit('google.protobuf.Timestamp', Bin, TrUserData) ->
     id('decode_msg_google.protobuf.Timestamp'(Bin, TrUserData), TrUserData);
-decode_msg_2_doit('eventssidecar.v1.MatchedAcl', Bin, TrUserData) ->
-    id('decode_msg_eventssidecar.v1.MatchedAcl'(Bin, TrUserData), TrUserData).
+decode_msg_2_doit('eventssidecar.v1.MatchedACL', Bin, TrUserData) ->
+    id('decode_msg_eventssidecar.v1.MatchedACL'(Bin, TrUserData), TrUserData).
 
 'decode_msg_eventssidecar.v1.OnSubscribe'(Bin, TrUserData) ->
     'dfp_read_field_def_eventssidecar.v1.OnSubscribe'(
@@ -733,7 +733,7 @@ decode_msg_2_doit('eventssidecar.v1.MatchedAcl', Bin, TrUserData) ->
     {NewFValue, RestF} = begin
         Len = X bsl N + Acc,
         <<Bs:Len/binary, Rest2/binary>> = Rest,
-        {id('decode_msg_eventssidecar.v1.MatchedAcl'(Bs, TrUserData), TrUserData), Rest2}
+        {id('decode_msg_eventssidecar.v1.MatchedACL'(Bs, TrUserData), TrUserData), Rest2}
     end,
     'dfp_read_field_def_eventssidecar.v1.OnSubscribe'(
         RestF,
@@ -747,7 +747,7 @@ decode_msg_2_doit('eventssidecar.v1.MatchedAcl', Bin, TrUserData) ->
         F@_5,
         if
             Prev == undefined -> NewFValue;
-            true -> 'merge_msg_eventssidecar.v1.MatchedAcl'(Prev, NewFValue, TrUserData)
+            true -> 'merge_msg_eventssidecar.v1.MatchedACL'(Prev, NewFValue, TrUserData)
         end,
         TrUserData
     ).
@@ -1053,73 +1053,73 @@ decode_msg_2_doit('eventssidecar.v1.MatchedAcl', Bin, TrUserData) ->
 'skip_64_google.protobuf.Timestamp'(<<_:64, Rest/binary>>, Z1, Z2, F, F@_1, F@_2, TrUserData) ->
     'dfp_read_field_def_google.protobuf.Timestamp'(Rest, Z1, Z2, F, F@_1, F@_2, TrUserData).
 
-'decode_msg_eventssidecar.v1.MatchedAcl'(Bin, TrUserData) ->
-    'dfp_read_field_def_eventssidecar.v1.MatchedAcl'(
+'decode_msg_eventssidecar.v1.MatchedACL'(Bin, TrUserData) ->
+    'dfp_read_field_def_eventssidecar.v1.MatchedACL'(
         Bin, 0, 0, 0, id(<<>>, TrUserData), id(<<>>, TrUserData), TrUserData
     ).
 
-'dfp_read_field_def_eventssidecar.v1.MatchedAcl'(
+'dfp_read_field_def_eventssidecar.v1.MatchedACL'(
     <<10, Rest/binary>>, Z1, Z2, F, F@_1, F@_2, TrUserData
 ) ->
-    'd_field_eventssidecar.v1.MatchedAcl_label'(Rest, Z1, Z2, F, F@_1, F@_2, TrUserData);
-'dfp_read_field_def_eventssidecar.v1.MatchedAcl'(
+    'd_field_eventssidecar.v1.MatchedACL_name'(Rest, Z1, Z2, F, F@_1, F@_2, TrUserData);
+'dfp_read_field_def_eventssidecar.v1.MatchedACL'(
     <<18, Rest/binary>>, Z1, Z2, F, F@_1, F@_2, TrUserData
 ) ->
-    'd_field_eventssidecar.v1.MatchedAcl_pattern'(Rest, Z1, Z2, F, F@_1, F@_2, TrUserData);
-'dfp_read_field_def_eventssidecar.v1.MatchedAcl'(<<>>, 0, 0, _, F@_1, F@_2, _) ->
-    #'eventssidecar.v1.MatchedAcl'{label = F@_1, pattern = F@_2};
-'dfp_read_field_def_eventssidecar.v1.MatchedAcl'(Other, Z1, Z2, F, F@_1, F@_2, TrUserData) ->
-    'dg_read_field_def_eventssidecar.v1.MatchedAcl'(Other, Z1, Z2, F, F@_1, F@_2, TrUserData).
+    'd_field_eventssidecar.v1.MatchedACL_pattern'(Rest, Z1, Z2, F, F@_1, F@_2, TrUserData);
+'dfp_read_field_def_eventssidecar.v1.MatchedACL'(<<>>, 0, 0, _, F@_1, F@_2, _) ->
+    #'eventssidecar.v1.MatchedACL'{name = F@_1, pattern = F@_2};
+'dfp_read_field_def_eventssidecar.v1.MatchedACL'(Other, Z1, Z2, F, F@_1, F@_2, TrUserData) ->
+    'dg_read_field_def_eventssidecar.v1.MatchedACL'(Other, Z1, Z2, F, F@_1, F@_2, TrUserData).
 
-'dg_read_field_def_eventssidecar.v1.MatchedAcl'(
+'dg_read_field_def_eventssidecar.v1.MatchedACL'(
     <<1:1, X:7, Rest/binary>>, N, Acc, F, F@_1, F@_2, TrUserData
 ) when N < 32 - 7 ->
-    'dg_read_field_def_eventssidecar.v1.MatchedAcl'(
+    'dg_read_field_def_eventssidecar.v1.MatchedACL'(
         Rest, N + 7, X bsl N + Acc, F, F@_1, F@_2, TrUserData
     );
-'dg_read_field_def_eventssidecar.v1.MatchedAcl'(
+'dg_read_field_def_eventssidecar.v1.MatchedACL'(
     <<0:1, X:7, Rest/binary>>, N, Acc, _, F@_1, F@_2, TrUserData
 ) ->
     Key = X bsl N + Acc,
     case Key of
         10 ->
-            'd_field_eventssidecar.v1.MatchedAcl_label'(Rest, 0, 0, 0, F@_1, F@_2, TrUserData);
+            'd_field_eventssidecar.v1.MatchedACL_name'(Rest, 0, 0, 0, F@_1, F@_2, TrUserData);
         18 ->
-            'd_field_eventssidecar.v1.MatchedAcl_pattern'(Rest, 0, 0, 0, F@_1, F@_2, TrUserData);
+            'd_field_eventssidecar.v1.MatchedACL_pattern'(Rest, 0, 0, 0, F@_1, F@_2, TrUserData);
         _ ->
             case Key band 7 of
                 0 ->
-                    'skip_varint_eventssidecar.v1.MatchedAcl'(
+                    'skip_varint_eventssidecar.v1.MatchedACL'(
                         Rest, 0, 0, Key bsr 3, F@_1, F@_2, TrUserData
                     );
                 1 ->
-                    'skip_64_eventssidecar.v1.MatchedAcl'(
+                    'skip_64_eventssidecar.v1.MatchedACL'(
                         Rest, 0, 0, Key bsr 3, F@_1, F@_2, TrUserData
                     );
                 2 ->
-                    'skip_length_delimited_eventssidecar.v1.MatchedAcl'(
+                    'skip_length_delimited_eventssidecar.v1.MatchedACL'(
                         Rest, 0, 0, Key bsr 3, F@_1, F@_2, TrUserData
                     );
                 3 ->
-                    'skip_group_eventssidecar.v1.MatchedAcl'(
+                    'skip_group_eventssidecar.v1.MatchedACL'(
                         Rest, 0, 0, Key bsr 3, F@_1, F@_2, TrUserData
                     );
                 5 ->
-                    'skip_32_eventssidecar.v1.MatchedAcl'(
+                    'skip_32_eventssidecar.v1.MatchedACL'(
                         Rest, 0, 0, Key bsr 3, F@_1, F@_2, TrUserData
                     )
             end
     end;
-'dg_read_field_def_eventssidecar.v1.MatchedAcl'(<<>>, 0, 0, _, F@_1, F@_2, _) ->
-    #'eventssidecar.v1.MatchedAcl'{label = F@_1, pattern = F@_2}.
+'dg_read_field_def_eventssidecar.v1.MatchedACL'(<<>>, 0, 0, _, F@_1, F@_2, _) ->
+    #'eventssidecar.v1.MatchedACL'{name = F@_1, pattern = F@_2}.
 
-'d_field_eventssidecar.v1.MatchedAcl_label'(
+'d_field_eventssidecar.v1.MatchedACL_name'(
     <<1:1, X:7, Rest/binary>>, N, Acc, F, F@_1, F@_2, TrUserData
 ) when N < 57 ->
-    'd_field_eventssidecar.v1.MatchedAcl_label'(
+    'd_field_eventssidecar.v1.MatchedACL_name'(
         Rest, N + 7, X bsl N + Acc, F, F@_1, F@_2, TrUserData
     );
-'d_field_eventssidecar.v1.MatchedAcl_label'(
+'d_field_eventssidecar.v1.MatchedACL_name'(
     <<0:1, X:7, Rest/binary>>, N, Acc, F, _, F@_2, TrUserData
 ) ->
     {NewFValue, RestF} = begin
@@ -1128,15 +1128,15 @@ decode_msg_2_doit('eventssidecar.v1.MatchedAcl', Bin, TrUserData) ->
         Bytes2 = binary:copy(Bytes),
         {id(Bytes2, TrUserData), Rest2}
     end,
-    'dfp_read_field_def_eventssidecar.v1.MatchedAcl'(RestF, 0, 0, F, NewFValue, F@_2, TrUserData).
+    'dfp_read_field_def_eventssidecar.v1.MatchedACL'(RestF, 0, 0, F, NewFValue, F@_2, TrUserData).
 
-'d_field_eventssidecar.v1.MatchedAcl_pattern'(
+'d_field_eventssidecar.v1.MatchedACL_pattern'(
     <<1:1, X:7, Rest/binary>>, N, Acc, F, F@_1, F@_2, TrUserData
 ) when N < 57 ->
-    'd_field_eventssidecar.v1.MatchedAcl_pattern'(
+    'd_field_eventssidecar.v1.MatchedACL_pattern'(
         Rest, N + 7, X bsl N + Acc, F, F@_1, F@_2, TrUserData
     );
-'d_field_eventssidecar.v1.MatchedAcl_pattern'(
+'d_field_eventssidecar.v1.MatchedACL_pattern'(
     <<0:1, X:7, Rest/binary>>, N, Acc, F, F@_1, _, TrUserData
 ) ->
     {NewFValue, RestF} = begin
@@ -1145,39 +1145,39 @@ decode_msg_2_doit('eventssidecar.v1.MatchedAcl', Bin, TrUserData) ->
         Bytes2 = binary:copy(Bytes),
         {id(Bytes2, TrUserData), Rest2}
     end,
-    'dfp_read_field_def_eventssidecar.v1.MatchedAcl'(RestF, 0, 0, F, F@_1, NewFValue, TrUserData).
+    'dfp_read_field_def_eventssidecar.v1.MatchedACL'(RestF, 0, 0, F, F@_1, NewFValue, TrUserData).
 
-'skip_varint_eventssidecar.v1.MatchedAcl'(
+'skip_varint_eventssidecar.v1.MatchedACL'(
     <<1:1, _:7, Rest/binary>>, Z1, Z2, F, F@_1, F@_2, TrUserData
 ) ->
-    'skip_varint_eventssidecar.v1.MatchedAcl'(Rest, Z1, Z2, F, F@_1, F@_2, TrUserData);
-'skip_varint_eventssidecar.v1.MatchedAcl'(
+    'skip_varint_eventssidecar.v1.MatchedACL'(Rest, Z1, Z2, F, F@_1, F@_2, TrUserData);
+'skip_varint_eventssidecar.v1.MatchedACL'(
     <<0:1, _:7, Rest/binary>>, Z1, Z2, F, F@_1, F@_2, TrUserData
 ) ->
-    'dfp_read_field_def_eventssidecar.v1.MatchedAcl'(Rest, Z1, Z2, F, F@_1, F@_2, TrUserData).
+    'dfp_read_field_def_eventssidecar.v1.MatchedACL'(Rest, Z1, Z2, F, F@_1, F@_2, TrUserData).
 
-'skip_length_delimited_eventssidecar.v1.MatchedAcl'(
+'skip_length_delimited_eventssidecar.v1.MatchedACL'(
     <<1:1, X:7, Rest/binary>>, N, Acc, F, F@_1, F@_2, TrUserData
 ) when N < 57 ->
-    'skip_length_delimited_eventssidecar.v1.MatchedAcl'(
+    'skip_length_delimited_eventssidecar.v1.MatchedACL'(
         Rest, N + 7, X bsl N + Acc, F, F@_1, F@_2, TrUserData
     );
-'skip_length_delimited_eventssidecar.v1.MatchedAcl'(
+'skip_length_delimited_eventssidecar.v1.MatchedACL'(
     <<0:1, X:7, Rest/binary>>, N, Acc, F, F@_1, F@_2, TrUserData
 ) ->
     Length = X bsl N + Acc,
     <<_:Length/binary, Rest2/binary>> = Rest,
-    'dfp_read_field_def_eventssidecar.v1.MatchedAcl'(Rest2, 0, 0, F, F@_1, F@_2, TrUserData).
+    'dfp_read_field_def_eventssidecar.v1.MatchedACL'(Rest2, 0, 0, F, F@_1, F@_2, TrUserData).
 
-'skip_group_eventssidecar.v1.MatchedAcl'(Bin, _, Z2, FNum, F@_1, F@_2, TrUserData) ->
+'skip_group_eventssidecar.v1.MatchedACL'(Bin, _, Z2, FNum, F@_1, F@_2, TrUserData) ->
     {_, Rest} = read_group(Bin, FNum),
-    'dfp_read_field_def_eventssidecar.v1.MatchedAcl'(Rest, 0, Z2, FNum, F@_1, F@_2, TrUserData).
+    'dfp_read_field_def_eventssidecar.v1.MatchedACL'(Rest, 0, Z2, FNum, F@_1, F@_2, TrUserData).
 
-'skip_32_eventssidecar.v1.MatchedAcl'(<<_:32, Rest/binary>>, Z1, Z2, F, F@_1, F@_2, TrUserData) ->
-    'dfp_read_field_def_eventssidecar.v1.MatchedAcl'(Rest, Z1, Z2, F, F@_1, F@_2, TrUserData).
+'skip_32_eventssidecar.v1.MatchedACL'(<<_:32, Rest/binary>>, Z1, Z2, F, F@_1, F@_2, TrUserData) ->
+    'dfp_read_field_def_eventssidecar.v1.MatchedACL'(Rest, Z1, Z2, F, F@_1, F@_2, TrUserData).
 
-'skip_64_eventssidecar.v1.MatchedAcl'(<<_:64, Rest/binary>>, Z1, Z2, F, F@_1, F@_2, TrUserData) ->
-    'dfp_read_field_def_eventssidecar.v1.MatchedAcl'(Rest, Z1, Z2, F, F@_1, F@_2, TrUserData).
+'skip_64_eventssidecar.v1.MatchedACL'(<<_:64, Rest/binary>>, Z1, Z2, F, F@_1, F@_2, TrUserData) ->
+    'dfp_read_field_def_eventssidecar.v1.MatchedACL'(Rest, Z1, Z2, F, F@_1, F@_2, TrUserData).
 
 read_group(Bin, FieldNum) ->
     {NumBytes, EndTagLen} = read_gr_b(Bin, 0, 0, 0, 0, FieldNum),
@@ -1269,8 +1269,8 @@ merge_msgs(Prev, New, MsgName, Opts) ->
             'merge_msg_eventssidecar.v1.TopicInfo'(Prev, New, TrUserData);
         'google.protobuf.Timestamp' ->
             'merge_msg_google.protobuf.Timestamp'(Prev, New, TrUserData);
-        'eventssidecar.v1.MatchedAcl' ->
-            'merge_msg_eventssidecar.v1.MatchedAcl'(Prev, New, TrUserData)
+        'eventssidecar.v1.MatchedACL' ->
+            'merge_msg_eventssidecar.v1.MatchedACL'(Prev, New, TrUserData)
     end.
 
 -compile({nowarn_unused_function, 'merge_msg_eventssidecar.v1.OnSubscribe'/3}).
@@ -1330,7 +1330,7 @@ merge_msgs(Prev, New, MsgName, Opts) ->
         matched_acl =
             if
                 PFmatched_acl /= undefined, NFmatched_acl /= undefined ->
-                    'merge_msg_eventssidecar.v1.MatchedAcl'(
+                    'merge_msg_eventssidecar.v1.MatchedACL'(
                         PFmatched_acl, NFmatched_acl, TrUserData
                     );
                 PFmatched_acl == undefined ->
@@ -1378,17 +1378,17 @@ merge_msgs(Prev, New, MsgName, Opts) ->
             end
     }.
 
--compile({nowarn_unused_function, 'merge_msg_eventssidecar.v1.MatchedAcl'/3}).
-'merge_msg_eventssidecar.v1.MatchedAcl'(
-    #'eventssidecar.v1.MatchedAcl'{label = PFlabel, pattern = PFpattern},
-    #'eventssidecar.v1.MatchedAcl'{label = NFlabel, pattern = NFpattern},
+-compile({nowarn_unused_function, 'merge_msg_eventssidecar.v1.MatchedACL'/3}).
+'merge_msg_eventssidecar.v1.MatchedACL'(
+    #'eventssidecar.v1.MatchedACL'{name = PFname, pattern = PFpattern},
+    #'eventssidecar.v1.MatchedACL'{name = NFname, pattern = NFpattern},
     _
 ) ->
-    #'eventssidecar.v1.MatchedAcl'{
-        label =
+    #'eventssidecar.v1.MatchedACL'{
+        name =
             if
-                NFlabel =:= undefined -> PFlabel;
-                true -> NFlabel
+                NFname =:= undefined -> PFname;
+                true -> NFname
             end,
         pattern =
             if
@@ -1413,8 +1413,8 @@ verify_msg(Msg, MsgName, Opts) ->
             'v_msg_eventssidecar.v1.TopicInfo'(Msg, [MsgName], TrUserData);
         'google.protobuf.Timestamp' ->
             'v_msg_google.protobuf.Timestamp'(Msg, [MsgName], TrUserData);
-        'eventssidecar.v1.MatchedAcl' ->
-            'v_msg_eventssidecar.v1.MatchedAcl'(Msg, [MsgName], TrUserData);
+        'eventssidecar.v1.MatchedACL' ->
+            'v_msg_eventssidecar.v1.MatchedACL'(Msg, [MsgName], TrUserData);
         _ ->
             mk_type_error(not_a_known_message, Msg, [])
     end.
@@ -1463,7 +1463,7 @@ verify_msg(Msg, MsgName, Opts) ->
     end,
     if
         F6 == undefined -> ok;
-        true -> 'v_submsg_eventssidecar.v1.MatchedAcl'(F6, [matched_acl | Path], TrUserData)
+        true -> 'v_submsg_eventssidecar.v1.MatchedACL'(F6, [matched_acl | Path], TrUserData)
     end,
     ok;
 'v_msg_eventssidecar.v1.OnSubscribe'(X, Path, _TrUserData) ->
@@ -1513,27 +1513,27 @@ verify_msg(Msg, MsgName, Opts) ->
 'v_msg_google.protobuf.Timestamp'(X, Path, _TrUserData) ->
     mk_type_error({expected_msg, 'google.protobuf.Timestamp'}, X, Path).
 
--compile({nowarn_unused_function, 'v_submsg_eventssidecar.v1.MatchedAcl'/3}).
--dialyzer({nowarn_function, 'v_submsg_eventssidecar.v1.MatchedAcl'/3}).
-'v_submsg_eventssidecar.v1.MatchedAcl'(Msg, Path, TrUserData) ->
-    'v_msg_eventssidecar.v1.MatchedAcl'(Msg, Path, TrUserData).
+-compile({nowarn_unused_function, 'v_submsg_eventssidecar.v1.MatchedACL'/3}).
+-dialyzer({nowarn_function, 'v_submsg_eventssidecar.v1.MatchedACL'/3}).
+'v_submsg_eventssidecar.v1.MatchedACL'(Msg, Path, TrUserData) ->
+    'v_msg_eventssidecar.v1.MatchedACL'(Msg, Path, TrUserData).
 
--compile({nowarn_unused_function, 'v_msg_eventssidecar.v1.MatchedAcl'/3}).
--dialyzer({nowarn_function, 'v_msg_eventssidecar.v1.MatchedAcl'/3}).
-'v_msg_eventssidecar.v1.MatchedAcl'(
-    #'eventssidecar.v1.MatchedAcl'{label = F1, pattern = F2}, Path, TrUserData
+-compile({nowarn_unused_function, 'v_msg_eventssidecar.v1.MatchedACL'/3}).
+-dialyzer({nowarn_function, 'v_msg_eventssidecar.v1.MatchedACL'/3}).
+'v_msg_eventssidecar.v1.MatchedACL'(
+    #'eventssidecar.v1.MatchedACL'{name = F1, pattern = F2}, Path, TrUserData
 ) ->
     if
         F1 == undefined -> ok;
-        true -> v_type_string(F1, [label | Path], TrUserData)
+        true -> v_type_string(F1, [name | Path], TrUserData)
     end,
     if
         F2 == undefined -> ok;
         true -> v_type_string(F2, [pattern | Path], TrUserData)
     end,
     ok;
-'v_msg_eventssidecar.v1.MatchedAcl'(X, Path, _TrUserData) ->
-    mk_type_error({expected_msg, 'eventssidecar.v1.MatchedAcl'}, X, Path).
+'v_msg_eventssidecar.v1.MatchedACL'(X, Path, _TrUserData) ->
+    mk_type_error({expected_msg, 'eventssidecar.v1.MatchedACL'}, X, Path).
 
 -compile({nowarn_unused_function, v_type_int32/3}).
 -dialyzer({nowarn_function, v_type_int32/3}).
@@ -1644,7 +1644,7 @@ get_msg_defs() ->
                 name = matched_acl,
                 fnum = 6,
                 rnum = 7,
-                type = {msg, 'eventssidecar.v1.MatchedAcl'},
+                type = {msg, 'eventssidecar.v1.MatchedACL'},
                 occurrence = optional,
                 opts = []
             }
@@ -1661,9 +1661,9 @@ get_msg_defs() ->
             },
             #field{name = nanos, fnum = 2, rnum = 3, type = int32, occurrence = optional, opts = []}
         ]},
-        {{msg, 'eventssidecar.v1.MatchedAcl'}, [
+        {{msg, 'eventssidecar.v1.MatchedACL'}, [
             #field{
-                name = label, fnum = 1, rnum = 2, type = string, occurrence = optional, opts = []
+                name = name, fnum = 1, rnum = 2, type = string, occurrence = optional, opts = []
             },
             #field{
                 name = pattern, fnum = 2, rnum = 3, type = string, occurrence = optional, opts = []
@@ -1676,7 +1676,7 @@ get_msg_names() ->
         'eventssidecar.v1.OnSubscribe',
         'eventssidecar.v1.TopicInfo',
         'google.protobuf.Timestamp',
-        'eventssidecar.v1.MatchedAcl'
+        'eventssidecar.v1.MatchedACL'
     ].
 
 get_group_names() -> [].
@@ -1686,7 +1686,7 @@ get_msg_or_group_names() ->
         'eventssidecar.v1.OnSubscribe',
         'eventssidecar.v1.TopicInfo',
         'google.protobuf.Timestamp',
-        'eventssidecar.v1.MatchedAcl'
+        'eventssidecar.v1.MatchedACL'
     ].
 
 get_enum_names() -> [].
@@ -1731,7 +1731,7 @@ find_msg_def('eventssidecar.v1.OnSubscribe') ->
             name = matched_acl,
             fnum = 6,
             rnum = 7,
-            type = {msg, 'eventssidecar.v1.MatchedAcl'},
+            type = {msg, 'eventssidecar.v1.MatchedACL'},
             occurrence = optional,
             opts = []
         }
@@ -1746,9 +1746,9 @@ find_msg_def('google.protobuf.Timestamp') ->
         #field{name = seconds, fnum = 1, rnum = 2, type = int64, occurrence = optional, opts = []},
         #field{name = nanos, fnum = 2, rnum = 3, type = int32, occurrence = optional, opts = []}
     ];
-find_msg_def('eventssidecar.v1.MatchedAcl') ->
+find_msg_def('eventssidecar.v1.MatchedACL') ->
     [
-        #field{name = label, fnum = 1, rnum = 2, type = string, occurrence = optional, opts = []},
+        #field{name = name, fnum = 1, rnum = 2, type = string, occurrence = optional, opts = []},
         #field{name = pattern, fnum = 2, rnum = 3, type = string, occurrence = optional, opts = []}
     ];
 find_msg_def(_) ->
@@ -1798,13 +1798,13 @@ service_and_rpc_name_to_fqbins(S, R) -> error({gpb_error, {badservice_or_rpc, {S
 fqbin_to_msg_name(<<"eventssidecar.v1.OnSubscribe">>) -> 'eventssidecar.v1.OnSubscribe';
 fqbin_to_msg_name(<<"eventssidecar.v1.TopicInfo">>) -> 'eventssidecar.v1.TopicInfo';
 fqbin_to_msg_name(<<"google.protobuf.Timestamp">>) -> 'google.protobuf.Timestamp';
-fqbin_to_msg_name(<<"eventssidecar.v1.MatchedAcl">>) -> 'eventssidecar.v1.MatchedAcl';
+fqbin_to_msg_name(<<"eventssidecar.v1.MatchedACL">>) -> 'eventssidecar.v1.MatchedACL';
 fqbin_to_msg_name(E) -> error({gpb_error, {badmsg, E}}).
 
 msg_name_to_fqbin('eventssidecar.v1.OnSubscribe') -> <<"eventssidecar.v1.OnSubscribe">>;
 msg_name_to_fqbin('eventssidecar.v1.TopicInfo') -> <<"eventssidecar.v1.TopicInfo">>;
 msg_name_to_fqbin('google.protobuf.Timestamp') -> <<"google.protobuf.Timestamp">>;
-msg_name_to_fqbin('eventssidecar.v1.MatchedAcl') -> <<"eventssidecar.v1.MatchedAcl">>;
+msg_name_to_fqbin('eventssidecar.v1.MatchedACL') -> <<"eventssidecar.v1.MatchedACL">>;
 msg_name_to_fqbin(E) -> error({gpb_error, {badmsg, E}}).
 
 -spec fqbin_to_enum_name(_) -> no_return().
@@ -1840,7 +1840,7 @@ get_msg_containment("on_subscribe") ->
 get_msg_containment("timestamp") ->
     ['google.protobuf.Timestamp'];
 get_msg_containment("matched_acl") ->
-    ['eventssidecar.v1.MatchedAcl'];
+    ['eventssidecar.v1.MatchedACL'];
 get_msg_containment(P) ->
     error({gpb_error, {badproto, P}}).
 
@@ -1866,7 +1866,7 @@ get_enum_containment(P) -> error({gpb_error, {badproto, P}}).
 
 get_proto_by_msg_name_as_fqbin(<<"google.protobuf.Timestamp">>) -> "timestamp";
 get_proto_by_msg_name_as_fqbin(<<"eventssidecar.v1.OnSubscribe">>) -> "on_subscribe";
-get_proto_by_msg_name_as_fqbin(<<"eventssidecar.v1.MatchedAcl">>) -> "matched_acl";
+get_proto_by_msg_name_as_fqbin(<<"eventssidecar.v1.MatchedACL">>) -> "matched_acl";
 get_proto_by_msg_name_as_fqbin(<<"eventssidecar.v1.TopicInfo">>) -> "on_subscribe";
 get_proto_by_msg_name_as_fqbin(E) -> error({gpb_error, {badmsg, E}}).
 
