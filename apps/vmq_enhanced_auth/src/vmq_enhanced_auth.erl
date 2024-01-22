@@ -57,7 +57,6 @@
 -define(USER_SUP, <<"%u">>).
 -define(CLIENT_SUP, <<"%c">>).
 -define(MOUNTPOINT_SUP, <<"%m">>).
--define(QOS_0, 0).
 -define(TOPIC_LABEL_TABLE, topic_labels).
 
 -ifdef(TEST).
