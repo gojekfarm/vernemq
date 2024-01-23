@@ -20,9 +20,7 @@
         % = 4, optional
         username = <<>> :: unicode:chardata() | undefined,
         % = 5, repeated
-        topics = [] :: [on_subscribe_pb:'eventssidecar.v1.TopicInfo'()] | undefined,
-        % = 6, repeated
-        matched_acl = [] :: [on_subscribe_pb:'eventssidecar.v1.MatchedACL'()] | undefined
+        topics = [] :: [on_subscribe_pb:'eventssidecar.v1.TopicInfo'()] | undefined
     }
 ).
 -endif.
@@ -34,7 +32,9 @@
     {
         topic = <<>> :: unicode:chardata() | undefined,
         % = 2, optional, 32 bits
-        qos = 0 :: integer() | undefined
+        qos = 0 :: integer() | undefined,
+        % = 3, optional
+        matched_acl = undefined :: on_subscribe_pb:'eventssidecar.v1.MatchedACL'() | undefined
     }
 ).
 -endif.

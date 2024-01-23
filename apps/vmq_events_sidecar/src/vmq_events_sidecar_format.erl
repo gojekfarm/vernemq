@@ -78,10 +78,15 @@ encode(
             client_id = ClientId,
             mountpoint = MP,
             username = UserName,
-            topics = [#'eventssidecar.v1.TopicInfo'{topic = T, qos = QoS} || [T, QoS] <- Topics],
-            matched_acl = [
-                #'eventssidecar.v1.MatchedACL'{name = Name, pattern = Pattern}
-             || #matched_acl{name = Name, pattern = Pattern} <- MatchedAcl
+            topics = [
+                #'eventssidecar.v1.TopicInfo'{
+                    topic = T,
+                    qos = QoS,
+                    matched_acl = #'eventssidecar.v1.MatchedACL'{name = Name, pattern = Pattern}
+                }
+             || {[T, QoS], #matched_acl{name = Name, pattern = Pattern}} <- lists:zip(
+                    Topics, MatchedAcl
+                )
             ],
             timestamp = convert_timestamp(Timestamp)
         })
