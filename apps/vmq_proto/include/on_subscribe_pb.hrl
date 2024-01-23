@@ -21,8 +21,8 @@
         username = <<>> :: unicode:chardata() | undefined,
         % = 5, repeated
         topics = [] :: [on_subscribe_pb:'eventssidecar.v1.TopicInfo'()] | undefined,
-        % = 6, optional
-        matched_acl = undefined :: on_subscribe_pb:'eventssidecar.v1.MatchedACL'() | undefined
+        % = 6, repeated
+        matched_acl = [] :: [on_subscribe_pb:'eventssidecar.v1.MatchedACL'()] | undefined
     }
 ).
 -endif.

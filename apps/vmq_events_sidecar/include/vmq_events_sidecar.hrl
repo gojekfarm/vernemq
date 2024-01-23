@@ -7,5 +7,4 @@
 -type event() :: {atom(), integer(), tuple()}.
 -type pool_size() :: pos_integer().
 -type reason() :: atom().
--type matched_acl() :: {binary(), list(binary())}.
 -endif.

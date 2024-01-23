@@ -59,6 +59,8 @@
 -define(MOUNTPOINT_SUP, <<"%m">>).
 -define(TOPIC_LABEL_TABLE, topic_labels).
 
+-include_lib("vmq_commons/include/vmq_types.hrl").
+
 -ifdef(TEST).
 -include_lib("eunit/include/eunit.hrl").
 -define(setup(F), {setup, fun setup/0, fun teardown/1, F}).
@@ -92,14 +94,14 @@ change_config(Configs) ->
     end.
 
 auth_on_subscribe(User, SubscriberId, TopicList) ->
-    auth_on_subscribe(User, SubscriberId, TopicList, []).
+    auth_on_subscribe(User, SubscriberId, TopicList, [], []).
 
-auth_on_subscribe(_, _, [], Modifiers) ->
-    {ok, lists:reverse(Modifiers)};
-auth_on_subscribe(User, SubscriberId, TopicList, Modifiers) ->
-    auth_on_subscribe(?RegView, User, SubscriberId, TopicList, Modifiers).
+auth_on_subscribe(_, _, [], Modifiers, MatchedAclList) ->
+    {ok, {lists:reverse(Modifiers), MatchedAclList}};
+auth_on_subscribe(User, SubscriberId, TopicList, Modifiers, MatchedAclList) ->
+    auth_on_subscribe(?RegView, User, SubscriberId, TopicList, Modifiers, MatchedAclList).
 
-auth_on_subscribe(RegView, User, SubscriberId, [{Topic, Qos} | Rest], Modifiers) ->
+auth_on_subscribe(RegView, User, SubscriberId, [{Topic, Qos} | Rest], Modifiers, MatchedAclList) ->
     D = is_topic_invalid(RegView, Topic) orelse is_acl_auth_disabled(),
     if
         D ->
@@ -112,11 +114,25 @@ auth_on_subscribe(RegView, User, SubscriberId, [{Topic, Qos} | Rest], Modifiers)
                 end,
             case check(read, Topic, User, SubscriberId, QosValue) of
                 {true, {Label, Pattern}} ->
-                    NewModifiers = [{matched_acl, {Label, Pattern}}] ++ Modifiers,
-                    auth_on_subscribe(User, SubscriberId, Rest, [{Topic, Qos} | NewModifiers]);
+                    MatchedAcl = #matched_acl{
+                        name = Label, pattern = iolist_to_binary(vmq_topic:unword(Pattern))
+                    },
+                    auth_on_subscribe(
+                        User,
+                        SubscriberId,
+                        Rest,
+                        [{Topic, Qos} | Modifiers],
+                        MatchedAclList ++ [MatchedAcl]
+                    );
                 false ->
                     ModTopic = {Topic, not_allowed},
-                    auth_on_subscribe(User, SubscriberId, Rest, [ModTopic | Modifiers])
+                    auth_on_subscribe(
+                        User,
+                        SubscriberId,
+                        Rest,
+                        [ModTopic | Modifiers],
+                        MatchedAclList ++ [#matched_acl{}]
+                    )
             end
     end.
 
@@ -128,7 +144,10 @@ auth_on_publish(User, SubscriberId, Qos, Topic, _, _) ->
         true ->
             case check(write, Topic, User, SubscriberId, Qos) of
                 {true, {Label, Pattern}} ->
-                    {ok, [{matched_acl, {Label, Pattern}}]};
+                    MatchedAcl = #matched_acl{
+                        name = Label, pattern = iolist_to_binary(vmq_topic:unword(Pattern))
+                    },
+                    {ok, MatchedAcl};
                 false ->
                     next
             end
@@ -720,12 +739,17 @@ simple_acl(_) ->
         ),
         %% positive auth_on_subscribe
         ?_assertEqual(
-            {ok, [
-                {matched_acl, {<<"token_write">>, [<<"a">>, <<"b">>, <<"id">>, <<"+">>]}},
-                {[<<"a">>, <<"b">>, <<"id">>, <<"c">>], 0},
-                {matched_acl, {<<"token_read_u2">>, [<<"a">>, <<"b">>, <<"1">>, <<"c">>]}},
-                {[<<"a">>, <<"b">>, <<"1">>, <<"c">>], 0}
-            ]},
+            {ok,
+                {
+                    [
+                        {[<<"a">>, <<"b">>, <<"id">>, <<"c">>], 0},
+                        {[<<"a">>, <<"b">>, <<"1">>, <<"c">>], 0}
+                    ],
+                    [
+                        {matched_acl, <<"token_write">>, <<"a/b/id/+">>},
+                        {matched_acl, <<"token_read_u2">>, <<"a/b/1/c">>}
+                    ]
+                }},
             auth_on_subscribe(
                 <<"user:1:name">>,
                 {"", <<"my:client:id">>},
@@ -736,14 +760,19 @@ simple_acl(_) ->
             )
         ),
         ?_assertEqual(
-            {ok, [
-                {matched_acl, {<<>>, [<<"a">>, <<"b">>, <<"c">>]}},
-                {[<<"a">>, <<"b">>, <<"c">>], 0},
-                {matched_acl, {<<>>, [<<"x">>, <<"y">>, <<"z">>, <<"#">>]}},
-                {[<<"x">>, <<"y">>, <<"z">>, <<"#">>], 0},
-                {matched_acl, {<<"pattern_read">>, [<<>>, <<"test">>, <<"my-client-id">>]}},
-                {[<<>>, <<"test">>, <<"my-client-id">>], 0}
-            ]},
+            {ok,
+                {
+                    [
+                        {[<<"a">>, <<"b">>, <<"c">>], 0},
+                        {[<<"x">>, <<"y">>, <<"z">>, <<"#">>], 0},
+                        {[<<>>, <<"test">>, <<"my-client-id">>], 0}
+                    ],
+                    [
+                        {matched_acl, <<>>, <<"a/b/c">>},
+                        {matched_acl, <<>>, <<"x/y/z/#">>},
+                        {matched_acl, <<"pattern_read">>, <<"/test/my-client-id">>}
+                    ]
+                }},
             auth_on_subscribe(
                 <<"test">>,
                 {"", <<"my-client-id">>},
@@ -755,14 +784,19 @@ simple_acl(_) ->
             )
         ),
         ?_assertEqual(
-            {ok, [
-                {matched_acl, {<<>>, [<<"a">>, <<"b">>, <<"c">>]}},
-                {[<<"a">>, <<"b">>, <<"c">>], 0},
-                {matched_acl, {<<>>, [<<"x">>, <<"y">>, <<"z">>, <<"#">>]}},
-                {[<<"x">>, <<"y">>, <<"z">>, <<"#">>], 0},
-                {matched_acl, {<<"token_read">>, [<<"example">>, <<"profile-id">>]}},
-                {[<<"example">>, <<"profile-id">>], 0}
-            ]},
+            {ok,
+                {
+                    [
+                        {[<<"a">>, <<"b">>, <<"c">>], 0},
+                        {[<<"x">>, <<"y">>, <<"z">>, <<"#">>], 0},
+                        {[<<"example">>, <<"profile-id">>], 0}
+                    ],
+                    [
+                        {matched_acl, <<>>, <<"a/b/c">>},
+                        {matched_acl, <<>>, <<"x/y/z/#">>},
+                        {matched_acl, <<"token_read">>, <<"example/profile-id">>}
+                    ]
+                }},
             auth_on_subscribe(
                 <<"test">>,
                 {"", <<"device-id:owner-id:profile-id">>},
@@ -776,14 +810,19 @@ simple_acl(_) ->
 
         %% colon separated username
         ?_assertEqual(
-            {ok, [
-                {matched_acl, {<<>>, [<<"a">>, <<"b">>, <<"c">>]}},
-                {[<<"a">>, <<"b">>, <<"c">>], 0},
-                {matched_acl, {<<>>, [<<"x">>, <<"y">>, <<"z">>, <<"#">>]}},
-                {[<<"x">>, <<"y">>, <<"z">>, <<"#">>], 0},
-                {matched_acl, {<<"pattern_read">>, [<<>>, <<"test">>, <<"my-client-id">>]}},
-                {[<<>>, <<"test">>, <<"my-client-id">>], 0}
-            ]},
+            {ok,
+                {
+                    [
+                        {[<<"a">>, <<"b">>, <<"c">>], 0},
+                        {[<<"x">>, <<"y">>, <<"z">>, <<"#">>], 0},
+                        {[<<>>, <<"test">>, <<"my-client-id">>], 0}
+                    ],
+                    [
+                        {matched_acl, <<>>, <<"a/b/c">>},
+                        {matched_acl, <<>>, <<"x/y/z/#">>},
+                        {matched_acl, <<"pattern_read">>, <<"/test/my-client-id">>}
+                    ]
+                }},
             auth_on_subscribe(
                 <<"test">>,
                 {"", <<"my-client-id">>},
@@ -795,12 +834,19 @@ simple_acl(_) ->
             )
         ),
         ?_assertEqual(
-            {ok, [
-                {matched_acl, {<<>>, [<<"a">>, <<"b">>, <<"c">>]}},
-                {[<<"a">>, <<"b">>, <<"c">>], 0},
-                {[<<"x">>, <<"y">>, <<"z">>, <<"#">>], not_allowed},
-                {[<<>>, <<"test">>, <<"my-client-id">>], not_allowed}
-            ]},
+            {ok,
+                {
+                    [
+                        {[<<"a">>, <<"b">>, <<"c">>], 0},
+                        {[<<"x">>, <<"y">>, <<"z">>, <<"#">>], not_allowed},
+                        {[<<>>, <<"test">>, <<"my-client-id">>], not_allowed}
+                    ],
+                    [
+                        {matched_acl, <<>>, <<"a/b/c">>},
+                        {matched_acl, <<>>, <<>>},
+                        {matched_acl, <<>>, <<>>}
+                    ]
+                }},
             auth_on_subscribe(
                 <<"invalid-user">>,
                 {"", <<"my-client-id">>},
@@ -812,7 +858,7 @@ simple_acl(_) ->
             )
         ),
         ?_assertEqual(
-            {ok, [{matched_acl, {<<>>, [<<"a">>, <<"b">>, <<"c">>]}}]},
+            {ok, {matched_acl, <<>>, <<"a/b/c">>}},
             auth_on_publish(
                 <<"test">>,
                 {"", <<"my-client-id">>},
@@ -823,10 +869,7 @@ simple_acl(_) ->
             )
         ),
         ?_assertEqual(
-            {ok, [
-                {matched_acl,
-                    {<<"token_write_c3">>, [<<"write-topic">>, <<"a">>, <<"b">>, <<"id">>, <<"+">>]}}
-            ]},
+            {ok, {matched_acl, <<"token_write_c3">>, <<"write-topic/a/b/id/+">>}},
             auth_on_publish(
                 <<"test">>,
                 {"", <<"my:client:id">>},
@@ -837,7 +880,7 @@ simple_acl(_) ->
             )
         ),
         ?_assertEqual(
-            {ok, [{matched_acl, {<<>>, [<<"x">>, <<"y">>, <<"z">>, <<"#">>]}}]},
+            {ok, {matched_acl, <<>>, <<"x/y/z/#">>}},
             auth_on_publish(
                 <<"test">>,
                 {"", <<"my-client-id">>},
@@ -848,7 +891,7 @@ simple_acl(_) ->
             )
         ),
         ?_assertEqual(
-            {ok, [{matched_acl, {<<"pattern_write">>, [<<>>, <<"test">>, <<"my-client-id">>]}}]},
+            {ok, {matched_acl, <<"pattern_write">>, <<"/test/my-client-id">>}},
             auth_on_publish(
                 <<"test">>,
                 {"", <<"my-client-id">>},

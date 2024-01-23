@@ -215,7 +215,7 @@ on_publish(UserName, SubscriberId, QoS, Topic, Payload, IsRetain, MatchedAcl) ->
             {MP, ClientId, normalise(UserName), QoS, unword(Topic), Payload, IsRetain, MatchedAcl}}
     ).
 
--spec on_subscribe(username(), subscriber_id(), [topic()], matched_acl()) -> 'next'.
+-spec on_subscribe(username(), subscriber_id(), [topic()], [matched_acl()]) -> 'next'.
 on_subscribe(UserName, SubscriberId, Topics, MatchedAcl) ->
     {MP, ClientId} = subscriber_id(SubscriberId),
     send_event(

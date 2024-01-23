@@ -419,25 +419,15 @@ connected(
     _ = vmq_metrics:incr_mqtt_subscribe_received(),
     SubTopics = subtopics(Topics, ProtoVer),
     OnAuthSuccess =
-        fun(_User, _SubscriberId, MaybeChangedTopics) ->
-            {FilteredMaybeChangedTopics, MatchedAcl} =
-                case lists:keyfind(matched_acl, 1, MaybeChangedTopics) of
-                    {matched_acl, {Label, Pattern}} ->
-                        {
-                            [Item || Item <- MaybeChangedTopics, not is_label_tuple(Item)],
-                            {Label, Pattern}
-                        };
-                    _ ->
-                        {MaybeChangedTopics, {<<>>, []}}
-                end,
-            case vmq_reg:subscribe(SubscriberId, FilteredMaybeChangedTopics) of
+        fun(_User, _SubscriberId, MaybeChangedTopics, MatchedAclList) ->
+            case vmq_reg:subscribe(SubscriberId, MaybeChangedTopics) of
                 {ok, _} = Res ->
                     T = lists:foldr(
                         fun({Topic, Sub}, Acc) -> [{Topic, extract_qos(Sub)} | Acc] end,
                         [],
-                        FilteredMaybeChangedTopics
+                        MaybeChangedTopics
                     ),
-                    vmq_plugin:all(on_subscribe, [User, SubscriberId, T, MatchedAcl]),
+                    vmq_plugin:all(on_subscribe, [User, SubscriberId, T, MatchedAclList]),
                     Res;
                 Res ->
                     Res
@@ -775,7 +765,7 @@ check_will(
                 retain = unflag(IsRetain),
                 mountpoint = MountPoint
             },
-            fun(Msg, _, SessCtrl) -> {ok, Msg, SessCtrl} end
+            fun(Msg, _, SessCtrl, #matched_acl{}) -> {ok, Msg, SessCtrl} end
         )
     of
         {ok, Msg, SessCtrl} ->
@@ -841,8 +831,12 @@ set_sock_opts(Opts) ->
     subscriber_id(),
     [{topic(), subinfo()}],
     fun(
-        (username(), subscriber_id(), [{topic(), subinfo()}]) ->
-            {ok, [qos() | not_allowed]} | {error, atom()}
+        (
+            username(),
+            subscriber_id(),
+            [{topic(), subinfo()}],
+            [matched_acl()]
+        ) -> {ok, [qos() | not_allowed]} | {error, atom()}
     )
 ) -> {ok, [qos() | not_allowed]} | {error, atom()}.
 auth_on_subscribe(User, SubscriberId, Topics, AuthSuccess) ->
@@ -853,9 +847,11 @@ auth_on_subscribe(User, SubscriberId, Topics, AuthSuccess) ->
         )
     of
         ok ->
-            AuthSuccess(User, SubscriberId, Topics);
+            AuthSuccess(User, SubscriberId, Topics, [#matched_acl{}]);
         {ok, NewTopics} when is_list(NewTopics) ->
-            AuthSuccess(User, SubscriberId, NewTopics);
+            AuthSuccess(User, SubscriberId, NewTopics, [#matched_acl{}]);
+        {ok, {NewTopics, MatchedAclList}} when is_list(NewTopics) ->
+            AuthSuccess(User, SubscriberId, NewTopics, MatchedAclList);
         {error, _} ->
             {error, not_allowed}
     end.
@@ -895,18 +891,11 @@ auth_on_publish(
     HookArgs = [User, SubscriberId, QoS, Topic, Payload, unflag(IsRetain)],
     case vmq_plugin:all_till_ok(auth_on_publish, HookArgs) of
         ok ->
-            AuthSuccess(Msg, HookArgs, #{});
+            AuthSuccess(Msg, HookArgs, #{}, #matched_acl{});
         {ok, ChangedPayload} when is_binary(ChangedPayload) ->
             HookArgs1 = [User, SubscriberId, QoS, Topic, ChangedPayload, unflag(IsRetain)],
-            AuthSuccess(Msg#vmq_msg{payload = ChangedPayload}, HookArgs1, #{});
+            AuthSuccess(Msg#vmq_msg{payload = ChangedPayload}, HookArgs1, #{}, #matched_acl{});
         {ok, Args} when is_list(Args) ->
-            MatchedAcl =
-                case Args of
-                    [{matched_acl, {Label, Pattern}}] ->
-                        {Label, Pattern};
-                    _ ->
-                        {<<>>, []}
-                end,
             #vmq_msg{mountpoint = MP} = Msg,
             ChangedTopic = proplists:get_value(topic, Args, Topic),
             ChangedPayload = proplists:get_value(payload, Args, Payload),
@@ -919,8 +908,7 @@ auth_on_publish(
                 ChangedQoS,
                 ChangedTopic,
                 ChangedPayload,
-                ChangedIsRetain,
-                MatchedAcl
+                ChangedIsRetain
             ],
             SessCtrl = session_ctrl(Args),
             AuthSuccess(
@@ -932,8 +920,11 @@ auth_on_publish(
                     mountpoint = ChangedMountpoint
                 },
                 HookArgs1,
-                SessCtrl
+                SessCtrl,
+                #matched_acl{}
             );
+        {ok, MatchedAcl = #matched_acl{name = _, pattern = _}} ->
+            AuthSuccess(Msg, HookArgs, #{}, MatchedAcl);
         {error, Re} ->
             lager:error("can't auth publish ~p due to ~p", [HookArgs, Re]),
             {error, not_allowed}
@@ -959,11 +950,11 @@ publish(RegView, User, {_, ClientId} = SubscriberId, Msg) ->
         User,
         SubscriberId,
         Msg,
-        fun(MaybeChangedMsg, HookArgs, SessCtrl) ->
+        fun(MaybeChangedMsg, HookArgs, SessCtrl, MatchedAcl) ->
             case
                 on_publish_hook(
                     vmq_reg:publish(RegView, ClientId, MaybeChangedMsg),
-                    HookArgs
+                    HookArgs ++ [MatchedAcl]
                 )
             of
                 ok ->
@@ -1700,6 +1691,3 @@ check_mqtt_auth_errors(QoSTable) ->
 extract_qos(not_allowed) -> not_allowed;
 extract_qos(QoS) when is_integer(QoS) -> QoS;
 extract_qos({QoS, _SubInfo}) -> QoS.
-
-is_label_tuple({matched_acl, _}) -> true;
-is_label_tuple(_) -> false.

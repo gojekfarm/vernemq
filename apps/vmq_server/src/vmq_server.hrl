@@ -39,7 +39,7 @@
 -type duration_ms() :: non_neg_integer().
 -type session_ctrl() :: #{throttle => duration_ms()}.
 -type aop_success_fun() :: fun(
-    (msg(), list(), session_ctrl()) ->
+    (msg(), list(), session_ctrl(), matched_acl()) ->
         {ok, msg()}
         | {ok, msg(), session_ctrl()}
         | {error, atom()}

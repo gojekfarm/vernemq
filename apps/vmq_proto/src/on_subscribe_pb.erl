@@ -184,21 +184,12 @@ encode_msg(Msg, MsgName, Opts) ->
             true -> 'e_field_eventssidecar.v1.OnSubscribe_topics'(TrF5, B4, TrUserData)
         end
     end,
-    if
-        F6 == undefined ->
-            B5;
-        true ->
-            begin
-                TrF6 = id(F6, TrUserData),
-                if
-                    TrF6 =:= undefined ->
-                        B5;
-                    true ->
-                        'e_mfield_eventssidecar.v1.OnSubscribe_matched_acl'(
-                            TrF6, <<B5/binary, 50>>, TrUserData
-                        )
-                end
-            end
+    begin
+        TrF6 = id(F6, TrUserData),
+        if
+            TrF6 == [] -> B5;
+            true -> 'e_field_eventssidecar.v1.OnSubscribe_matched_acl'(TrF6, B5, TrUserData)
+        end
     end.
 
 'encode_msg_eventssidecar.v1.TopicInfo'(Msg, TrUserData) ->
@@ -318,6 +309,15 @@ encode_msg(Msg, MsgName, Opts) ->
     SubBin = 'encode_msg_eventssidecar.v1.MatchedACL'(Msg, <<>>, TrUserData),
     Bin2 = e_varint(byte_size(SubBin), Bin),
     <<Bin2/binary, SubBin/binary>>.
+
+'e_field_eventssidecar.v1.OnSubscribe_matched_acl'([Elem | Rest], Bin, TrUserData) ->
+    Bin2 = <<Bin/binary, 50>>,
+    Bin3 = 'e_mfield_eventssidecar.v1.OnSubscribe_matched_acl'(
+        id(Elem, TrUserData), Bin2, TrUserData
+    ),
+    'e_field_eventssidecar.v1.OnSubscribe_matched_acl'(Rest, Bin3, TrUserData);
+'e_field_eventssidecar.v1.OnSubscribe_matched_acl'([], Bin, _TrUserData) ->
+    Bin.
 
 -compile({nowarn_unused_function, e_type_sint/3}).
 e_type_sint(Value, Bin, _TrUserData) when Value >= 0 -> e_varint(Value * 2, Bin);
@@ -486,7 +486,7 @@ decode_msg_2_doit('eventssidecar.v1.MatchedACL', Bin, TrUserData) ->
         id(<<>>, TrUserData),
         id(<<>>, TrUserData),
         id([], TrUserData),
-        id(undefined, TrUserData),
+        id([], TrUserData),
         TrUserData
     ).
 
@@ -527,7 +527,7 @@ decode_msg_2_doit('eventssidecar.v1.MatchedACL', Bin, TrUserData) ->
         Rest, Z1, Z2, F, F@_1, F@_2, F@_3, F@_4, F@_5, F@_6, TrUserData
     );
 'dfp_read_field_def_eventssidecar.v1.OnSubscribe'(
-    <<>>, 0, 0, _, F@_1, F@_2, F@_3, F@_4, R1, F@_6, TrUserData
+    <<>>, 0, 0, _, F@_1, F@_2, F@_3, F@_4, R1, R2, TrUserData
 ) ->
     #'eventssidecar.v1.OnSubscribe'{
         timestamp = F@_1,
@@ -535,7 +535,7 @@ decode_msg_2_doit('eventssidecar.v1.MatchedACL', Bin, TrUserData) ->
         mountpoint = F@_3,
         username = F@_4,
         topics = lists_reverse(R1, TrUserData),
-        matched_acl = F@_6
+        matched_acl = lists_reverse(R2, TrUserData)
     };
 'dfp_read_field_def_eventssidecar.v1.OnSubscribe'(
     Other, Z1, Z2, F, F@_1, F@_2, F@_3, F@_4, F@_5, F@_6, TrUserData
@@ -604,7 +604,7 @@ decode_msg_2_doit('eventssidecar.v1.MatchedACL', Bin, TrUserData) ->
             end
     end;
 'dg_read_field_def_eventssidecar.v1.OnSubscribe'(
-    <<>>, 0, 0, _, F@_1, F@_2, F@_3, F@_4, R1, F@_6, TrUserData
+    <<>>, 0, 0, _, F@_1, F@_2, F@_3, F@_4, R1, R2, TrUserData
 ) ->
     #'eventssidecar.v1.OnSubscribe'{
         timestamp = F@_1,
@@ -612,7 +612,7 @@ decode_msg_2_doit('eventssidecar.v1.MatchedACL', Bin, TrUserData) ->
         mountpoint = F@_3,
         username = F@_4,
         topics = lists_reverse(R1, TrUserData),
-        matched_acl = F@_6
+        matched_acl = lists_reverse(R2, TrUserData)
     }.
 
 'd_field_eventssidecar.v1.OnSubscribe_timestamp'(
@@ -736,20 +736,7 @@ decode_msg_2_doit('eventssidecar.v1.MatchedACL', Bin, TrUserData) ->
         {id('decode_msg_eventssidecar.v1.MatchedACL'(Bs, TrUserData), TrUserData), Rest2}
     end,
     'dfp_read_field_def_eventssidecar.v1.OnSubscribe'(
-        RestF,
-        0,
-        0,
-        F,
-        F@_1,
-        F@_2,
-        F@_3,
-        F@_4,
-        F@_5,
-        if
-            Prev == undefined -> NewFValue;
-            true -> 'merge_msg_eventssidecar.v1.MatchedACL'(Prev, NewFValue, TrUserData)
-        end,
-        TrUserData
+        RestF, 0, 0, F, F@_1, F@_2, F@_3, F@_4, F@_5, cons(NewFValue, Prev, TrUserData), TrUserData
     ).
 
 'skip_varint_eventssidecar.v1.OnSubscribe'(
@@ -1330,9 +1317,7 @@ merge_msgs(Prev, New, MsgName, Opts) ->
         matched_acl =
             if
                 PFmatched_acl /= undefined, NFmatched_acl /= undefined ->
-                    'merge_msg_eventssidecar.v1.MatchedACL'(
-                        PFmatched_acl, NFmatched_acl, TrUserData
-                    );
+                    'erlang_++'(PFmatched_acl, NFmatched_acl, TrUserData);
                 PFmatched_acl == undefined ->
                     NFmatched_acl;
                 NFmatched_acl == undefined ->
@@ -1462,8 +1447,16 @@ verify_msg(Msg, MsgName, Opts) ->
             ])
     end,
     if
-        F6 == undefined -> ok;
-        true -> 'v_submsg_eventssidecar.v1.MatchedACL'(F6, [matched_acl | Path], TrUserData)
+        is_list(F6) ->
+            _ = [
+                'v_submsg_eventssidecar.v1.MatchedACL'(Elem, [matched_acl | Path], TrUserData)
+             || Elem <- F6
+            ],
+            ok;
+        true ->
+            mk_type_error({invalid_list_of, {msg, 'eventssidecar.v1.MatchedACL'}}, F6, [
+                matched_acl | Path
+            ])
     end,
     ok;
 'v_msg_eventssidecar.v1.OnSubscribe'(X, Path, _TrUserData) ->
@@ -1645,7 +1638,7 @@ get_msg_defs() ->
                 fnum = 6,
                 rnum = 7,
                 type = {msg, 'eventssidecar.v1.MatchedACL'},
-                occurrence = optional,
+                occurrence = repeated,
                 opts = []
             }
         ]},
@@ -1732,7 +1725,7 @@ find_msg_def('eventssidecar.v1.OnSubscribe') ->
             fnum = 6,
             rnum = 7,
             type = {msg, 'eventssidecar.v1.MatchedACL'},
-            occurrence = optional,
+            occurrence = repeated,
             opts = []
         }
     ];
