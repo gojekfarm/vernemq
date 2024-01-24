@@ -885,7 +885,7 @@ simple_acl(_) ->
                 <<"test">>,
                 {"", <<"my-client-id">>},
                 1,
-                [<<"x">>, <<"y">>, <<"z">>, <<"blabla">>],
+                [<<"x">>, <<"y">>, <<"z">>, <<"test">>],
                 <<"payload">>,
                 false
             )
@@ -907,7 +907,7 @@ simple_acl(_) ->
                 <<"invalid-user">>,
                 {"", <<"my-client-id">>},
                 1,
-                [<<"x">>, <<"y">>, <<"z">>, <<"blabla">>],
+                [<<"x">>, <<"y">>, <<"z">>, <<"test">>],
                 <<"payload">>,
                 false
             )
