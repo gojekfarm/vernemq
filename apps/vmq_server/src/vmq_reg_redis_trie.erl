@@ -36,7 +36,7 @@
 
 -record(state, {status = init}).
 -record(trie, {edge, node_id}).
--record(trie_node, {node_id, edge_count = 0, topic}).
+-record(trie_node, {node_id, edge_count = 0, topic, traversal_count = 0}).
 -record(trie_edge, {node_id, word}).
 
 %%%===================================================================
@@ -153,13 +153,23 @@ add_complex_topics(Topics) ->
 add_complex_topic(MP, Topic) ->
     MPTopic = {MP, Topic},
     case ets:lookup(vmq_redis_trie_node, MPTopic) of
-        [#trie_node{topic = Topic}] ->
-            ignore;
+        [TrieNode = #trie_node{topic = NodeTopic, traversal_count = TraversalCount}] ->
+            case NodeTopic of
+                undefined ->
+                    _ = [trie_add_path(MP, Triple) || Triple <- vmq_topic:triples(Topic)],
+                    ets:insert(vmq_redis_trie_node, TrieNode#trie_node{
+                        topic = Topic, traversal_count = TraversalCount + 1
+                    });
+                _ ->
+                    ignore
+            end;
         _ ->
             %% add trie path
             _ = [trie_add_path(MP, Triple) || Triple <- vmq_topic:triples(Topic)],
             %% add last node
-            ets:insert(vmq_redis_trie_node, #trie_node{node_id = MPTopic, topic = Topic})
+            ets:insert(vmq_redis_trie_node, #trie_node{
+                node_id = MPTopic, topic = Topic, traversal_count = 1
+            })
     end.
 
 delete_complex_topics(Topics) ->
@@ -180,9 +190,26 @@ delete_complex_topics(Topics) ->
 delete_complex_topic(MP, Topic) ->
     NodeId = {MP, Topic},
     case ets:lookup(vmq_redis_trie_node, NodeId) of
-        [_] ->
-            ets:delete(vmq_redis_trie_node, NodeId),
-            trie_delete_path(MP, lists:reverse(vmq_topic:triples(Topic)));
+        [TrieNode = #trie_node{topic = NodeTopic, traversal_count = TraversalCount}] ->
+            case NodeTopic of
+                undefined ->
+                    ok;
+                _ ->
+                    List = lists:reverse(vmq_topic:triples(Topic)),
+                    case TraversalCount > 1 of
+                        true ->
+                            ets:insert(vmq_redis_trie_node, TrieNode#trie_node{
+                                topic = undefined,
+                                traversal_count = TraversalCount - 1
+                            });
+                        false ->
+                            [{Node, Word, _} | _] = List,
+                            Edge = #trie_edge{node_id = {MP, Node}, word = Word},
+                            ets:delete(vmq_redis_trie_node, NodeId),
+                            ets:delete(vmq_redis_trie, Edge)
+                    end,
+                    trie_delete_path(MP, List)
+            end;
         _ ->
             ignore
     end.
@@ -192,7 +219,7 @@ get_complex_topics() ->
         vmq_topic:unword(T)
      || T <- ets:select(vmq_redis_trie_node, [
             {
-                #trie_node{node_id = {"", '$1'}, topic = '$1', edge_count = 0},
+                #trie_node{node_id = {"", '$1'}, topic = '$1', edge_count = 0, traversal_count = 1},
                 [{'=/=', '$1', undefined}],
                 ['$1']
             }
@@ -345,19 +372,27 @@ trie_add_path(MP, {Node, Word, Child}) ->
     NodeId = {MP, Node},
     Edge = #trie_edge{node_id = NodeId, word = Word},
     case ets:lookup(vmq_redis_trie_node, NodeId) of
-        [TrieNode = #trie_node{edge_count = Count}] ->
+        [TrieNode = #trie_node{edge_count = EdgeCount, traversal_count = TraversalCount}] ->
             case ets:lookup(vmq_redis_trie, Edge) of
                 [] ->
                     ets:insert(
                         vmq_redis_trie_node,
-                        TrieNode#trie_node{edge_count = Count + 1}
+                        TrieNode#trie_node{
+                            edge_count = EdgeCount + 1, traversal_count = TraversalCount + 1
+                        }
                     ),
                     ets:insert(vmq_redis_trie, #trie{edge = Edge, node_id = Child});
                 [_] ->
+                    ets:insert(
+                        vmq_redis_trie_node,
+                        TrieNode#trie_node{traversal_count = TraversalCount + 1}
+                    ),
                     ok
             end;
         [] ->
-            ets:insert(vmq_redis_trie_node, #trie_node{node_id = NodeId, edge_count = 1}),
+            ets:insert(vmq_redis_trie_node, #trie_node{
+                node_id = NodeId, edge_count = 1, traversal_count = 1
+            }),
             ets:insert(vmq_redis_trie, #trie{edge = Edge, node_id = Child})
     end.
 
@@ -400,10 +435,33 @@ trie_delete_path(_, []) ->
 trie_delete_path(MP, [{Node, Word, _} | RestPath]) ->
     NodeId = {MP, Node},
     Edge = #trie_edge{node_id = NodeId, word = Word},
-    ets:delete(vmq_redis_trie, Edge),
     case ets:lookup(vmq_redis_trie_node, NodeId) of
-        [_] ->
-            ets:delete(vmq_redis_trie_node, NodeId),
+        [TrieNode = #trie_node{traversal_count = TraversalCount, edge_count = EdgeCount}] ->
+            case TraversalCount > 1 of
+                true ->
+                    PrevNodeId =
+                        case Node of
+                            root -> {MP, [Word]};
+                            _ -> {MP, Node ++ [Word]}
+                        end,
+                    NewEdgeCount =
+                        case ets:lookup(vmq_redis_trie_node, PrevNodeId) of
+                            [] ->
+                                ets:delete(vmq_redis_trie, Edge),
+                                EdgeCount - 1;
+                            [_] ->
+                                EdgeCount
+                        end,
+                    ets:insert(
+                        vmq_redis_trie_node,
+                        TrieNode#trie_node{
+                            edge_count = NewEdgeCount, traversal_count = TraversalCount - 1
+                        }
+                    );
+                false ->
+                    ets:delete(vmq_redis_trie, Edge),
+                    ets:delete(vmq_redis_trie_node, NodeId)
+            end,
             trie_delete_path(MP, RestPath);
         [] ->
             ignore
