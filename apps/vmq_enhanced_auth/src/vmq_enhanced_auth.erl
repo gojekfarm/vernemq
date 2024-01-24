@@ -113,10 +113,7 @@ auth_on_subscribe(RegView, User, SubscriberId, [{Topic, Qos} | Rest], Modifiers,
                     {N, _} when is_integer(N) -> N
                 end,
             case check(read, Topic, User, SubscriberId, QosValue) of
-                {true, {Label, Pattern}} ->
-                    MatchedAcl = #matched_acl{
-                        name = Label, pattern = iolist_to_binary(vmq_topic:unword(Pattern))
-                    },
+                {true, MatchedAcl} ->
                     auth_on_subscribe(
                         User,
                         SubscriberId,
@@ -143,10 +140,7 @@ auth_on_publish(User, SubscriberId, Qos, Topic, _, _) ->
             next;
         true ->
             case check(write, Topic, User, SubscriberId, Qos) of
-                {true, {Label, Pattern}} ->
-                    MatchedAcl = #matched_acl{
-                        name = Label, pattern = iolist_to_binary(vmq_topic:unword(Pattern))
-                    },
+                {true, MatchedAcl} ->
                     {ok, MatchedAcl};
                 false ->
                     next
@@ -317,17 +311,17 @@ parse_acl_line({F, eof}, _User) ->
 
 check(Type, [Word | _] = Topic, User, SubscriberId, Qos) when is_binary(Word) ->
     case check_all_acl(Type, Topic, Qos) of
-        {true, {Label, Pattern}} ->
-            {true, {Label, Pattern}};
+        {true, MatchedAcl} ->
+            {true, MatchedAcl};
         false when User == all -> false;
         false ->
             case check_user_acl(Type, User, Topic, Qos) of
-                {true, {Label, Pattern}} ->
-                    {true, {Label, Pattern}};
+                {true, MatchedAcl} ->
+                    {true, MatchedAcl};
                 false ->
                     case check_pattern_acl(Type, Topic, User, SubscriberId, Qos) of
-                        {true, {Label, Pattern}} ->
-                            {true, {Label, Pattern}};
+                        {true, MatchedAcl} ->
+                            {true, MatchedAcl};
                         false ->
                             check_token_acl(Type, Topic, User, SubscriberId, Qos)
                     end
@@ -370,7 +364,10 @@ match(TIn, T, Tbl, Type, Key, Qos) ->
             case ets:lookup(Tbl, Key) of
                 [{_, _, Label}] ->
                     check_label_and_incr_metrics(Label, Type, Qos),
-                    {true, {Label, T}};
+                    MatchedAcl = #matched_acl{
+                        name = Label, pattern = iolist_to_binary(vmq_topic:unword(T))
+                    },
+                    {true, MatchedAcl};
                 _ ->
                     true
             end;
@@ -502,7 +499,7 @@ iterate_ets_until_true(_, '$end_of_table', _) ->
     false;
 iterate_ets_until_true(Table, K, Fun) ->
     case Fun(K) of
-        {true, Label} -> {true, Label};
+        {true, MatchedAcl} -> {true, MatchedAcl};
         false -> iterate_ets_until_true(Table, ets:next(Table, K), Fun)
     end.
 
@@ -510,7 +507,7 @@ iterate_list_until_true([], _) ->
     false;
 iterate_list_until_true([T | Rest], Fun) ->
     case Fun(T) of
-        {true, Label} -> {true, Label};
+        {true, MatchedAcl} -> {true, MatchedAcl};
         false -> iterate_list_until_true(Rest, Fun)
     end.
 
