@@ -70,7 +70,7 @@ encode(
         })
     );
 encode(
-    {on_subscribe, Timestamp, {MP, ClientId, UserName, Topics, MatchedAcl}}
+    {on_subscribe, Timestamp, {MP, ClientId, UserName, Topics}}
 ) ->
     encode_envelope(
         "OnSubscribe",
@@ -84,9 +84,7 @@ encode(
                     qos = QoS,
                     matched_acl = #'eventssidecar.v1.MatchedACL'{name = Name, pattern = Pattern}
                 }
-             || {[T, QoS], #matched_acl{name = Name, pattern = Pattern}} <- lists:zip(
-                    Topics, MatchedAcl
-                )
+             || [T, QoS, #matched_acl{name = Name, pattern = Pattern}] <- Topics
             ],
             timestamp = convert_timestamp(Timestamp)
         })

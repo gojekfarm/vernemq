@@ -1165,7 +1165,7 @@ check_will(
                 mountpoint = MountPoint,
                 properties = Properties
             },
-            fun(Msg, _, SessCtrl, #matched_acl{}) -> {ok, Msg, SessCtrl} end,
+            fun(Msg, _, SessCtrl) -> {ok, Msg, SessCtrl} end,
             State
         )
     of
@@ -1438,7 +1438,7 @@ auth_on_publish(
     HookArgs = [User, SubscriberId, QoS, Topic, Payload, unflag(IsRetain), Properties],
     case vmq_plugin:all_till_ok(auth_on_publish_m5, HookArgs) of
         ok ->
-            AuthSuccess(Msg, HookArgs, #{}, #matched_acl{});
+            AuthSuccess(Msg, HookArgs, #{});
         {ok, Args0} when is_map(Args0) ->
             #vmq_msg{mountpoint = MP} = Msg,
             ChangedTopic = maps:get(topic, Args0, Topic),
@@ -1467,8 +1467,7 @@ auth_on_publish(
                     mountpoint = ChangedMountpoint
                 },
                 HookArgs1,
-                SessCtrl,
-                #matched_acl{}
+                SessCtrl
             );
         {error, Vals} when is_map(Vals) ->
             RCN = maps:get(reason_code, Vals, ?NOT_AUTHORIZED),
@@ -1499,7 +1498,7 @@ publish(RegView, User, {_, ClientId} = SubscriberId, Msg, State) ->
         User,
         SubscriberId,
         Msg,
-        fun(MaybeChangedMsg, HookArgs, SessCtrl, #matched_acl{}) ->
+        fun(MaybeChangedMsg, HookArgs, SessCtrl) ->
             case
                 on_publish_hook(
                     vmq_reg:publish(RegView, ClientId, MaybeChangedMsg),

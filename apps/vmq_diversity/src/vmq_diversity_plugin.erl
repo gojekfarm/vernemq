@@ -46,7 +46,7 @@
     auth_on_subscribe/3,
     on_register/4,
     on_publish/7,
-    on_subscribe/4,
+    on_subscribe/3,
     on_unsubscribe/3,
     on_deliver/6,
     on_offline_message/5,
@@ -527,7 +527,7 @@ on_publish(UserName, SubscriberId, QoS, Topic, Payload, IsRetain, _) ->
         {retain, IsRetain}
     ]).
 
-on_subscribe(UserName, SubscriberId, Topics, _) ->
+on_subscribe(UserName, SubscriberId, Topics) ->
     {MP, ClientId} = subscriber_id(SubscriberId),
     all(on_subscribe, [
         {username, nilify(UserName)},
@@ -535,7 +535,7 @@ on_subscribe(UserName, SubscriberId, Topics, _) ->
         {client_id, ClientId},
         {topics, [
             [unword(T), QoS]
-         || {T, QoS} <- Topics
+         || {T, QoS, _} <- Topics
         ]}
     ]).
 

@@ -21,7 +21,7 @@
 -export([
     on_register/4,
     on_publish/7,
-    on_subscribe/4,
+    on_subscribe/3,
     on_unsubscribe/3,
     on_deliver/6,
     on_offline_message/5,
@@ -215,17 +215,15 @@ on_publish(UserName, SubscriberId, QoS, Topic, Payload, IsRetain, MatchedAcl) ->
             {MP, ClientId, normalise(UserName), QoS, unword(Topic), Payload, IsRetain, MatchedAcl}}
     ).
 
--spec on_subscribe(username(), subscriber_id(), [topic()], [matched_acl()]) -> 'next'.
-on_subscribe(UserName, SubscriberId, Topics, MatchedAcl) ->
+-spec on_subscribe(username(), subscriber_id(), [topic()]) -> 'next'.
+on_subscribe(UserName, SubscriberId, Topics) ->
     {MP, ClientId} = subscriber_id(SubscriberId),
     send_event(
         {on_subscribe,
-            {MP, ClientId, normalise(UserName),
-                [
-                    [unword(T), from_internal_qos(QoS)]
-                 || {T, QoS} <- Topics
-                ],
-                MatchedAcl}}
+            {MP, ClientId, normalise(UserName), [
+                [unword(T), from_internal_qos(QoS), MatchedAcl]
+             || {T, QoS, MatchedAcl} <- Topics
+            ]}}
     ).
 
 -spec on_unsubscribe(username(), subscriber_id(), [topic()]) ->

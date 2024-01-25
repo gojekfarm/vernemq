@@ -119,7 +119,7 @@ on_publish_test(_) ->
                             [username(), allowed_subscriber_id(), 1, topic(), payload(), false, matched_acl()]).
 on_subscribe_test(_) ->
     [next] = vmq_plugin:all(on_subscribe,
-                            [username(), allowed_subscriber_id(), [{topic(), 1}], [matched_acl()]]).
+                            [username(), allowed_subscriber_id(), [{topic(), 1, matched_acl()}]]).
 
 on_unsubscribe_test(_) ->
     {error, plugin_chain_exhausted} = vmq_plugin:all_till_ok(on_unsubscribe,
