@@ -219,7 +219,9 @@ get_complex_topics() ->
         vmq_topic:unword(T)
      || T <- ets:select(vmq_redis_trie_node, [
             {
-                #trie_node{node_id = {"", '$1'}, topic = '$1', edge_count = 0, traversal_count = 1},
+                #trie_node{
+                    node_id = {"", '$1'}, topic = '$1', edge_count = '_', traversal_count = '_'
+                },
                 [{'=/=', '$1', undefined}],
                 ['$1']
             }
