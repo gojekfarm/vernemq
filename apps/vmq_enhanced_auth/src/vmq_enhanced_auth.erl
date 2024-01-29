@@ -628,10 +628,13 @@ setup_vmq_reg_redis_trie() ->
     ets:new(vmq_redis_trie_node, [{keypos, 2} | ?TABLE_OPTS]),
     ets:new(vmq_redis_trie, [{keypos, 2} | ?TABLE_OPTS]),
     ets:insert(
-        vmq_redis_trie_node,
-        {trie_node, {"", [<<"x">>, <<"y">>, <<"z">>, <<"#">>]}, [
-            <<"x">>, <<"y">>, <<"z">>, <<"#">>
-        ]}
+        vmq_redis_trie_node, #trie_node{
+            node_id = {"", [<<"x">>, <<"y">>, <<"z">>, <<"#">>]},
+            traversal_count = 1,
+            topic = [
+                <<"x">>, <<"y">>, <<"z">>, <<"#">>
+            ]
+        }
     ),
     vmq_reg_redis_trie.
 teardown(RegView) ->
