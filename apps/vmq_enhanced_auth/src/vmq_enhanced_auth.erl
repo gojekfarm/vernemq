@@ -40,6 +40,8 @@
 
 -import(vmq_topic, [words/1, match/2]).
 
+-include("apps/vmq_server/src/vmq_server.hrl").
+
 -define(INIT_ACL, {[], [], [], [], [], []}).
 -define(TABLES, [
     vmq_enhanced_auth_acl_read_pattern,
@@ -554,8 +556,11 @@ is_complex_topic_whitelisted([<<"$share">> | _] = _Topic) ->
 is_complex_topic_whitelisted(Topic) ->
     MPTopic = {"", Topic},
     case ets:lookup(vmq_redis_trie_node, MPTopic) of
-        [_] ->
-            true;
+        [#trie_node{topic = NodeTopic} = _TrieNode] ->
+            case NodeTopic of
+                undefined -> false;
+                _ -> true
+            end;
         _ ->
             false
     end.

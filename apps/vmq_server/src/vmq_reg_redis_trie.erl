@@ -36,7 +36,6 @@
 
 -record(state, {status = init}).
 -record(trie, {edge, node_id}).
--record(trie_node, {node_id, edge_count = 0, topic, traversal_count = 0}).
 -record(trie_edge, {node_id, word}).
 
 %%%===================================================================
