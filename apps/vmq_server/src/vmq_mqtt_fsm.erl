@@ -422,7 +422,7 @@ connected(
         fun(_User, _SubscriberId, MaybeChangedTopics) ->
             {Subscriptions, T} =
                 case MaybeChangedTopics of
-                    [{_, _} | _] ->
+                    [{_Topic, _SubInfo} | _] ->
                         TopicList = lists:foldr(
                             fun({Topic, Sub}, Acc) ->
                                 [{Topic, extract_qos(Sub), #matched_acl{}} | Acc]
@@ -431,7 +431,7 @@ connected(
                             MaybeChangedTopics
                         ),
                         {MaybeChangedTopics, TopicList};
-                    [{_, _, _} | _] ->
+                    [{_Topic, _SubInfo, _MatchedACL} | _] ->
                         lists:foldr(
                             fun({Topic, Sub, MatchedAcl}, {Acc1, Acc2}) ->
                                 {[{Topic, Sub} | Acc1], [
@@ -905,9 +905,12 @@ auth_on_publish(
     HookArgs = [User, SubscriberId, QoS, Topic, Payload, unflag(IsRetain)],
     case vmq_plugin:all_till_ok(auth_on_publish, HookArgs) of
         ok ->
-            AuthSuccess(Msg, HookArgs, #{});
+            HookArgs1 = HookArgs ++ [#matched_acl{}],
+            AuthSuccess(Msg, HookArgs1, #{});
         {ok, ChangedPayload} when is_binary(ChangedPayload) ->
-            HookArgs1 = [User, SubscriberId, QoS, Topic, ChangedPayload, unflag(IsRetain)],
+            HookArgs1 = [
+                User, SubscriberId, QoS, Topic, ChangedPayload, unflag(IsRetain), #matched_acl{}
+            ],
             AuthSuccess(Msg#vmq_msg{payload = ChangedPayload}, HookArgs1, #{});
         {ok, Args} when is_list(Args) ->
             #vmq_msg{mountpoint = MP} = Msg,

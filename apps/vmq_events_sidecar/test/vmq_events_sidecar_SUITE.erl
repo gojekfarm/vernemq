@@ -93,7 +93,7 @@ on_subscribe_test(_) ->
     Self = pid_to_bin(self()),
     [ok] = vmq_plugin:all(on_subscribe,
                             [Self, {?MOUNTPOINT, ?ALLOWED_CLIENT_ID}, [{?TOPIC, 1, #matched_acl{name = ?LABEL, pattern = ?PATTERN}}, 
-                                                                       {?TOPIC, not_allowed, #matched_acl{name = ?LABEL, pattern = ?PATTERN}}]]),
+                                                                       {?TOPIC, not_allowed, #matched_acl{}}]]),
     ok = exp_response(on_subscribe_ok),
     disable_hook(on_subscribe).
 

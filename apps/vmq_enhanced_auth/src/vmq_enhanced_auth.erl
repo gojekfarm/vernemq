@@ -367,7 +367,10 @@ match(TIn, T, Tbl, Type, Key, Qos) ->
                     },
                     {true, MatchedAcl};
                 _ ->
-                    true
+                    MatchedAcl = #matched_acl{
+                        pattern = iolist_to_binary(vmq_topic:unword(T))
+                    },
+                    {true, MatchedAcl}
             end;
         _ ->
             false

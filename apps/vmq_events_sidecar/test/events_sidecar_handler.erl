@@ -123,7 +123,7 @@ on_subscribe(#'eventssidecar.v1.OnSubscribe'{username = BinPid,
                mountpoint = ?MOUNTPOINT_BIN,
                client_id = ?ALLOWED_CLIENT_ID,
                topics = [#'eventssidecar.v1.TopicInfo'{topic = ?TOPIC, qos = 1, matched_acl = #'eventssidecar.v1.MatchedACL'{name = ?LABEL, pattern = ?PATTERN}},
-                          #'eventssidecar.v1.TopicInfo'{topic = ?TOPIC, qos = 128, matched_acl = #'eventssidecar.v1.MatchedACL'{name = ?LABEL, pattern = ?PATTERN}}]
+                          #'eventssidecar.v1.TopicInfo'{topic = ?TOPIC, qos = 128, matched_acl = #'eventssidecar.v1.MatchedACL'{}}]
               }) ->
     Pid = list_to_pid(binary_to_list(BinPid)),
     Pid ! on_subscribe_ok.
