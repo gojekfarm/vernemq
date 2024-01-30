@@ -905,7 +905,7 @@ auth_on_publish(
     HookArgs = [User, SubscriberId, QoS, Topic, Payload, unflag(IsRetain)],
     case vmq_plugin:all_till_ok(auth_on_publish, HookArgs) of
         ok ->
-            HookArgs1 = HookArgs ++ [#matched_acl{}],
+            HookArgs1 = [User, SubscriberId, QoS, Topic, Payload, unflag(IsRetain), #matched_acl{}],
             AuthSuccess(Msg, HookArgs1, #{});
         {ok, ChangedPayload} when is_binary(ChangedPayload) ->
             HookArgs1 = [
