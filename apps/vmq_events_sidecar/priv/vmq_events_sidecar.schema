@@ -52,3 +52,32 @@
  [{datatype, integer},
   hidden,
   {default, 4096}]}.
+
+%% @doc Configure the sampling for on_publish events based on ACL names
+{mapping, "sample.on_publish.$acl.percent", "vmq_events_sidecar.sampler.on_publish", 
+ [{datatype, integer}]}.
+
+{translation, "vmq_events_sidecar.sampler.on_publish",
+ fun(Conf) ->
+    OnPublishSampler = lists:filter(
+    fun({K, _V}) ->
+       cuttlefish_variable:is_fuzzy_match(K, string:tokens("sample.on_publish.$acl.percent", "."))
+    end,
+    Conf),
+    [
+        begin
+            case (P >= 0) and (P =< 100) of
+                true ->
+                    ok;
+                _ ->
+                    cuttlefish:invalid(
+                        "sample.on_publish." ++ ACL ++ ".percent should be between 0 and 100, is " ++
+                            integer_to_list(P)
+                    )
+            end,
+            {ACL, P}
+        end
+     || {[_, _, ACL, _], P} <- OnPublishSampler
+    ]
+ end
+}.

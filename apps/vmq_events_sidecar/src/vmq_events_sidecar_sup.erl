@@ -28,6 +28,17 @@ start_link() ->
                 HooksList = vmq_schema_util:parse_list(Hooks),
                 lists:foreach(
                     fun(Hook) -> vmq_events_sidecar_plugin:enable_event(Hook) end, HooksList
+                ),
+
+                Sampler = application:get_env(
+                    vmq_events_sidecar, 'sampler', []
+                ),
+                OnPublishSamplingList = proplists:get_value(on_publish, Sampler, []),
+                lists:foreach(
+                    fun({StrACL, P}) ->
+                        vmq_events_sidecar_plugin:add_sampling_on_publish(list_to_binary(StrACL), P)
+                    end,
+                    OnPublishSamplingList
                 )
             end),
             Ret;

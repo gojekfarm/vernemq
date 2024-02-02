@@ -4,6 +4,7 @@
 
 -include("../include/vmq_events_sidecar.hrl").
 -include_lib("vernemq_dev/include/vernemq_dev.hrl").
+-include_lib("vmq_commons/src/vmq_types_common.hrl").
 
 -behaviour(gen_server).
 -behaviour(on_register_hook).
@@ -37,7 +38,11 @@
     start_link/0,
     enable_event/1,
     disable_event/1,
-    all_hooks/0
+    all_hooks/0,
+
+    add_sampling_on_publish/2,
+    remove_sampling_on_publish/1,
+    list_on_publish_sampling_conf/0
 ]).
 
 %% gen_server callbacks
@@ -54,6 +59,7 @@
 
 -record(state, {}).
 -define(TBL, vmq_events_sidecar_table).
+-define(SAMPLE_ON_PUBLISH_TBL, vmq_events_sidecar_sample_on_publish_table).
 
 %%%===================================================================
 %%% API
@@ -77,6 +83,14 @@ enable_event(HookName) when is_atom(HookName) ->
 disable_event(HookName) when is_atom(HookName) ->
     gen_server:call(?MODULE, {disable_event, HookName}).
 
+-spec add_sampling_on_publish(ACL :: binary(), Percent :: integer()) -> ok.
+add_sampling_on_publish(ACL, Percent) when is_binary(ACL) and is_integer(Percent) ->
+    gen_server:call(?MODULE, {add_sampling, on_publish, ACL, Percent}).
+
+-spec remove_sampling_on_publish(ACL :: binary()) -> ok | {error, not_found}.
+remove_sampling_on_publish(ACL) when is_binary(ACL) ->
+    gen_server:call(?MODULE, {remove_sampling, on_publish, ACL}).
+
 -spec all_hooks() -> any().
 all_hooks() ->
     ets:foldl(
@@ -85,6 +99,16 @@ all_hooks() ->
         end,
         [],
         ?TBL
+    ).
+
+-spec list_on_publish_sampling_conf() -> [{ACL :: binary(), Percent :: integer()}].
+list_on_publish_sampling_conf() ->
+    ets:foldl(
+        fun({ACL, Percent}, Acc) ->
+            [{ACL, Percent} | Acc]
+        end,
+        [],
+        ?SAMPLE_ON_PUBLISH_TBL
     ).
 
 %%%===================================================================
@@ -103,8 +127,11 @@ all_hooks() ->
 %% @end
 %%--------------------------------------------------------------------
 init([]) ->
+    %% Initialize random seed
+    rand:seed(exsplus, os:timestamp()),
     process_flag(trap_exit, true),
     ets:new(?TBL, [public, ordered_set, named_table, {read_concurrency, true}]),
+    ets:new(?SAMPLE_ON_PUBLISH_TBL, [public, ordered_set, named_table, {read_concurrency, true}]),
     {ok, #state{}}.
 
 %%--------------------------------------------------------------------
@@ -141,6 +168,19 @@ handle_call({disable_event, Hook}, _From, State) ->
             [{_}] ->
                 disable_hook(Hook),
                 ets:delete(?TBL, Hook),
+                ok
+        end,
+    {reply, Reply, State};
+handle_call({add_sampling, on_publish, ACL, Percent}, _From, State) ->
+    ets:insert(?SAMPLE_ON_PUBLISH_TBL, {ACL, Percent}),
+    {reply, ok, State};
+handle_call({remove_sampling, on_publish, ACL}, _From, State) ->
+    Reply =
+        case ets:lookup(?SAMPLE_ON_PUBLISH_TBL, ACL) of
+            [] ->
+                {error, not_found};
+            [{_, _}] ->
+                ets:delete(?SAMPLE_ON_PUBLISH_TBL, ACL),
                 ok
         end,
     {reply, Reply, State}.
@@ -206,14 +246,35 @@ on_register(Peer, SubscriberId, UserName, Props) ->
     {MP, ClientId} = subscriber_id(SubscriberId),
     send_event({on_register, {MP, ClientId, PPeer, Port, normalise(UserName), Props}}).
 
--spec on_publish(username(), subscriber_id(), qos(), topic(), payload(), flag(), matched_acl()) ->
-    'next'.
-on_publish(UserName, SubscriberId, QoS, Topic, Payload, IsRetain, MatchedAcl) ->
-    {MP, ClientId} = subscriber_id(SubscriberId),
-    send_event(
-        {on_publish,
-            {MP, ClientId, normalise(UserName), QoS, unword(Topic), Payload, IsRetain, MatchedAcl}}
-    ).
+-spec on_publish(
+    username(),
+    subscriber_id(),
+    qos(),
+    topic(),
+    payload(),
+    flag(),
+    matched_acl()
+) -> 'next'.
+on_publish(
+    UserName,
+    SubscriberId,
+    QoS,
+    Topic,
+    Payload,
+    IsRetain,
+    #matched_acl{name = ACL} = MatchedAcl
+) ->
+    case sample(ACL) of
+        true ->
+            {MP, ClientId} = subscriber_id(SubscriberId),
+            send_event(
+                {on_publish,
+                    {MP, ClientId, normalise(UserName), QoS, unword(Topic), Payload, IsRetain,
+                        MatchedAcl}}
+            );
+        _ ->
+            next
+    end.
 
 -spec on_subscribe(username(), subscriber_id(), [topic()]) -> 'next'.
 on_subscribe(UserName, SubscriberId, Topics) ->
@@ -359,3 +420,15 @@ from_internal_qos({QoS, Opts}) when
     is_map(Opts)
 ->
     {QoS, Opts}.
+
+-spec sample(ACL :: binary()) -> true | false.
+sample(ACL) ->
+    case ets:lookup(?SAMPLE_ON_PUBLISH_TBL, ACL) of
+        [] ->
+            true;
+        [{_, P}] ->
+            case P >= rand:uniform(100) of
+                true -> true;
+                _ -> false
+            end
+    end.
