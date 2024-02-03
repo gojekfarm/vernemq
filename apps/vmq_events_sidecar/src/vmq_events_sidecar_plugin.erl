@@ -40,9 +40,9 @@
     disable_event/1,
     all_hooks/0,
 
-    add_sampling_on_publish/2,
-    remove_sampling_on_publish/1,
-    list_on_publish_sampling_conf/0
+    enable_sampling/3,
+    disable_sampling/2,
+    list_sampling_conf/1
 ]).
 
 %% gen_server callbacks
@@ -59,7 +59,7 @@
 
 -record(state, {}).
 -define(TBL, vmq_events_sidecar_table).
--define(SAMPLE_ON_PUBLISH_TBL, vmq_events_sidecar_sample_on_publish_table).
+-define(SAMPLER_TBL, vmq_events_sidecar_sampler_table).
 
 %%%===================================================================
 %%% API
@@ -83,13 +83,17 @@ enable_event(HookName) when is_atom(HookName) ->
 disable_event(HookName) when is_atom(HookName) ->
     gen_server:call(?MODULE, {disable_event, HookName}).
 
--spec add_sampling_on_publish(ACL :: binary(), Percent :: integer()) -> ok.
-add_sampling_on_publish(ACL, Percent) when is_binary(ACL) and is_integer(Percent) ->
-    gen_server:call(?MODULE, {add_sampling, on_publish, ACL, Percent}).
+-spec enable_sampling(Hook :: on_publish | on_deliver, Criterion :: binary(), Percent :: integer()) ->
+    ok.
+enable_sampling(Hook, Criterion, Percent) when
+    is_atom(Hook) and is_binary(Criterion) and is_integer(Percent)
+->
+    gen_server:call(?MODULE, {enable_sampling, Hook, Criterion, Percent}).
 
--spec remove_sampling_on_publish(ACL :: binary()) -> ok | {error, not_found}.
-remove_sampling_on_publish(ACL) when is_binary(ACL) ->
-    gen_server:call(?MODULE, {remove_sampling, on_publish, ACL}).
+-spec disable_sampling(Hook :: on_publish | on_deliver, Criterion :: binary()) ->
+    ok | {error, not_found}.
+disable_sampling(Hook, Criterion) when is_atom(Hook) and is_binary(Criterion) ->
+    gen_server:call(?MODULE, {disable_sampling, Hook, Criterion}).
 
 -spec all_hooks() -> any().
 all_hooks() ->
@@ -101,15 +105,9 @@ all_hooks() ->
         ?TBL
     ).
 
--spec list_on_publish_sampling_conf() -> [{ACL :: binary(), Percent :: integer()}].
-list_on_publish_sampling_conf() ->
-    ets:foldl(
-        fun({ACL, Percent}, Acc) ->
-            [{ACL, Percent} | Acc]
-        end,
-        [],
-        ?SAMPLE_ON_PUBLISH_TBL
-    ).
+-spec list_sampling_conf(Hook :: on_publish | on_deliver) -> [term()].
+list_sampling_conf(Hook) ->
+    ets:match(?SAMPLER_TBL, {{Hook, '$1'}, '$2'}).
 
 %%%===================================================================
 %%% gen_server callbacks
@@ -131,7 +129,11 @@ init([]) ->
     rand:seed(exsplus, os:timestamp()),
     process_flag(trap_exit, true),
     ets:new(?TBL, [public, ordered_set, named_table, {read_concurrency, true}]),
-    ets:new(?SAMPLE_ON_PUBLISH_TBL, [public, ordered_set, named_table, {read_concurrency, true}]),
+    %% Sampler table Key format - {Hook, Criterion}
+    ets:new(
+        ?SAMPLER_TBL,
+        [public, ordered_set, named_table, {read_concurrency, true}]
+    ),
     {ok, #state{}}.
 
 %%--------------------------------------------------------------------
@@ -171,16 +173,16 @@ handle_call({disable_event, Hook}, _From, State) ->
                 ok
         end,
     {reply, Reply, State};
-handle_call({add_sampling, on_publish, ACL, Percent}, _From, State) ->
-    ets:insert(?SAMPLE_ON_PUBLISH_TBL, {ACL, Percent}),
+handle_call({enable_sampling, Hook, Criterion, Percent}, _From, State) ->
+    ets:insert(?SAMPLER_TBL, {{Hook, Criterion}, Percent}),
     {reply, ok, State};
-handle_call({remove_sampling, on_publish, ACL}, _From, State) ->
+handle_call({disable_sampling, Hook, Criterion}, _From, State) ->
     Reply =
-        case ets:lookup(?SAMPLE_ON_PUBLISH_TBL, ACL) of
+        case ets:lookup(?SAMPLER_TBL, {Hook, Criterion}) of
             [] ->
                 {error, not_found};
             [{_, _}] ->
-                ets:delete(?SAMPLE_ON_PUBLISH_TBL, ACL),
+                ets:delete(?SAMPLER_TBL, {Hook, Criterion}),
                 ok
         end,
     {reply, Reply, State}.
@@ -244,7 +246,7 @@ code_change(_OldVsn, State, _Extra) ->
 on_register(Peer, SubscriberId, UserName, Props) ->
     {PPeer, Port} = peer(Peer),
     {MP, ClientId} = subscriber_id(SubscriberId),
-    send_event({on_register, {MP, ClientId, PPeer, Port, normalise(UserName), Props}}).
+    send_event(on_register, {MP, ClientId, PPeer, Port, normalise(UserName), Props}).
 
 -spec on_publish(
     username(),
@@ -264,41 +266,38 @@ on_publish(
     IsRetain,
     #matched_acl{name = ACL} = MatchedAcl
 ) ->
-    case sample(ACL) of
-        true ->
-            {MP, ClientId} = subscriber_id(SubscriberId),
-            send_event(
-                {on_publish,
-                    {MP, ClientId, normalise(UserName), QoS, unword(Topic), Payload, IsRetain,
-                        MatchedAcl}}
-            );
-        _ ->
-            next
-    end.
+    {MP, ClientId} = subscriber_id(SubscriberId),
+    send_event(
+        on_publish,
+        {MP, ClientId, normalise(UserName), QoS, unword(Topic), Payload, IsRetain, MatchedAcl},
+        ACL
+    ).
 
 -spec on_subscribe(username(), subscriber_id(), [topic()]) -> 'next'.
 on_subscribe(UserName, SubscriberId, Topics) ->
     {MP, ClientId} = subscriber_id(SubscriberId),
     send_event(
-        {on_subscribe,
-            {MP, ClientId, normalise(UserName), [
-                [unword(T), from_internal_qos(QoS), MatchedAcl]
-             || {T, QoS, MatchedAcl} <- Topics
-            ]}}
+        on_subscribe,
+        {MP, ClientId, normalise(UserName), [
+            [unword(T), from_internal_qos(QoS), MatchedAcl]
+         || {T, QoS, MatchedAcl} <- Topics
+        ]}
     ).
 
 -spec on_unsubscribe(username(), subscriber_id(), [topic()]) ->
     'next' | 'ok' | {'ok', on_unsubscribe_hook:unsub_modifiers()}.
 on_unsubscribe(UserName, SubscriberId, Topics) ->
     {MP, ClientId} = subscriber_id(SubscriberId),
-    send_event({on_unsubscribe, {MP, ClientId, normalise(UserName), [unword(T) || T <- Topics]}}).
+    send_event(on_unsubscribe, {MP, ClientId, normalise(UserName), [unword(T) || T <- Topics]}).
 
 -spec on_deliver(username(), subscriber_id(), qos(), topic(), payload(), flag()) ->
     'next' | 'ok' | {'ok', payload() | [on_deliver_hook:msg_modifier()]}.
 on_deliver(UserName, SubscriberId, QoS, Topic, Payload, IsRetain) ->
     {MP, ClientId} = subscriber_id(SubscriberId),
     send_event(
-        {on_deliver, {MP, ClientId, normalise(UserName), QoS, unword(Topic), Payload, IsRetain}}
+        on_deliver,
+        {MP, ClientId, normalise(UserName), QoS, unword(Topic), Payload, IsRetain},
+        UserName
     ).
 
 -spec on_delivery_complete(username(), subscriber_id(), qos(), topic(), payload(), flag()) ->
@@ -306,34 +305,34 @@ on_deliver(UserName, SubscriberId, QoS, Topic, Payload, IsRetain) ->
 on_delivery_complete(UserName, SubscriberId, QoS, Topic, Payload, IsRetain) ->
     {MP, ClientId} = subscriber_id(SubscriberId),
     send_event(
-        {on_delivery_complete,
-            {MP, ClientId, normalise(UserName), QoS, unword(Topic), Payload, IsRetain}}
+        on_delivery_complete,
+        {MP, ClientId, normalise(UserName), QoS, unword(Topic), Payload, IsRetain}
     ).
 
 -spec on_offline_message(subscriber_id(), qos(), topic(), payload(), flag()) -> 'next'.
 on_offline_message(SubscriberId, QoS, Topic, Payload, IsRetain) ->
     {MP, ClientId} = subscriber_id(SubscriberId),
-    send_event({on_offline_message, {MP, ClientId, QoS, unword(Topic), Payload, IsRetain}}).
+    send_event(on_offline_message, {MP, ClientId, QoS, unword(Topic), Payload, IsRetain}).
 
 -spec on_client_wakeup(subscriber_id()) -> 'next'.
 on_client_wakeup(SubscriberId) ->
     {MP, ClientId} = subscriber_id(SubscriberId),
-    send_event({on_client_wakeup, {MP, ClientId}}).
+    send_event(on_client_wakeup, {MP, ClientId}).
 
 -spec on_client_offline(subscriber_id(), reason()) -> 'next'.
 on_client_offline(SubscriberId, Reason) ->
     {MP, ClientId} = subscriber_id(SubscriberId),
-    send_event({on_client_offline, {MP, ClientId, Reason}}).
+    send_event(on_client_offline, {MP, ClientId, Reason}).
 
 -spec on_client_gone(subscriber_id(), reason()) -> 'next'.
 on_client_gone(SubscriberId, Reason) ->
     {MP, ClientId} = subscriber_id(SubscriberId),
-    send_event({on_client_gone, {MP, ClientId, Reason}}).
+    send_event(on_client_gone, {MP, ClientId, Reason}).
 
 -spec on_session_expired(subscriber_id()) -> 'next'.
 on_session_expired(SubscriberId) ->
     {MP, ClientId} = subscriber_id(SubscriberId),
-    send_event({on_session_expired, {MP, ClientId}}).
+    send_event(on_session_expired, {MP, ClientId}).
 
 %%%===================================================================
 %%% Internal functions
@@ -365,24 +364,23 @@ uncheck_exported_callback(HookName, [_ | Exports]) ->
 uncheck_exported_callback(_, []) ->
     {error, no_matching_callback_found}.
 
--spec send_event(tuple()) -> 'next' | 'ok'.
-send_event({HookName, EventPayload}) ->
+-spec send_event(Hook :: hook_name(), EventPayload :: any()) -> 'next' | 'ok'.
+send_event(HookName, EventPayload) ->
+    send_event(HookName, EventPayload, undefined).
+-spec send_event(Hook :: hook_name(), EventPayload :: any(), Criterion :: binary() | undefined) ->
+    'next' | 'ok'.
+send_event(HookName, EventPayload, Criterion) ->
     case ets:lookup(?TBL, HookName) of
         [] ->
             next;
         [{_}] ->
             vmq_metrics:incr_sidecar_events(HookName),
-            V1 = vmq_util:ts(),
-            case shackle:cast(?APP, {HookName, os:system_time(), EventPayload}, undefined) of
-                {ok, _} ->
-                    ok;
-                {error, Reason} ->
-                    lager:error("Error sending event(shackle:cast): ~p", [Reason]),
-                    vmq_metrics:incr_sidecar_events_error(HookName),
-                    next
-            end,
-            V2 = vmq_util:ts(),
-            vmq_metrics:pretimed_measurement({vmq_events_sidecar, call_latency}, V2 - V1)
+            case sample(HookName, Criterion) of
+                true ->
+                    process_event(HookName, EventPayload);
+                _ ->
+                    ok
+            end
     end.
 
 -spec normalise(_) -> any().
@@ -421,14 +419,43 @@ from_internal_qos({QoS, Opts}) when
 ->
     {QoS, Opts}.
 
--spec sample(ACL :: binary()) -> true | false.
-sample(ACL) ->
-    case ets:lookup(?SAMPLE_ON_PUBLISH_TBL, ACL) of
+-spec process_event(Hook :: hook_name(), EventPayload :: any()) -> ok.
+process_event(HookName, EventPayload) ->
+    V1 = vmq_util:ts(),
+    case shackle:cast(?APP, {HookName, os:system_time(), EventPayload}, undefined) of
+        {ok, _} ->
+            ok;
+        {error, Reason} ->
+            lager:error("Error sending event(shackle:cast): ~p", [Reason]),
+            vmq_metrics:incr_sidecar_events_error(HookName)
+    end,
+    V2 = vmq_util:ts(),
+    vmq_metrics:pretimed_measurement({vmq_events_sidecar, call_latency}, V2 - V1).
+
+-spec sample(Hook :: hook_name(), Criterion :: binary() | undefined) -> true | false.
+sample(_Hook, undefined) ->
+    true;
+sample(Hook, Criterion) ->
+    case Hook of
+        on_publish ->
+            check(Hook, Criterion);
+        on_deliver ->
+            check(Hook, Criterion);
+        _ ->
+            true
+    end.
+
+check(Hook, Criterion) ->
+    case ets:lookup(?SAMPLER_TBL, {Hook, Criterion}) of
         [] ->
             true;
         [{_, P}] ->
             case P >= rand:uniform(100) of
-                true -> true;
-                _ -> false
+                true -> 
+                    vmq_metrics:incr_events_sampled(Hook, Criterion),
+                    true;
+                _ -> 
+                    vmq_metrics:incr_events_dropped(Hook, Criterion),
+                    false
             end
     end.
