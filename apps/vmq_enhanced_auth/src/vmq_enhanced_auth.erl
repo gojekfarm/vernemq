@@ -381,8 +381,10 @@ match(TIn, T, Tbl, Type, Key, Qos) ->
             false
     end.
 
-incr_matched_topic(<<>>, _Type, _Qos) -> ok;
-incr_matched_topic(undefined, _Type, _Qos) -> ok;
+incr_matched_topic(<<>>, _Type, _Qos) ->
+    ok;
+incr_matched_topic(undefined, _Type, _Qos) ->
+    ok;
 incr_matched_topic(Label, Type, Qos) ->
     OperationName =
         case Type of
@@ -825,8 +827,16 @@ simple_acl(_) ->
         ?_assertEqual(
             {ok, [
                 {[<<"a">>, <<"b">>, <<"c">>], 0, {matched_acl, undefined, <<"a/b/c">>}},
-                {[<<"x">>, <<"y">>, <<"z">>, <<"#">>], not_allowed, {matched_acl, undefined, undefined}},
-                {[<<>>, <<"test">>, <<"my-client-id">>], not_allowed, {matched_acl, undefined, undefined}}
+                {
+                    [<<"x">>, <<"y">>, <<"z">>, <<"#">>],
+                    not_allowed,
+                    {matched_acl, undefined, undefined}
+                },
+                {
+                    [<<>>, <<"test">>, <<"my-client-id">>],
+                    not_allowed,
+                    {matched_acl, undefined, undefined}
+                }
             ]},
             auth_on_subscribe(
                 <<"invalid-user">>,

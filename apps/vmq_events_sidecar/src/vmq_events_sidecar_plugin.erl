@@ -451,10 +451,10 @@ check(Hook, Criterion) ->
             true;
         [{_, P}] ->
             case P >= rand:uniform(100) of
-                true -> 
+                true ->
                     vmq_metrics:incr_events_sampled(Hook, Criterion),
                     true;
-                _ -> 
+                _ ->
                     vmq_metrics:incr_events_dropped(Hook, Criterion),
                     false
             end
