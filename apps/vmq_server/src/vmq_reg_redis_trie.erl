@@ -17,12 +17,9 @@
 -export([
     start_link/0,
     fold/4,
-    add_complex_topics/1,
     add_complex_topic/2,
-    delete_complex_topics/1,
     delete_complex_topic/2,
-    get_complex_topics/0,
-    safe_rpc/4
+    get_complex_topics/0
 ]).
 %% gen_server callbacks
 -export([
@@ -179,20 +176,6 @@ update_complex_topic_trie(Topics) ->
         end
     end).
 
-add_complex_topics(Topics) ->
-    Nodes = vmq_cluster_mon:nodes(),
-    _Query = lists:foldl(
-        fun(T, Acc) ->
-            lists:foreach(
-                fun(Node) -> safe_rpc(Node, ?MODULE, add_complex_topic, ["", T]) end, Nodes
-            ),
-            [[?SADD, "wildcard_topics", term_to_binary(T)] | Acc]
-        end,
-        [],
-        Topics
-    ),
-    ok.
-
 add_complex_topic(MP, Topic) ->
     MPTopic = {MP, Topic},
     case ets:lookup(vmq_redis_trie_node, MPTopic) of
@@ -206,20 +189,6 @@ add_complex_topic(MP, Topic) ->
             %% add last node
             ets:insert(vmq_redis_trie_node, #trie_node{node_id = MPTopic, topic = Topic})
     end.
-
-delete_complex_topics(Topics) ->
-    Nodes = vmq_cluster_mon:nodes(),
-    _Query = lists:foldl(
-        fun(T, Acc) ->
-            lists:foreach(
-                fun(Node) -> safe_rpc(Node, ?MODULE, delete_complex_topic, ["", T]) end, Nodes
-            ),
-            Acc ++ [[?SREM, "wildcard_topics", term_to_binary(T)]]
-        end,
-        [],
-        Topics
-    ),
-    ok.
 
 delete_complex_topic(MP, Topic) ->
     NodeId = {MP, Topic},
@@ -248,18 +217,6 @@ get_complex_topics() ->
             }
         ])
     ].
-
--spec safe_rpc(Node :: node(), Mod :: module(), Fun :: atom(), [any()]) -> any().
-safe_rpc(Node, Module, Fun, Args) ->
-    try rpc:call(Node, Module, Fun, Args) of
-        Result ->
-            Result
-    catch
-        exit:{noproc, _NoProcDetails} ->
-            {badrpc, rpc_process_down};
-        Type:Reason ->
-            {Type, Reason}
-    end.
 
 %%%===================================================================
 %%% gen_server callbacks
@@ -365,10 +322,6 @@ code_change(_OldVsn, State, _Extra) ->
 %%% Internal functions
 %%%===================================================================
 init_state(State) ->
-    case State#state.timer of
-        undefined -> undefined;
-        TRef -> erlang:cancel_timer(TRef)
-    end,
     {ok, File} = application:get_env(vmq_server, file),
     {ok, Interval} = application:get_env(vmq_server, interval),
     {NewI, NewTRef} = vmq_util:set_interval(Interval, self()),
