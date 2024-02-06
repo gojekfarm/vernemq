@@ -34,7 +34,7 @@
     code_change/3
 ]).
 
--record(state, {status = init}).
+-record(state, {status = init, file, interval, timer}).
 -record(trie, {edge, node_id}).
 -record(trie_edge, {node_id, word}).
 
@@ -140,9 +140,48 @@ fold_local_shared_subscriber_info(
         SubscriberId, SubscribersList, FoldFun, FoldFun(SubscriberInfo, SubscriberId, Acc)
     ).
 
+load_from_file(File) ->
+    case file:read_file(File) of
+        {ok, BinaryData} ->
+            FileContent = binary_to_list(BinaryData),
+            Lines = string:tokens(FileContent, "\n"),
+            Topics = create_list(Lines),
+            TopicList = parse_topic_list(Topics),
+            update_complex_topics(TopicList);
+        {error, Reason} ->
+            lager:error("can't load acl file ~p due to ~p", [File, Reason]),
+            ok
+    end.
+
+update_complex_topics(Topics) ->
+    update_complex_topic_trie(Topics),
+    ets:delete_all_objects(complex_topics),
+    lists:foreach(
+        fun(Topic) -> ets:insert(complex_topics, {topic, Topic}) end,
+        Topics
+    ).
+
+update_complex_topic_trie(Topics) ->
+    Set = sets:from_list(Topics),
+    lists:foreach(
+        fun(Topic) ->
+            case ets:lookup(complex_topics, Topic) of
+                [_] -> ok;
+                _ -> add_complex_topic("", Topic)
+            end
+        end,
+        Topics
+    ),
+    iterate(complex_topics, fun(Topic) ->
+        case sets:is_element(Topic, Set) of
+            true -> ok;
+            false -> delete_complex_topic("", Topic)
+        end
+    end).
+
 add_complex_topics(Topics) ->
     Nodes = vmq_cluster_mon:nodes(),
-    Query = lists:foldl(
+    _Query = lists:foldl(
         fun(T, Acc) ->
             lists:foreach(
                 fun(Node) -> safe_rpc(Node, ?MODULE, add_complex_topic, ["", T]) end, Nodes
@@ -152,7 +191,6 @@ add_complex_topics(Topics) ->
         [],
         Topics
     ),
-    vmq_redis:pipelined_query(vmq_redis_client, Query, ?ADD_COMPLEX_TOPICS_OPERATION),
     ok.
 
 add_complex_topic(MP, Topic) ->
@@ -171,7 +209,7 @@ add_complex_topic(MP, Topic) ->
 
 delete_complex_topics(Topics) ->
     Nodes = vmq_cluster_mon:nodes(),
-    Query = lists:foldl(
+    _Query = lists:foldl(
         fun(T, Acc) ->
             lists:foreach(
                 fun(Node) -> safe_rpc(Node, ?MODULE, delete_complex_topic, ["", T]) end, Nodes
@@ -181,7 +219,6 @@ delete_complex_topics(Topics) ->
         [],
         Topics
     ),
-    vmq_redis:pipelined_query(vmq_redis_client, Query, ?DELETE_COMPLEX_TOPICS_OPERATION),
     ok.
 
 delete_complex_topic(MP, Topic) ->
@@ -248,10 +285,9 @@ init([]) ->
     _ = ets:new(?SHARED_SUBS_ETS_TABLE, DefaultETSOpts),
     _ = ets:new(vmq_redis_trie, [{keypos, 2} | DefaultETSOpts]),
     _ = ets:new(vmq_redis_trie_node, [{keypos, 2} | DefaultETSOpts]),
+    _ = ets:new(complex_topics, [{keypos, 2} | DefaultETSOpts]),
 
-    initialize_trie(),
-
-    {ok, #state{status = ready}}.
+    {ok, init_state(#state{})}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -293,7 +329,11 @@ handle_cast(_Msg, State) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
-handle_info(_, State) ->
+handle_info(
+    reload, #state{file = File, interval = Interval} = State
+) ->
+    ok = load_from_file(File),
+    erlang:send_after(Interval, self(), reload),
     {noreply, State}.
 
 %%--------------------------------------------------------------------
@@ -324,18 +364,16 @@ code_change(_OldVsn, State, _Extra) ->
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
-initialize_trie() ->
-    {ok, TopicList} = vmq_redis:query(
-        vmq_redis_client, [?SMEMBERS, "wildcard_topics"], ?SMEMBERS, ?INITIALIZE_TRIE_OPERATION
-    ),
-    lists:foreach(
-        fun(T) ->
-            Topic = binary_to_term(T),
-            add_complex_topic("", Topic)
-        end,
-        TopicList
-    ),
-    ok.
+init_state(State) ->
+    case State#state.timer of
+        undefined -> undefined;
+        TRef -> erlang:cancel_timer(TRef)
+    end,
+    {ok, File} = application:get_env(vmq_server, file),
+    {ok, Interval} = application:get_env(vmq_server, interval),
+    {NewI, NewTRef} = vmq_util:set_interval(Interval, self()),
+    ok = load_from_file(File),
+    State#state{status = ready, interval = NewI, timer = NewTRef, file = File}.
 
 match(MP, Topic) when is_list(MP) and is_list(Topic) ->
     TrieNodes = trie_match(MP, Topic),
@@ -425,6 +463,46 @@ trie_delete_path(MP, [{Node, Word, _} | RestPath]) ->
         [] ->
             ignore
     end.
+
+parse_topic_list(Topics) ->
+    [IsValidTopicList | TopicList] = lists:foldl(
+        fun(T, Acc) ->
+            [IsValid | ParsedTopics] = Acc,
+            case IsValid of
+                true ->
+                    case vmq_topic:validate_topic(subscribe, list_to_binary(T)) of
+                        {ok, ParsedTopic} ->
+                            [
+                                vmq_topic:contains_wildcard(ParsedTopic)
+                                | [ParsedTopic | ParsedTopics]
+                            ];
+                        _ ->
+                            [false]
+                    end;
+                _ ->
+                    Acc
+            end
+        end,
+        [true],
+        Topics
+    ),
+    case IsValidTopicList of
+        true -> TopicList;
+        _ -> {error, {invalid_value, Topics}}
+    end.
+
+create_list(Lines) ->
+    lists:map(fun create_entry/1, Lines).
+create_entry(Line) ->
+    string:strip(Line).
+
+iterate(T, Fun) ->
+    iterate(T, Fun, ets:first(T)).
+iterate(_, _, '$end_of_table') ->
+    ok;
+iterate(T, Fun, K) ->
+    Fun(K),
+    iterate(T, Fun, ets:next(T, K)).
 
 -ifdef(TEST).
 -include_lib("eunit/include/eunit.hrl").
