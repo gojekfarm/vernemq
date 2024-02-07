@@ -1016,7 +1016,7 @@ add_complex_acl_test(_) ->
     [
         ?_assertEqual(
             {ok, [
-                {Topic1, 0}
+                {Topic1, 0, {matched_acl, undefined, <<"abc/xyz/#">>}}
             ]},
             auth_on_subscribe(
                 <<"test">>,
@@ -1028,7 +1028,7 @@ add_complex_acl_test(_) ->
         ),
         ?_assertEqual(
             {ok, [
-                {Topic2, 0}
+                {Topic2, 0, {matched_acl, undefined, <<"abc/xyz/#">>}}
             ]},
             auth_on_subscribe(
                 <<"test">>,
@@ -1062,7 +1062,7 @@ delete_complex_acl_test(_) ->
         ),
         ?_assertEqual(
             {ok, [
-                {Topic2, 0}
+                {Topic2, 0, {matched_acl, undefined, <<"abc/xyz/#">>}}
             ]},
             auth_on_subscribe(
                 <<"test">>,
@@ -1084,7 +1084,7 @@ subtopic_subscribe_test(_) ->
     [
         ?_assertEqual(
             {ok, [
-                {Topic, 0}
+                {Topic, 0, {matched_acl, undefined, <<"abc/xyz/#">>}}
             ]},
             auth_on_subscribe(
                 <<"test">>,
@@ -1096,7 +1096,7 @@ subtopic_subscribe_test(_) ->
         ),
         ?_assertEqual(
             {ok, [
-                {SubTopic1, 0}
+                {SubTopic1, 0, {matched_acl, undefined, <<"abc/xyz/#">>}}
             ]},
             auth_on_subscribe(
                 <<"test">>,
