@@ -74,6 +74,9 @@
     %% present and default value if not present.
     def_opts :: map(),
 
+    % matched_acl record with name and pattern of the topic
+    matched_acl = #matched_acl{} :: matched_acl(),
+
     %% TODO
     trace_fun :: undefined | any()
 }).
@@ -273,13 +276,6 @@ connected(
                 ThrottleMs when is_integer(ThrottleMs) ->
                     {State, {throttle, ThrottleMs, Out}}
             end;
-        {Out, SessCtrl} when is_list(Out), is_map(SessCtrl) ->
-            case do_throttle(SessCtrl, State) of
-                false ->
-                    {State, Out};
-                ThrottleMs when is_integer(ThrottleMs) ->
-                    {State, {throttle, ThrottleMs, Out}}
-            end;
         {NewState, Out, SessCtrl} when is_list(Out), is_map(SessCtrl) ->
             case do_throttle(SessCtrl, State) of
                 false ->
@@ -327,14 +323,25 @@ connected(
     {NewState2, Out};
 connected(
     #mqtt_puback{message_id = MessageId},
-    #state{waiting_acks = WAcks, subscriber_id = SubscriberId, username = Username} = State
+    #state{
+        waiting_acks = WAcks,
+        subscriber_id = SubscriberId,
+        username = Username,
+        matched_acl = MatchedAcl
+    } = State
 ) ->
     %% qos1 flow
     _ = vmq_metrics:incr_mqtt_puback_received(),
     case maps:get(MessageId, WAcks, not_found) of
         #vmq_msg{routing_key = Topic, payload = Payload, retain = IsRetain, qos = QoS} ->
+            #matched_acl{name = Name} = MatchedAcl,
+            _ = vmq_metrics:incr_topic_counter(
+                {topic_matches, delivery_complete, [
+                    {acl_matched, Name}, {qos, integer_to_list(QoS)}
+                ]}
+            ),
             _ = vmq_plugin:all(on_delivery_complete, [
-                Username, SubscriberId, QoS, Topic, Payload, IsRetain
+                Username, SubscriberId, QoS, Topic, Payload, IsRetain, MatchedAcl
             ]),
             handle_waiting_msgs(State#state{waiting_acks = maps:remove(MessageId, WAcks)});
         not_found ->
@@ -347,14 +354,21 @@ connected(#mqtt_pubrec{message_id = MessageId}, State) ->
         retry_interval = RetryInterval,
         retry_queue = RetryQueue,
         subscriber_id = SubscriberId,
-        username = Username
+        username = Username,
+        matched_acl = MatchedAcl
     } = State,
     %% qos2 flow
     _ = vmq_metrics:incr_mqtt_pubrec_received(),
     case maps:get(MessageId, WAcks, not_found) of
         #vmq_msg{routing_key = Topic, payload = Payload, retain = IsRetain, qos = QoS} ->
+            #matched_acl{name = Name} = MatchedAcl,
+            _ = vmq_metrics:incr_topic_counter(
+                {topic_matches, delivery_complete, [
+                    {acl_matched, Name}, {qos, integer_to_list(QoS)}
+                ]}
+            ),
             _ = vmq_plugin:all(on_delivery_complete, [
-                Username, SubscriberId, QoS, Topic, Payload, IsRetain
+                Username, SubscriberId, QoS, Topic, Payload, IsRetain, MatchedAcl
             ]),
             PubRelFrame = #mqtt_pubrel{message_id = MessageId},
             _ = vmq_metrics:incr_mqtt_pubrel_sent(),
@@ -890,6 +904,7 @@ unsubscribe(User, SubscriberId, Topics, UnsubFun) ->
 
 -spec auth_on_publish(username(), subscriber_id(), msg(), aop_success_fun()) ->
     {ok, msg(), session_ctrl()}
+    | {ok, msg(), session_ctrl(), matched_acl()}
     | {error, atom()}.
 auth_on_publish(
     User,
@@ -959,7 +974,7 @@ session_ctrl(Args) ->
     end.
 
 -spec publish(module(), username(), subscriber_id(), msg()) ->
-    {ok, msg(), session_ctrl()}
+    {ok, msg(), session_ctrl(), matched_acl()}
     | {error, atom()}.
 publish(RegView, User, {_, ClientId} = SubscriberId, Msg) ->
     auth_on_publish(
@@ -967,6 +982,7 @@ publish(RegView, User, {_, ClientId} = SubscriberId, Msg) ->
         SubscriberId,
         Msg,
         fun(MaybeChangedMsg, HookArgs, SessCtrl) ->
+            [_User, _SubscriberId, _QoS, _Topic, _Payload, _IsRetain, MatchedAcl] = HookArgs,
             case
                 on_publish_hook(
                     vmq_reg:publish(RegView, ClientId, MaybeChangedMsg),
@@ -974,7 +990,7 @@ publish(RegView, User, {_, ClientId} = SubscriberId, Msg) ->
                 )
             of
                 ok ->
-                    {ok, MaybeChangedMsg, SessCtrl};
+                    {ok, MaybeChangedMsg, SessCtrl, MatchedAcl};
                 E ->
                     E
             end
@@ -1010,7 +1026,7 @@ dispatch_publish_(2, MessageId, Msg, State) ->
 
 -spec dispatch_publish_qos0(msg_id(), msg(), state()) ->
     list()
-    | {list(), session_ctrl()}
+    | {state(), list(), session_ctrl()}
     | {error, not_allowed}.
 dispatch_publish_qos0(_MessageId, Msg, State) ->
     #state{
@@ -1020,8 +1036,8 @@ dispatch_publish_qos0(_MessageId, Msg, State) ->
         reg_view = RegView
     } = State,
     case publish(RegView, User, SubscriberId, Msg) of
-        {ok, _, SessCtrl} ->
-            {[], SessCtrl};
+        {ok, _, SessCtrl, MatchedAcl} ->
+            {State#state{matched_acl = MatchedAcl}, [], SessCtrl};
         {error, not_allowed} when ?IS_PROTO_4(Proto) ->
             %% we have to close connection for 3.1.1
             _ = vmq_metrics:incr_mqtt_error_auth_publish(),
@@ -1034,7 +1050,7 @@ dispatch_publish_qos0(_MessageId, Msg, State) ->
 
 -spec dispatch_publish_qos1(msg_id(), msg(), state()) ->
     list()
-    | {list(), session_ctrl()}
+    | {state(), list(), session_ctrl()}
     | {error, not_allowed}.
 dispatch_publish_qos1(MessageId, Msg, State) ->
     #state{
@@ -1044,9 +1060,13 @@ dispatch_publish_qos1(MessageId, Msg, State) ->
         reg_view = RegView
     } = State,
     case publish(RegView, User, SubscriberId, Msg) of
-        {ok, _, SessCtrl} ->
+        {ok, _, SessCtrl, MatchedAcl} ->
             _ = vmq_metrics:incr_mqtt_puback_sent(),
-            {[#mqtt_puback{message_id = MessageId}], SessCtrl};
+            {
+                State#state{matched_acl = MatchedAcl},
+                [#mqtt_puback{message_id = MessageId}],
+                SessCtrl
+            };
         {error, not_allowed} when ?IS_PROTO_4(Proto) ->
             %% we have to close connection for 3.1.1
             _ = vmq_metrics:incr_mqtt_error_auth_publish(),
@@ -1077,12 +1097,13 @@ dispatch_publish_qos2(MessageId, Msg, State) ->
     case maps:get({qos2, MessageId}, WAcks, not_found) of
         not_found ->
             case publish(RegView, User, SubscriberId, Msg) of
-                {ok, _, SessCtrl} ->
+                {ok, _, SessCtrl, MatchedAcl} ->
                     Frame = #mqtt_pubrec{message_id = MessageId},
                     _ = vmq_metrics:incr_mqtt_pubrec_sent(),
                     {
                         State#state{
-                            waiting_acks = maps:put({qos2, MessageId}, Frame, WAcks)
+                            waiting_acks = maps:put({qos2, MessageId}, Frame, WAcks),
+                            matched_acl = MatchedAcl
                         },
                         [Frame],
                         SessCtrl
@@ -1205,7 +1226,8 @@ prepare_frame(#deliver{qos = QoS, msg_id = MsgId, msg = Msg}, State) ->
         subscriber_id = SubscriberId,
         waiting_acks = WAcks,
         retry_queue = RetryQueue,
-        retry_interval = RetryInterval
+        retry_interval = RetryInterval,
+        matched_acl = MatchedAcl
     } = State,
     #vmq_msg{
         routing_key = Topic,
@@ -1217,7 +1239,7 @@ prepare_frame(#deliver{qos = QoS, msg_id = MsgId, msg = Msg}, State) ->
     } = Msg,
     NewQoS = maybe_upgrade_qos(QoS, MsgQoS, State),
     {NewTopic, NewPayload} =
-        case on_deliver_hook(User, SubscriberId, QoS, Topic, Payload, IsRetained) of
+        case on_deliver_hook(User, SubscriberId, QoS, Topic, Payload, IsRetained, MatchedAcl) of
             {error, _} ->
                 %% no on_deliver hook specified... that's ok
                 {Topic, Payload};
@@ -1265,12 +1287,20 @@ prepare_frame(#deliver{qos = QoS, msg_id = MsgId, msg = Msg}, State) ->
             end
     end.
 
--spec on_deliver_hook(username(), subscriber_id(), qos(), topic(), payload(), flag()) -> any().
-on_deliver_hook(User, SubscriberId, QoS, Topic, Payload, IsRetain) ->
+-spec on_deliver_hook(
+    username(), subscriber_id(), qos(), topic(), payload(), flag(), matched_acl()
+) -> any().
+on_deliver_hook(User, SubscriberId, QoS, Topic, Payload, IsRetain, MatchedAcl) ->
     HookArgs0 = [User, SubscriberId, Topic, Payload],
+    #matched_acl{name = Name} = MatchedAcl,
+    _ = vmq_metrics:incr_topic_counter(
+        {topic_matches, deliver, [
+            {acl_matched, Name}, {qos, integer_to_list(QoS)}
+        ]}
+    ),
     case vmq_plugin:all_till_ok(on_deliver, HookArgs0) of
         {error, _} ->
-            HookArgs1 = [User, SubscriberId, QoS, Topic, Payload, IsRetain],
+            HookArgs1 = [User, SubscriberId, QoS, Topic, Payload, IsRetain, MatchedAcl],
             vmq_plugin:all_till_ok(on_deliver, HookArgs1);
         Other ->
             Other

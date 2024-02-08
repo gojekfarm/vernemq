@@ -629,7 +629,9 @@ incr_histogram_buckets(Metric, BucketOps) ->
     end.
 
 -spec incr_topic_counter(
-    Metric :: {topic_matches, subscribe | publish, Labels :: [{atom(), atom() | list() | binary()}]}
+    Metric ::
+        {topic_matches, subscribe | publish | deliver | delivery_complete,
+            Labels :: [{atom(), atom() | list() | binary()}]}
 ) -> ok.
 incr_topic_counter(Metric) ->
     try
