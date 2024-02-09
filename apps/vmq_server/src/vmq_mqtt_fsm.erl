@@ -335,11 +335,7 @@ connected(
     case maps:get(MessageId, WAcks, not_found) of
         #vmq_msg{routing_key = Topic, payload = Payload, retain = IsRetain, qos = QoS} ->
             #matched_acl{name = Name} = MatchedAcl,
-            _ = vmq_metrics:incr_topic_counter(
-                {topic_matches, delivery_complete, [
-                    {acl_matched, Name}, {qos, integer_to_list(QoS)}
-                ]}
-            ),
+            incr_matched_topic(Name, delivery_complete, QoS),
             _ = vmq_plugin:all(on_delivery_complete, [
                 Username, SubscriberId, QoS, Topic, Payload, IsRetain, MatchedAcl
             ]),
@@ -362,11 +358,7 @@ connected(#mqtt_pubrec{message_id = MessageId}, State) ->
     case maps:get(MessageId, WAcks, not_found) of
         #vmq_msg{routing_key = Topic, payload = Payload, retain = IsRetain, qos = QoS} ->
             #matched_acl{name = Name} = MatchedAcl,
-            _ = vmq_metrics:incr_topic_counter(
-                {topic_matches, delivery_complete, [
-                    {acl_matched, Name}, {qos, integer_to_list(QoS)}
-                ]}
-            ),
+            incr_matched_topic(Name, delivery_complete, QoS),
             _ = vmq_plugin:all(on_delivery_complete, [
                 Username, SubscriberId, QoS, Topic, Payload, IsRetain, MatchedAcl
             ]),
@@ -1292,14 +1284,10 @@ prepare_frame(#deliver{qos = QoS, msg_id = MsgId, msg = Msg}, State) ->
 ) -> any().
 on_deliver_hook(User, SubscriberId, QoS, Topic, Payload, IsRetain, MatchedAcl) ->
     HookArgs0 = [User, SubscriberId, Topic, Payload],
-    #matched_acl{name = Name} = MatchedAcl,
-    _ = vmq_metrics:incr_topic_counter(
-        {topic_matches, deliver, [
-            {acl_matched, Name}, {qos, integer_to_list(QoS)}
-        ]}
-    ),
     case vmq_plugin:all_till_ok(on_deliver, HookArgs0) of
         {error, _} ->
+            #matched_acl{name = Name} = MatchedAcl,
+            incr_matched_topic(Name, deliver, QoS),
             HookArgs1 = [User, SubscriberId, QoS, Topic, Payload, IsRetain, MatchedAcl],
             vmq_plugin:all_till_ok(on_deliver, HookArgs1);
         Other ->
@@ -1737,3 +1725,14 @@ check_mqtt_auth_errors(QoSTable) ->
 extract_qos(not_allowed) -> not_allowed;
 extract_qos(QoS) when is_integer(QoS) -> QoS;
 extract_qos({QoS, _SubInfo}) -> QoS.
+
+incr_matched_topic(<<>>, _OperationName, _Qos) ->
+    ok;
+incr_matched_topic(undefined, _OperationName, _Qos) ->
+    ok;
+incr_matched_topic(Name, OperationName, Qos) ->
+    _ = vmq_metrics:incr_topic_counter(
+        {topic_matches, OperationName, [
+            {acl_matched, Name}, {qos, integer_to_list(Qos)}
+        ]}
+    ).
