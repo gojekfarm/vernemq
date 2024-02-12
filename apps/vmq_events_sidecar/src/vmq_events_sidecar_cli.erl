@@ -112,23 +112,25 @@ show_sampling_cmd() ->
         end,
     clique:register_command(Cmd, KeySpecs, FlagSpecs, Callback).
 
+get_value(Key, List) ->
+    case lists:keyfind(Key, 1, List) of
+        false -> undefined;
+        {_, Value} -> Value
+    end.
+
 enable_sampling_cmd() ->
     Cmd = ["vmq-admin", "events", "sampling", "enable"],
-    KeySpecs = [hook_sampling_keyspec(), sampling_percentage_keyspec()],
-    FlagSpecs = [sampling_acl_name_flagspec()],
+    KeySpecs = [
+        hook_sampling_keyspec(), sampling_percentage_keyspec(), sampling_acl_name_keyspec()
+    ],
+    FlagSpecs = [],
     Callback =
         fun
-            (_, [{hook, on_publish}, {percentage, P}], [{acl_name, ACL}]) ->
-                vmq_events_sidecar_plugin:enable_sampling(on_publish, ACL, P),
-                [clique_status:text("Done")];
-            (_, [{percentage, P}, {hook, on_publish}], [{acl_name, ACL}]) ->
-                vmq_events_sidecar_plugin:enable_sampling(on_publish, ACL, P),
-                [clique_status:text("Done")];
-            (_, [{hook, on_deliver}, {percentage, P}], [{acl_name, ACL}]) ->
-                vmq_events_sidecar_plugin:enable_sampling(on_deliver, ACL, P),
-                [clique_status:text("Done")];
-            (_, [{percentage, P}, {hook, on_deliver}], [{acl_name, ACL}]) ->
-                vmq_events_sidecar_plugin:enable_sampling(on_deliver, ACL, P),
+            (_, [_, _, _] = List, []) ->
+                Hook = get_value(hook, List),
+                P = get_value(percentage, List),
+                ACL = get_value(acl_name, List),
+                vmq_events_sidecar_plugin:enable_sampling(Hook, ACL, P),
                 [clique_status:text("Done")];
             (_, _, _) ->
                 Text = clique_status:text(enable_sampling_usage()),
@@ -138,30 +140,20 @@ enable_sampling_cmd() ->
 
 disable_sampling_cmd() ->
     Cmd = ["vmq-admin", "events", "sampling", "disable"],
-    KeySpecs = [hook_sampling_keyspec()],
-    FlagSpecs = [sampling_acl_name_flagspec()],
+    KeySpecs = [hook_sampling_keyspec(), sampling_acl_name_keyspec()],
+    FlagSpecs = [],
     Callback =
         fun
-            (_, [{hook, on_publish}], [{acl_name, ACL}]) ->
-                case vmq_events_sidecar_plugin:disable_sampling(on_publish, ACL) of
+            (_, [_, _] = List, []) ->
+                Hook = get_value(hook, List),
+                ACL = get_value(acl_name, List),
+                case vmq_events_sidecar_plugin:disable_sampling(Hook, ACL) of
                     ok ->
                         [clique_status:text("Done")];
                     {error, Reason} ->
                         Text = io_lib:format(
                             "can't disable sampling for hook: ~p criterion: ~p due to '~p'", [
-                                on_publish, ACL, Reason
-                            ]
-                        ),
-                        [clique_status:alert([clique_status:text(Text)])]
-                end;
-            (_, [{hook, on_deliver}], [{acl_name, ACL}]) ->
-                case vmq_events_sidecar_plugin:disable_sampling(on_deliver, ACL) of
-                    ok ->
-                        [clique_status:text("Done")];
-                    {error, Reason} ->
-                        Text = io_lib:format(
-                            "can't disable sampling for hook: ~p criterion: ~p due to '~p'", [
-                                on_deliver, ACL, Reason
+                                Hook, ACL, Reason
                             ]
                         ),
                         [clique_status:alert([clique_status:text(Text)])]
@@ -227,7 +219,7 @@ hook_sampling_keyspec() ->
         end}
     ]}.
 
-sampling_acl_name_flagspec() ->
+sampling_acl_name_keyspec() ->
     sampling_criterion_flagspec(acl_name).
 
 sampling_criterion_flagspec(CName) ->
@@ -314,15 +306,15 @@ events_sampling_usage() ->
 
 enable_sampling_usage() ->
     [
-        "vmq-admin events sampling enable hook=<Hook> percentage=<Percentage> --acl_name=<ACL>\n\n",
+        "vmq-admin events sampling enable hook=<Hook> percentage=<Percentage> acl_name=<ACL>\n\n",
         "  Enables sampling based on acl_name/label for on_publish & on_deliver.",
         "\n\n"
     ].
 
 disable_sampling_usage() ->
     [
-        "vmq-admin events sampling disable hook=<Hook> --acl_name=<ACL>\n\n",
-        "  Disables sampling for specified hook based on the flag.",
+        "vmq-admin events sampling disable hook=<Hook> acl_name=<ACL>\n\n",
+        "  Disables sampling for specified hook based on the acl_name/label.",
         "\n\n"
     ].
 
