@@ -1734,6 +1734,7 @@ extract_qos(not_allowed) -> not_allowed;
 extract_qos(QoS) when is_integer(QoS) -> QoS;
 extract_qos({QoS, _SubInfo}) -> QoS.
 
+-spec incr_matched_topic(binary() | undefined, atom(), integer()) -> ok.
 incr_matched_topic(<<>>, _Type, _Qos) ->
     ok;
 incr_matched_topic(undefined, _Type, _Qos) ->
