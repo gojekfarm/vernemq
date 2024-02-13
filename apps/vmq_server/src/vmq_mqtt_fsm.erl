@@ -328,11 +328,7 @@ connected(
     {NewState2, Out};
 connected(
     #mqtt_puback{message_id = MessageId},
-    #state{
-        waiting_acks = WAcks,
-        subscriber_id = SubscriberId,
-        username = Username
-    } = State
+    #state{waiting_acks = WAcks, subscriber_id = SubscriberId, username = Username} = State
 ) ->
     %% qos1 flow
     _ = vmq_metrics:incr_mqtt_puback_received(),
@@ -1060,10 +1056,7 @@ dispatch_publish_qos1(MessageId, Msg, State) ->
     case publish(RegView, User, SubscriberId, Msg) of
         {ok, _, SessCtrl} ->
             _ = vmq_metrics:incr_mqtt_puback_sent(),
-            {
-                [#mqtt_puback{message_id = MessageId}],
-                SessCtrl
-            };
+            {[#mqtt_puback{message_id = MessageId}], SessCtrl};
         {error, not_allowed} when ?IS_PROTO_4(Proto) ->
             %% we have to close connection for 3.1.1
             _ = vmq_metrics:incr_mqtt_error_auth_publish(),
@@ -1231,13 +1224,13 @@ prepare_frame(#deliver{qos = QoS, msg_id = MsgId, msg = Msg}, State) ->
         dup = IsDup,
         qos = MsgQoS,
         non_retry = NonRetry,
-        acl_name = AclName
+        acl_name = Name
     } = Msg,
     NewQoS = maybe_upgrade_qos(QoS, MsgQoS, State),
     {NewTopic, NewPayload} =
         case
             on_deliver_hook(User, SubscriberId, QoS, Topic, Payload, IsRetained, #matched_acl{
-                name = AclName
+                name = Name
             })
         of
             {error, _} ->
