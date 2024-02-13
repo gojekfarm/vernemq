@@ -607,15 +607,7 @@ acl_test_() ->
         {"Simple ACL Test - vmq_reg_trie", ?setup(fun simple_acl/1)},
         {"Simple ACL Test - Delete aged acl test", ?setup(fun delete_aged_acl_test/1)},
         {"Simple ACL Test - vmq_reg_redis_trie",
-            {setup, fun setup_vmq_reg_redis_trie/0, fun teardown/1, fun simple_acl/1}},
-        {"Complex ACL Test - Add complex topic",
-            {setup, fun setup_vmq_reg_redis_trie/0, fun teardown/1, fun add_complex_acl_test/1}},
-        {"Complex ACL Test - Delete complex topic",
-            {setup, fun setup_vmq_reg_redis_trie/0, fun teardown/1, fun delete_complex_acl_test/1}},
-        {"Complex ACL Test - Sub-topic whitelisting",
-            {setup, fun setup_vmq_reg_redis_trie/0, fun teardown/1, fun subtopic_subscribe_test/1}},
-        {"Complex ACL Test - Get individual complex topics",
-            {setup, fun setup_vmq_reg_redis_trie/0, fun teardown/1, fun get_complex_topics_test/1}}
+            {setup, fun setup_vmq_reg_redis_trie/0, fun teardown/1, fun simple_acl/1}}
     ].
 
 setup() ->

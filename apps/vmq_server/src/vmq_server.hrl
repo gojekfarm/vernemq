@@ -18,7 +18,7 @@
 -type subscription() :: {topic(), subinfo()}.
 -define(INTERNAL_CLIENT_ID, '$vmq_internal_client_id').
 
--record(trie_node, {node_id, edge_count = 0, topic, traversal_count = 0}).
+-record(trie_node, {node_id, edge_count = 0, topic}).
 
 %% These reason codes are used internally within vernemq and are not
 %% *real* MQTT reason codes.

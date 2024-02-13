@@ -152,23 +152,15 @@ add_complex_topics(Topics) ->
 add_complex_topic(MP, Topic) ->
     MPTopic = {MP, Topic},
     case ets:lookup(vmq_redis_trie_node, MPTopic) of
-        [TrieNode = #trie_node{topic = NodeTopic, traversal_count = TraversalCount}] ->
-            case NodeTopic of
-                undefined ->
-                    _ = [trie_add_path(MP, Triple) || Triple <- vmq_topic:triples(Topic)],
-                    ets:insert(vmq_redis_trie_node, TrieNode#trie_node{
-                        topic = Topic, traversal_count = TraversalCount + 1
-                    });
-                _ ->
-                    ignore
-            end;
+        [TrieNode = #trie_node{topic = undefined}] ->
+            ets:insert(vmq_redis_trie_node, TrieNode#trie_node{topic = Topic});
+        [#trie_node{topic = _Topic}] ->
+            ignore;
         _ ->
             %% add trie path
             _ = [trie_add_path(MP, Triple) || Triple <- vmq_topic:triples(Topic)],
             %% add last node
-            ets:insert(vmq_redis_trie_node, #trie_node{
-                node_id = MPTopic, topic = Topic, traversal_count = 1
-            })
+            ets:insert(vmq_redis_trie_node, #trie_node{node_id = MPTopic, topic = Topic})
     end.
 
 delete_complex_topics(Topics) ->
@@ -189,25 +181,23 @@ delete_complex_topics(Topics) ->
 delete_complex_topic(MP, Topic) ->
     NodeId = {MP, Topic},
     case ets:lookup(vmq_redis_trie_node, NodeId) of
-        [TrieNode = #trie_node{topic = NodeTopic, traversal_count = TraversalCount}] ->
+        [
+            TrieNode = #trie_node{
+                topic = NodeTopic, edge_count = EdgeCount
+            }
+        ] ->
             case NodeTopic of
                 undefined ->
                     ok;
                 _ ->
-                    List = lists:reverse(vmq_topic:triples(Topic)),
-                    case TraversalCount > 1 of
+                    case EdgeCount > 1 of
                         true ->
-                            ets:insert(vmq_redis_trie_node, TrieNode#trie_node{
-                                topic = undefined,
-                                traversal_count = TraversalCount - 1
-                            });
+                            ets:insert(vmq_redis_trie_node, TrieNode#trie_node{topic = undefined});
                         false ->
-                            [{Node, Word, _} | _] = List,
-                            Edge = #trie_edge{node_id = {MP, Node}, word = Word},
+                            List = lists:reverse(vmq_topic:triples(Topic)),
                             ets:delete(vmq_redis_trie_node, NodeId),
-                            ets:delete(vmq_redis_trie, Edge)
-                    end,
-                    trie_delete_path(MP, List)
+                            trie_delete_path(MP, List)
+                    end
             end;
         _ ->
             ignore
@@ -219,7 +209,7 @@ get_complex_topics() ->
      || T <- ets:select(vmq_redis_trie_node, [
             {
                 #trie_node{
-                    node_id = {"", '$1'}, topic = '$1', edge_count = '_', traversal_count = '_'
+                    node_id = {"", '$1'}, topic = '$1', edge_count = '_'
                 },
                 [{'=/=', '$1', undefined}],
                 ['$1']
@@ -373,27 +363,19 @@ trie_add_path(MP, {Node, Word, Child}) ->
     NodeId = {MP, Node},
     Edge = #trie_edge{node_id = NodeId, word = Word},
     case ets:lookup(vmq_redis_trie_node, NodeId) of
-        [TrieNode = #trie_node{edge_count = EdgeCount, traversal_count = TraversalCount}] ->
+        [TrieNode = #trie_node{edge_count = Count}] ->
             case ets:lookup(vmq_redis_trie, Edge) of
                 [] ->
                     ets:insert(
                         vmq_redis_trie_node,
-                        TrieNode#trie_node{
-                            edge_count = EdgeCount + 1, traversal_count = TraversalCount + 1
-                        }
+                        TrieNode#trie_node{edge_count = Count + 1}
                     ),
                     ets:insert(vmq_redis_trie, #trie{edge = Edge, node_id = Child});
                 [_] ->
-                    ets:insert(
-                        vmq_redis_trie_node,
-                        TrieNode#trie_node{traversal_count = TraversalCount + 1}
-                    ),
                     ok
             end;
         [] ->
-            ets:insert(vmq_redis_trie_node, #trie_node{
-                node_id = NodeId, edge_count = 1, traversal_count = 1
-            }),
+            ets:insert(vmq_redis_trie_node, #trie_node{node_id = NodeId, edge_count = 1}),
             ets:insert(vmq_redis_trie, #trie{edge = Edge, node_id = Child})
     end.
 
@@ -436,34 +418,198 @@ trie_delete_path(_, []) ->
 trie_delete_path(MP, [{Node, Word, _} | RestPath]) ->
     NodeId = {MP, Node},
     Edge = #trie_edge{node_id = NodeId, word = Word},
+    ets:delete(vmq_redis_trie, Edge),
     case ets:lookup(vmq_redis_trie_node, NodeId) of
-        [TrieNode = #trie_node{traversal_count = TraversalCount, edge_count = EdgeCount}] ->
-            case TraversalCount > 1 of
+        [TrieNode = #trie_node{edge_count = EdgeCount}] ->
+            case EdgeCount > 1 of
                 true ->
-                    PrevNodeId =
-                        case Node of
-                            root -> {MP, [Word]};
-                            _ -> {MP, Node ++ [Word]}
-                        end,
-                    NewEdgeCount =
-                        case ets:lookup(vmq_redis_trie_node, PrevNodeId) of
-                            [] ->
-                                ets:delete(vmq_redis_trie, Edge),
-                                EdgeCount - 1;
-                            [_] ->
-                                EdgeCount
-                        end,
                     ets:insert(
                         vmq_redis_trie_node,
-                        TrieNode#trie_node{
-                            edge_count = NewEdgeCount, traversal_count = TraversalCount - 1
-                        }
+                        TrieNode#trie_node{edge_count = EdgeCount - 1}
                     );
                 false ->
-                    ets:delete(vmq_redis_trie, Edge),
-                    ets:delete(vmq_redis_trie_node, NodeId)
-            end,
-            trie_delete_path(MP, RestPath);
+                    ets:delete(vmq_redis_trie_node, NodeId),
+                    trie_delete_path(MP, RestPath)
+            end;
         [] ->
             ignore
     end.
+
+-ifdef(TEST).
+-include_lib("eunit/include/eunit.hrl").
+%%%%%%%%%%%%%
+%%% Tests
+%%%%%%%%%%%%%
+
+complex_acl_test_() ->
+    [
+        {"Complex ACL Test - Add complex topic",
+            {setup, fun setup_vmq_reg_redis_trie/0, fun teardown/1, fun add_complex_acl_test/1}},
+        {"Complex ACL Test - Delete complex topic",
+            {setup, fun setup_vmq_reg_redis_trie/0, fun teardown/1, fun delete_complex_acl_test/1}},
+        {"Complex ACL Test - Sub-topic whitelisting",
+            {setup, fun setup_vmq_reg_redis_trie/0, fun teardown/1, fun subtopic_subscribe_test/1}},
+        {"Complex ACL Test - Get individual complex topics",
+            {setup, fun setup_vmq_reg_redis_trie/0, fun teardown/1, fun get_complex_topics_test/1}}
+    ].
+
+setup_vmq_reg_redis_trie() ->
+    TABLE_OPTS = [public, named_table, {read_concurrency, true}],
+    ok = application:set_env(vmq_enhanced_auth, enable_acl_hooks, true),
+    ok = application:set_env(vmq_server, default_reg_view, vmq_reg_redis_trie),
+    vmq_enhanced_auth:init(),
+    ets:new(topic_labels, [named_table, public, {write_concurrency, true}]),
+    ets:new(vmq_redis_trie_node, [{keypos, 2} | TABLE_OPTS]),
+    ets:new(vmq_redis_trie, [{keypos, 2} | TABLE_OPTS]),
+    vmq_reg_redis_trie.
+
+teardown(RegView) ->
+    case RegView of
+        vmq_reg_redis_trie ->
+            ets:delete(vmq_redis_trie),
+            ets:delete(vmq_redis_trie_node);
+        _ ->
+            ok
+    end,
+    ets:delete(vmq_enhanced_auth_acl_read_all),
+    ets:delete(vmq_enhanced_auth_acl_write_all),
+    ets:delete(vmq_enhanced_auth_acl_read_user),
+    ets:delete(vmq_enhanced_auth_acl_write_user),
+    ets:delete(topic_labels),
+    application:unset_env(vmq_enhanced_auth, enable_acl_hooks),
+    application:unset_env(vmq_server, default_reg_view).
+
+add_complex_acl_test(_) ->
+    ACL = [<<"topic abc/xyz/# label complex_topic\n">>],
+    vmq_enhanced_auth:load_from_list(ACL),
+    Topic1 = [<<"abc">>, <<"xyz">>, <<"+">>, <<"1">>],
+    Topic2 = [<<"abc">>, <<"xyz">>, <<"+">>, <<"2">>],
+    add_complex_topic("", Topic1),
+    add_complex_topic("", Topic2),
+    [
+        ?_assertEqual(
+            {ok, [
+                {Topic1, 0, {matched_acl, <<"complex_topic">>, <<"abc/xyz/#">>}}
+            ]},
+            vmq_enhanced_auth:auth_on_subscribe(
+                <<"test">>,
+                {"", <<"my-client-id">>},
+                [
+                    {Topic1, 0}
+                ]
+            )
+        ),
+        ?_assertEqual(
+            {ok, [
+                {Topic2, 0, {matched_acl, <<"complex_topic">>, <<"abc/xyz/#">>}}
+            ]},
+            vmq_enhanced_auth:auth_on_subscribe(
+                <<"test">>,
+                {"", <<"my-client-id">>},
+                [
+                    {Topic2, 0}
+                ]
+            )
+        )
+    ].
+delete_complex_acl_test(_) ->
+    ACL = [<<"topic abc/xyz/# label complex_topic\n">>],
+    vmq_enhanced_auth:load_from_list(ACL),
+    Topic1 = [<<"abc">>, <<"xyz">>, <<"+">>, <<"1">>],
+    Topic2 = [<<"abc">>, <<"xyz">>, <<"+">>, <<"2">>],
+    SubTopic = [<<"abc">>, <<"xyz">>, <<"+">>],
+    add_complex_topic("", Topic1),
+    add_complex_topic("", Topic2),
+    delete_complex_topic("", Topic1),
+    delete_complex_topic("", SubTopic),
+    [
+        ?_assertEqual(
+            next,
+            vmq_enhanced_auth:auth_on_subscribe(
+                <<"test">>,
+                {"", <<"my-client-id">>},
+                [
+                    {Topic1, 0}
+                ]
+            )
+        ),
+        ?_assertEqual(
+            {ok, [
+                {Topic2, 0, {matched_acl, <<"complex_topic">>, <<"abc/xyz/#">>}}
+            ]},
+            vmq_enhanced_auth:auth_on_subscribe(
+                <<"test">>,
+                {"", <<"my-client-id">>},
+                [
+                    {Topic2, 0}
+                ]
+            )
+        )
+    ].
+subtopic_subscribe_test(_) ->
+    ACL = [<<"topic abc/xyz/# label complex_topic\n">>],
+    vmq_enhanced_auth:load_from_list(ACL),
+    Topic = [<<"abc">>, <<"xyz">>, <<"+">>, <<"1">>, <<"+">>],
+    SubTopic1 = [<<"abc">>, <<"xyz">>, <<"+">>, <<"1">>],
+    SubTopic2 = [<<"abc">>, <<"xyz">>, <<"+">>],
+    add_complex_topic("", Topic),
+    add_complex_topic("", SubTopic1),
+    [
+        ?_assertEqual(
+            {ok, [
+                {Topic, 0, {matched_acl, <<"complex_topic">>, <<"abc/xyz/#">>}}
+            ]},
+            vmq_enhanced_auth:auth_on_subscribe(
+                <<"test">>,
+                {"", <<"my-client-id">>},
+                [
+                    {Topic, 0}
+                ]
+            )
+        ),
+        ?_assertEqual(
+            {ok, [
+                {SubTopic1, 0, {matched_acl, <<"complex_topic">>, <<"abc/xyz/#">>}}
+            ]},
+            vmq_enhanced_auth:auth_on_subscribe(
+                <<"test">>,
+                {"", <<"my-client-id">>},
+                [
+                    {SubTopic1, 0}
+                ]
+            )
+        ),
+        ?_assertEqual(
+            next,
+            vmq_enhanced_auth:auth_on_subscribe(
+                <<"test">>,
+                {"", <<"my-client-id">>},
+                [
+                    {SubTopic2, 0}
+                ]
+            )
+        )
+    ].
+get_complex_topics_test(_) ->
+    ACL = [<<"topic abc/xyz/# label complex_topic\n">>],
+    vmq_enhanced_auth:load_from_list(ACL),
+    Topic1 = [<<"abc">>, <<"xyz">>, <<"+">>, <<"1">>, <<"+">>],
+    Topic2 = [<<"abc">>, <<"xyz">>, <<"+">>, <<"2">>],
+    SubTopic1 = [<<"abc">>, <<"xyz">>, <<"+">>, <<"1">>],
+    add_complex_topic("", Topic1),
+    add_complex_topic("", Topic2),
+    add_complex_topic("", SubTopic1),
+    [
+        ?_assertEqual(
+            [
+                [<<"abc/xyz/+/1/+">>],
+                [<<"abc/xyz/+/1">>],
+                [<<"abc/xyz/+/2">>]
+            ],
+            [
+                [iolist_to_binary((Topic))]
+             || Topic <- get_complex_topics()
+            ]
+        )
+    ].
+-endif.
