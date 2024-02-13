@@ -165,9 +165,7 @@ add_complex_topic(MP, Topic) ->
             %% add trie path
             _ = [trie_add_path(MP, Triple) || Triple <- vmq_topic:triples(Topic)],
             %% add last node
-            ets:insert(vmq_redis_trie_node, #trie_node{
-                node_id = MPTopic, topic = Topic, traversal_count = 1
-            })
+            ets:insert(vmq_redis_trie_node, #trie_node{node_id = MPTopic, topic = Topic})
     end.
 
 delete_complex_topics(Topics) ->
@@ -359,27 +357,19 @@ trie_add_path(MP, {Node, Word, Child}) ->
     NodeId = {MP, Node},
     Edge = #trie_edge{node_id = NodeId, word = Word},
     case ets:lookup(vmq_redis_trie_node, NodeId) of
-        [TrieNode = #trie_node{edge_count = EdgeCount, traversal_count = TraversalCount}] ->
+        [TrieNode = #trie_node{edge_count = Count}] ->
             case ets:lookup(vmq_redis_trie, Edge) of
                 [] ->
                     ets:insert(
                         vmq_redis_trie_node,
-                        TrieNode#trie_node{
-                            edge_count = EdgeCount + 1, traversal_count = TraversalCount + 1
-                        }
+                        TrieNode#trie_node{edge_count = Count + 1}
                     ),
                     ets:insert(vmq_redis_trie, #trie{edge = Edge, node_id = Child});
                 [_] ->
-                    ets:insert(
-                        vmq_redis_trie_node,
-                        TrieNode#trie_node{traversal_count = TraversalCount + 1}
-                    ),
                     ok
             end;
         [] ->
-            ets:insert(vmq_redis_trie_node, #trie_node{
-                node_id = NodeId, edge_count = 1, traversal_count = 1
-            }),
+            ets:insert(vmq_redis_trie_node, #trie_node{node_id = NodeId, edge_count = 1}),
             ets:insert(vmq_redis_trie, #trie{edge = Edge, node_id = Child})
     end.
 
@@ -422,6 +412,7 @@ trie_delete_path(_, []) ->
 trie_delete_path(MP, [{Node, Word, _} | RestPath]) ->
     NodeId = {MP, Node},
     Edge = #trie_edge{node_id = NodeId, word = Word},
+    ets:delete(vmq_redis_trie, Edge),
     case ets:lookup(vmq_redis_trie_node, NodeId) of
         [TrieNode = #trie_node{edge_count = EdgeCount, topic = undefined}] when EdgeCount > 1 ->
             ets:insert(vmq_redis_trie_node, TrieNode#trie_node{edge_count = EdgeCount - 1});
