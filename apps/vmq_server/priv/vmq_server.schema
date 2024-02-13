@@ -1772,13 +1772,13 @@
     (Name) -> vmq_schema_util:file_is_readable(Name)
  end}.
 
-%% @doc Set the path to an complex access control list file.
+%% @doc Sets the path to complex topics access control list file.
 {mapping, "vmq_trie.acl_file", "vmq_server.file", [
                                                {default, "{{platform_etc_dir}}/vmq.trie"},
                                                {datatype, file}
                                               ]}.
 
-%% @doc set the acl reload interval in seconds, the value 0 disables
+%% @doc Sets the acl reload interval in seconds, the value 0 disables
 %% the automatic reloading of the complex acl file.
 {mapping, "vmq_trie.acl_reload_interval", "vmq_server.interval", [
                                                               {default, 10},

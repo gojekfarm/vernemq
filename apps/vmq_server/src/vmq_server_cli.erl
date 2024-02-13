@@ -73,7 +73,7 @@ register_cli() ->
 
     vmq_tracer_cli:register_cli(),
 
-    vmq_reg_redis_trie_show_wildcard_topics_cmd(),
+    vmq_trie_show_complex_topics_cmd(),
 
     ok.
 
@@ -93,9 +93,9 @@ register_cli_usage() ->
     clique:register_usage(["vmq-admin", "api-key", "delete"], api_delete_key_usage()),
     clique:register_usage(["vmq-admin", "api-key", "add"], api_add_key_usage()),
 
-    clique:register_usage(["vmq-admin", "reg_redis_trie"], reg_redis_trie_usage()),
+    clique:register_usage(["vmq-admin", "trie"], reg_redis_trie_usage()),
     clique:register_usage(
-        ["vmq-admin", "reg_redis_trie", "show"], show_wildcard_topic_usage()
+        ["vmq-admin", "trie", "show"], show_complex_topics_usage()
     ),
 
     ok.
@@ -434,8 +434,8 @@ vmq_mgmt_list_api_keys_cmd() ->
     end,
     clique:register_command(Cmd, KeySpecs, FlagSpecs, Callback).
 
-vmq_reg_redis_trie_show_wildcard_topics_cmd() ->
-    Cmd = ["vmq-admin", "reg_redis_trie", "show", "wildcard_topics"],
+vmq_trie_show_complex_topics_cmd() ->
+    Cmd = ["vmq-admin", "trie", "show"],
     KeySpecs = [],
     FlagSpecs = [],
     Callback =
@@ -447,7 +447,7 @@ vmq_reg_redis_trie_show_wildcard_topics_cmd() ->
                 ],
                 [clique_status:table(Table)];
             (_, _, _) ->
-                Text = clique_status:text(show_wildcard_topic_usage()),
+                Text = clique_status:text(show_complex_topics_usage()),
                 [clique_status:alert([Text])]
         end,
     clique:register_command(Cmd, KeySpecs, FlagSpecs, Callback).
@@ -576,22 +576,22 @@ api_add_key_usage() ->
 
 get_reg_redis_trie_usage_lead_line() ->
     case ?RegView == vmq_reg_redis_trie of
-        true -> "    reg_redis_trie  Manage complex topics whitelisting\n";
+        true -> "    trie                    Manage complex topics whitelisting\n";
         _ -> ""
     end.
 
 reg_redis_trie_usage() ->
     [
-        "vmq-admin reg_redis_trie <sub-command>\n\n",
+        "vmq-admin trie <sub-command>\n\n",
         "  Manage complex topics whitelisting.\n\n",
         "  Sub-commands:\n",
         "    show        Shows the whitelisted complex topics\n",
         "  Use --help after a sub-command for more details.\n"
     ].
 
-show_wildcard_topic_usage() ->
+show_complex_topics_usage() ->
     [
-        "vmq-admin reg_redis_trie show wildcard_topics\n\n",
+        "vmq-admin trie show\n\n",
         "  Shows the whitelisted complex topics.",
         "\n\n"
     ].

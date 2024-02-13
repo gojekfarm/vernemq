@@ -141,16 +141,15 @@ load_from_file(File) ->
     case file:read_file(File) of
         {ok, BinaryData} ->
             FileContent = binary_to_list(BinaryData),
-            Lines = string:tokens(FileContent, "\n"),
-            Topics = create_list(Lines),
-            TopicList = parse_topic_list(Topics),
-            update_complex_topics(TopicList);
+            Entries = string:tokens(FileContent, "\n"),
+            TopicList = parse_topic_list(Entries),
+            load_complex_topics(TopicList);
         {error, Reason} ->
-            lager:error("can't load acl file ~p due to ~p", [File, Reason]),
+            lager:error("can't load complex topics trie acl file ~p due to ~p", [File, Reason]),
             ok
     end.
 
-update_complex_topics(Topics) ->
+load_complex_topics(Topics) ->
     update_complex_topic_trie(Topics),
     ets:delete_all_objects(complex_topics),
     lists:foreach(
@@ -418,36 +417,22 @@ trie_delete_path(MP, [{Node, Word, _} | RestPath]) ->
     end.
 
 parse_topic_list(Topics) ->
-    [IsValidTopicList | TopicList] = lists:foldl(
+    lists:foldl(
         fun(T, Acc) ->
-            [IsValid | ParsedTopics] = Acc,
-            case IsValid of
-                true ->
-                    case vmq_topic:validate_topic(subscribe, list_to_binary(T)) of
-                        {ok, ParsedTopic} ->
-                            [
-                                vmq_topic:contains_wildcard(ParsedTopic)
-                                | [ParsedTopic | ParsedTopics]
-                            ];
-                        _ ->
-                            [false]
+            Topic = list_to_binary(string:strip(T)),
+            case vmq_topic:validate_topic(subscribe, Topic) of
+                {ok, ParsedTopic} ->
+                    case vmq_topic:contains_wildcard(ParsedTopic) of
+                        true -> [ParsedTopic | Acc];
+                        false -> Acc
                     end;
                 _ ->
                     Acc
             end
         end,
-        [true],
+        [],
         Topics
-    ),
-    case IsValidTopicList of
-        true -> TopicList;
-        _ -> {error, {invalid_value, Topics}}
-    end.
-
-create_list(Lines) ->
-    lists:map(fun create_entry/1, Lines).
-create_entry(Line) ->
-    string:strip(Line).
+    ).
 
 iterate(T, Fun) ->
     iterate(T, Fun, ets:first(T)).
