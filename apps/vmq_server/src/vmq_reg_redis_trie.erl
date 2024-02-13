@@ -181,23 +181,15 @@ delete_complex_topics(Topics) ->
 delete_complex_topic(MP, Topic) ->
     NodeId = {MP, Topic},
     case ets:lookup(vmq_redis_trie_node, NodeId) of
-        [
-            TrieNode = #trie_node{
-                topic = NodeTopic, edge_count = EdgeCount
-            }
-        ] ->
-            case NodeTopic of
-                undefined ->
-                    ok;
-                _ ->
-                    case EdgeCount > 1 of
-                        true ->
-                            ets:insert(vmq_redis_trie_node, TrieNode#trie_node{topic = undefined});
-                        false ->
-                            List = lists:reverse(vmq_topic:triples(Topic)),
-                            ets:delete(vmq_redis_trie_node, NodeId),
-                            trie_delete_path(MP, List)
-                    end
+        [#trie_node{topic = undefined}] ->
+            ok;
+        [TrieNode = #trie_node{edge_count = EdgeCount}] ->
+            case EdgeCount > 1 of
+                true ->
+                    ets:insert(vmq_redis_trie_node, TrieNode#trie_node{topic = undefined});
+                false ->
+                    ets:delete(vmq_redis_trie_node, NodeId),
+                    trie_delete_path(MP, lists:reverse(vmq_topic:triples(Topic)))
             end;
         _ ->
             ignore
