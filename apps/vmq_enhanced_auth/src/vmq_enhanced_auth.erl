@@ -556,11 +556,10 @@ is_complex_topic_whitelisted([<<"$share">> | _] = _Topic) ->
 is_complex_topic_whitelisted(Topic) ->
     MPTopic = {"", Topic},
     case ets:lookup(vmq_redis_trie_node, MPTopic) of
-        [#trie_node{topic = NodeTopic} = _TrieNode] ->
-            case NodeTopic of
-                undefined -> false;
-                _ -> true
-            end;
+        [#trie_node{topic = undefined}] ->
+            false;
+        [_] ->
+            true;
         _ ->
             false
     end.
@@ -607,7 +606,13 @@ acl_test_() ->
         {"Simple ACL Test - vmq_reg_trie", ?setup(fun simple_acl/1)},
         {"Simple ACL Test - Delete aged acl test", ?setup(fun delete_aged_acl_test/1)},
         {"Simple ACL Test - vmq_reg_redis_trie",
-            {setup, fun setup_vmq_reg_redis_trie/0, fun teardown/1, fun simple_acl/1}}
+            {setup, fun setup_vmq_reg_redis_trie/0, fun teardown/1, fun simple_acl/1}},
+        {"Complex ACL Test - Add complex topic",
+            {setup, fun setup_vmq_reg_redis_trie/0, fun teardown/1, fun add_complex_acl_test/1}},
+        {"Complex ACL Test - Delete complex topic",
+            {setup, fun setup_vmq_reg_redis_trie/0, fun teardown/1, fun delete_complex_acl_test/1}},
+        {"Complex ACL Test - Sub-topic whitelisting",
+            {setup, fun setup_vmq_reg_redis_trie/0, fun teardown/1, fun subtopic_subscribe_test/1}}
     ].
 
 setup() ->
@@ -622,7 +627,12 @@ setup_vmq_reg_redis_trie() ->
     ets:new(?TOPIC_LABEL_TABLE, [named_table, public, {write_concurrency, true}]),
     ets:new(vmq_redis_trie_node, [{keypos, 2} | ?TABLE_OPTS]),
     ets:new(vmq_redis_trie, [{keypos, 2} | ?TABLE_OPTS]),
-    vmq_reg_redis_trie:add_complex_topic("", [<<"x">>, <<"y">>, <<"z">>, <<"#">>]),
+    ets:insert(
+        vmq_redis_trie_node,
+        {trie_node, {"", [<<"x">>, <<"y">>, <<"z">>, <<"#">>]}, [
+            <<"x">>, <<"y">>, <<"z">>, <<"#">>
+        ]}
+    ),
     vmq_reg_redis_trie.
 teardown(RegView) ->
     case RegView of
@@ -1107,30 +1117,6 @@ subtopic_subscribe_test(_) ->
                     {SubTopic2, 0}
                 ]
             )
-        )
-    ].
-get_complex_topics_test(_) ->
-    ACL = [<<"topic abc/xyz/#\n">>],
-    load_from_list(ACL),
-    Topic1 = [<<"abc">>, <<"xyz">>, <<"+">>, <<"1">>, <<"+">>],
-    Topic2 = [<<"abc">>, <<"xyz">>, <<"+">>, <<"2">>],
-    Topic3 = [<<"x">>, <<"y">>, <<"z">>, <<"#">>],
-    SubTopic1 = [<<"abc">>, <<"xyz">>, <<"+">>, <<"1">>],
-    vmq_reg_redis_trie:add_complex_topic("", Topic1),
-    vmq_reg_redis_trie:add_complex_topic("", Topic2),
-    vmq_reg_redis_trie:add_complex_topic("", SubTopic1),
-    vmq_reg_redis_trie:delete_complex_topic("", Topic3),
-    [
-        ?_assertEqual(
-            [
-                [<<"abc/xyz/+/1/+">>],
-                [<<"abc/xyz/+/1">>],
-                [<<"abc/xyz/+/2">>]
-            ],
-            [
-                [iolist_to_binary((Topic))]
-             || Topic <- vmq_reg_redis_trie:get_complex_topics()
-            ]
         )
     ].
 -endif.
