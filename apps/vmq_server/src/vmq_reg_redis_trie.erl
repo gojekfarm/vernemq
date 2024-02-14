@@ -59,6 +59,7 @@ start_link() ->
 
 -spec fold(subscriber_id(), topic(), fun(), any()) -> any().
 fold({MP, _} = SubscriberId, Topic, FoldFun, Acc) when is_list(Topic) ->
+    lager:info("Match MP ~p Topic: ~p", [MP, Topic]),
     MatchedTopics = [Topic | match(MP, Topic)],
     case fold_matched_topics(MP, MatchedTopics, []) of
         [] ->
