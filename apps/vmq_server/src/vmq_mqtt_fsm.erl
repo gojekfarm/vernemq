@@ -24,8 +24,7 @@
     init/3,
     data_in/2,
     msg_in/2,
-    info/2,
-    incr_matched_topic/3
+    info/2
 ]).
 
 -define(IS_PROTO_4(X), X =:= 4; X =:= 132).
@@ -336,7 +335,7 @@ connected(
         #vmq_msg{
             routing_key = Topic, payload = Payload, retain = IsRetain, qos = QoS, acl_name = Name
         } ->
-            incr_matched_topic(Name, delivery_complete, QoS),
+            vmq_metrics:incr_matched_topic(Name, delivery_complete, QoS),
             _ = vmq_plugin:all(on_delivery_complete, [
                 Username, SubscriberId, QoS, Topic, Payload, IsRetain, #matched_acl{name = Name}
             ]),
@@ -359,7 +358,7 @@ connected(#mqtt_pubrec{message_id = MessageId}, State) ->
         #vmq_msg{
             routing_key = Topic, payload = Payload, retain = IsRetain, qos = QoS, acl_name = Name
         } ->
-            incr_matched_topic(Name, delivery_complete, QoS),
+            vmq_metrics:incr_matched_topic(Name, delivery_complete, QoS),
             _ = vmq_plugin:all(on_delivery_complete, [
                 Username, SubscriberId, QoS, Topic, Payload, IsRetain, #matched_acl{name = Name}
             ]),
@@ -1288,7 +1287,7 @@ on_deliver_hook(User, SubscriberId, QoS, Topic, Payload, IsRetain, MatchedAcl) -
     case vmq_plugin:all_till_ok(on_deliver, HookArgs0) of
         {error, _} ->
             #matched_acl{name = Name} = MatchedAcl,
-            incr_matched_topic(Name, deliver, QoS),
+            vmq_metrics:incr_matched_topic(Name, deliver, QoS),
             HookArgs1 = [User, SubscriberId, QoS, Topic, Payload, IsRetain, MatchedAcl],
             vmq_plugin:all_till_ok(on_deliver, HookArgs1);
         Other ->
@@ -1726,21 +1725,3 @@ check_mqtt_auth_errors(QoSTable) ->
 extract_qos(not_allowed) -> not_allowed;
 extract_qos(QoS) when is_integer(QoS) -> QoS;
 extract_qos({QoS, _SubInfo}) -> QoS.
-
--spec incr_matched_topic(binary() | undefined, atom(), integer()) -> ok.
-incr_matched_topic(<<>>, _Type, _Qos) ->
-    ok;
-incr_matched_topic(undefined, _Type, _Qos) ->
-    ok;
-incr_matched_topic(Name, Type, Qos) ->
-    OperationName =
-        case Type of
-            read -> subscribe;
-            write -> publish;
-            _ -> Type
-        end,
-    _ = vmq_metrics:incr_topic_counter(
-        {topic_matches, OperationName, [
-            {acl_matched, Name}, {qos, integer_to_list(Qos)}
-        ]}
-    ).

@@ -366,7 +366,7 @@ match(TIn, T, Tbl, Type, Key, Qos) ->
                     },
                     {true, MatchedAcl};
                 [{_, _, Label}] ->
-                    vmq_mqtt_fsm:incr_matched_topic(Label, Type, Qos),
+                    vmq_metrics:incr_matched_topic(Label, Type, Qos),
                     MatchedAcl = #matched_acl{
                         name = Label, pattern = iolist_to_binary(vmq_topic:unword(T))
                     },

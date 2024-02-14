@@ -98,6 +98,7 @@
 
     incr_msg_enqueue_subscriber_not_found/0,
     incr_topic_counter/1,
+    incr_matched_topic/3,
     incr_shared_subscription_group_publish_attempt_failed/0,
 
     incr_events_sampled/2,
@@ -646,6 +647,24 @@ incr_topic_counter(Metric) ->
                     lager:warning("couldn't initialize tables", [])
             end
     end.
+
+-spec incr_matched_topic(binary() | undefined, atom(), integer()) -> ok.
+incr_matched_topic(<<>>, _Type, _Qos) ->
+    ok;
+incr_matched_topic(undefined, _Type, _Qos) ->
+    ok;
+incr_matched_topic(Name, Type, Qos) ->
+    OperationName =
+        case Type of
+            read -> subscribe;
+            write -> publish;
+            _ -> Type
+        end,
+    _ = vmq_metrics:incr_topic_counter(
+        {topic_matches, OperationName, [
+            {acl_matched, Name}, {qos, integer_to_list(Qos)}
+        ]}
+    ).
 
 %%--------------------------------------------------------------------
 %% @doc
