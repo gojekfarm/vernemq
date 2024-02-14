@@ -122,8 +122,8 @@
         {cache_shared_subscriptions_locally, false},
 
         % Complex topic
-        {file, "priv/vmq.trie"},
-        {interval, 10}
+        {complex_trie_file, "priv/vmq.trie"},
+        {complex_trie_reload_interval, 10}
 
         % end env
     ]}

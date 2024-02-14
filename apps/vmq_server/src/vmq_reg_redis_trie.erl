@@ -321,8 +321,8 @@ code_change(_OldVsn, State, _Extra) ->
 %%% Internal functions
 %%%===================================================================
 init_state(State) ->
-    {ok, File} = application:get_env(vmq_server, file),
-    {ok, Interval} = application:get_env(vmq_server, interval),
+    {ok, File} = application:get_env(vmq_server, complex_trie_file),
+    {ok, Interval} = application:get_env(vmq_server, complex_trie_reload_interval),
     {NewI, NewTRef} = vmq_util:set_interval(Interval, self()),
     ok = load_from_file(File),
     State#state{status = ready, interval = NewI, timer = NewTRef, file = File}.
