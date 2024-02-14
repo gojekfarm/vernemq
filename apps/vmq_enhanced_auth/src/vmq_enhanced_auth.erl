@@ -1078,21 +1078,22 @@ delete_complex_acl_test(_) ->
 subtopic_subscribe_test(_) ->
     ACL = [<<"topic abc/xyz/#\n">>],
     load_from_list(ACL),
-    Topic = [<<"abc">>, <<"xyz">>, <<"+">>, <<"1">>, <<"+">>],
+    Topic1 = [<<"abc">>, <<"xyz">>, <<"+">>, <<"1">>, <<"+">>],
+    Topic2 = [<<"abc">>, <<"xyz">>, <<"+">>, <<"2">>],
     SubTopic1 = [<<"abc">>, <<"xyz">>, <<"+">>, <<"1">>],
     SubTopic2 = [<<"abc">>, <<"xyz">>, <<"+">>],
-    vmq_reg_redis_trie:add_complex_topic("", Topic),
+    vmq_reg_redis_trie:add_complex_topic("", Topic1),
     vmq_reg_redis_trie:add_complex_topic("", SubTopic1),
     [
         ?_assertEqual(
             {ok, [
-                {Topic, 0, {matched_acl, undefined, <<"abc/xyz/#">>}}
+                {Topic1, 0, {matched_acl, undefined, <<"abc/xyz/#">>}}
             ]},
             auth_on_subscribe(
                 <<"test">>,
                 {"", <<"my-client-id">>},
                 [
-                    {Topic, 0}
+                    {Topic1, 0}
                 ]
             )
         ),
@@ -1117,6 +1118,22 @@ subtopic_subscribe_test(_) ->
                     {SubTopic2, 0}
                 ]
             )
+        ),
+        ?_assertEqual(
+            true,
+            is_complex_topic_whitelisted(Topic1)
+        ),
+        ?_assertEqual(
+            false,
+            is_complex_topic_whitelisted(Topic2)
+        ),
+        ?_assertEqual(
+            true,
+            is_complex_topic_whitelisted(SubTopic1)
+        ),
+        ?_assertEqual(
+            false,
+            is_complex_topic_whitelisted(SubTopic2)
         )
     ].
 -endif.

@@ -475,48 +475,48 @@ add_complex_topic_test(_) ->
     [
         ?_assertEqual(
             [
-                {trie_node, {[], [<<"pqr">>]}, 1, undefined},
-                {trie_node, {[], [<<"pqr">>, <<"+">>]}, 1, undefined},
-                {trie_node, {[], [<<"abc">>, <<"+">>, <<"+">>]}, 0, [<<"abc">>, <<"+">>, <<"+">>]},
-                {trie_node, {[], [<<"pqr">>, <<"+">>, <<"1">>]}, 0, [<<"pqr">>, <<"+">>, <<"1">>]},
-                {trie_node, {[], [<<"abc">>, <<"+">>]}, 1, undefined},
+                {trie_node, {[], root}, 2, undefined},
                 {trie_node, {[], [<<"abc">>]}, 2, undefined},
+                {trie_node, {[], [<<"abc">>, <<"+">>]}, 1, undefined},
+                {trie_node, {[], [<<"abc">>, <<"+">>, <<"+">>]}, 0, [<<"abc">>, <<"+">>, <<"+">>]},
+                {trie_node, {[], [<<"abc">>, <<"xyz">>]}, 1, undefined},
+                {trie_node, {[], [<<"abc">>, <<"xyz">>, <<"+">>]}, 2, undefined},
                 {trie_node, {[], [<<"abc">>, <<"xyz">>, <<"+">>, <<"1">>]}, 0, [
                     <<"abc">>, <<"xyz">>, <<"+">>, <<"1">>
                 ]},
-                {trie_node, {[], [<<"abc">>, <<"xyz">>]}, 1, undefined},
                 {trie_node, {[], [<<"abc">>, <<"xyz">>, <<"+">>, <<"2">>]}, 0, [
                     <<"abc">>, <<"xyz">>, <<"+">>, <<"2">>
                 ]},
-                {trie_node, {[], root}, 2, undefined},
-                {trie_node, {[], [<<"abc">>, <<"xyz">>, <<"+">>]}, 2, undefined}
+                {trie_node, {[], [<<"pqr">>]}, 1, undefined},
+                {trie_node, {[], [<<"pqr">>, <<"+">>]}, 1, undefined},
+                {trie_node, {[], [<<"pqr">>, <<"+">>, <<"1">>]}, 0, [<<"pqr">>, <<"+">>, <<"1">>]}
             ],
-            ets:tab2list(vmq_redis_trie_node)
+            lists:usort(ets:tab2list(vmq_redis_trie_node))
         ),
         ?_assertEqual(
             [
+                {trie, {trie_edge, {[], root}, <<"abc">>}, [<<"abc">>]},
+                {trie, {trie_edge, {[], root}, <<"pqr">>}, [<<"pqr">>]},
+                {trie, {trie_edge, {[], [<<"abc">>]}, <<"+">>}, [<<"abc">>, <<"+">>]},
+                {trie, {trie_edge, {[], [<<"abc">>]}, <<"xyz">>}, [<<"abc">>, <<"xyz">>]},
+                {trie, {trie_edge, {[], [<<"abc">>, <<"+">>]}, <<"+">>}, [
+                    <<"abc">>, <<"+">>, <<"+">>
+                ]},
                 {trie, {trie_edge, {[], [<<"abc">>, <<"xyz">>]}, <<"+">>}, [
                     <<"abc">>, <<"xyz">>, <<"+">>
                 ]},
                 {trie, {trie_edge, {[], [<<"abc">>, <<"xyz">>, <<"+">>]}, <<"1">>}, [
                     <<"abc">>, <<"xyz">>, <<"+">>, <<"1">>
                 ]},
-                {trie, {trie_edge, {[], root}, <<"abc">>}, [<<"abc">>]},
-                {trie, {trie_edge, {[], [<<"pqr">>]}, <<"+">>}, [<<"pqr">>, <<"+">>]},
-                {trie, {trie_edge, {[], [<<"abc">>, <<"+">>]}, <<"+">>}, [
-                    <<"abc">>, <<"+">>, <<"+">>
-                ]},
-                {trie, {trie_edge, {[], [<<"pqr">>, <<"+">>]}, <<"1">>}, [
-                    <<"pqr">>, <<"+">>, <<"1">>
-                ]},
-                {trie, {trie_edge, {[], root}, <<"pqr">>}, [<<"pqr">>]},
                 {trie, {trie_edge, {[], [<<"abc">>, <<"xyz">>, <<"+">>]}, <<"2">>}, [
                     <<"abc">>, <<"xyz">>, <<"+">>, <<"2">>
                 ]},
-                {trie, {trie_edge, {[], [<<"abc">>]}, <<"+">>}, [<<"abc">>, <<"+">>]},
-                {trie, {trie_edge, {[], [<<"abc">>]}, <<"xyz">>}, [<<"abc">>, <<"xyz">>]}
+                {trie, {trie_edge, {[], [<<"pqr">>]}, <<"+">>}, [<<"pqr">>, <<"+">>]},
+                {trie, {trie_edge, {[], [<<"pqr">>, <<"+">>]}, <<"1">>}, [
+                    <<"pqr">>, <<"+">>, <<"1">>
+                ]}
             ],
-            ets:tab2list(vmq_redis_trie)
+            lists:usort(ets:tab2list(vmq_redis_trie))
         )
     ].
 add_existing_topic_test(_) ->
@@ -526,28 +526,28 @@ add_existing_topic_test(_) ->
     [
         ?_assertEqual(
             [
+                {trie_node, {[], root}, 1, undefined},
                 {trie_node, {[], [<<"abc">>]}, 1, undefined},
+                {trie_node, {[], [<<"abc">>, <<"xyz">>]}, 1, undefined},
+                {trie_node, {[], [<<"abc">>, <<"xyz">>, <<"+">>]}, 1, undefined},
                 {trie_node, {[], [<<"abc">>, <<"xyz">>, <<"+">>, <<"1">>]}, 0, [
                     <<"abc">>, <<"xyz">>, <<"+">>, <<"1">>
-                ]},
-                {trie_node, {[], [<<"abc">>, <<"xyz">>]}, 1, undefined},
-                {trie_node, {[], root}, 1, undefined},
-                {trie_node, {[], [<<"abc">>, <<"xyz">>, <<"+">>]}, 1, undefined}
+                ]}
             ],
-            ets:tab2list(vmq_redis_trie_node)
+            lists:usort(ets:tab2list(vmq_redis_trie_node))
         ),
         ?_assertEqual(
             [
+                {trie, {trie_edge, {[], root}, <<"abc">>}, [<<"abc">>]},
+                {trie, {trie_edge, {[], [<<"abc">>]}, <<"xyz">>}, [<<"abc">>, <<"xyz">>]},
                 {trie, {trie_edge, {[], [<<"abc">>, <<"xyz">>]}, <<"+">>}, [
                     <<"abc">>, <<"xyz">>, <<"+">>
                 ]},
                 {trie, {trie_edge, {[], [<<"abc">>, <<"xyz">>, <<"+">>]}, <<"1">>}, [
                     <<"abc">>, <<"xyz">>, <<"+">>, <<"1">>
-                ]},
-                {trie, {trie_edge, {[], root}, <<"abc">>}, [<<"abc">>]},
-                {trie, {trie_edge, {[], [<<"abc">>]}, <<"xyz">>}, [<<"abc">>, <<"xyz">>]}
+                ]}
             ],
-            ets:tab2list(vmq_redis_trie)
+            lists:usort(ets:tab2list(vmq_redis_trie))
         )
     ].
 add_sub_topic_test(_) ->
@@ -558,30 +558,30 @@ add_sub_topic_test(_) ->
     [
         ?_assertEqual(
             [
-                {trie_node, {[], [<<"abc">>]}, 1, undefined},
-                {trie_node, {[], [<<"abc">>, <<"xyz">>, <<"+">>, <<"1">>]}, 0, [
-                    <<"abc">>, <<"xyz">>, <<"+">>, <<"1">>
-                ]},
-                {trie_node, {[], [<<"abc">>, <<"xyz">>]}, 1, undefined},
                 {trie_node, {[], root}, 1, undefined},
+                {trie_node, {[], [<<"abc">>]}, 1, undefined},
+                {trie_node, {[], [<<"abc">>, <<"xyz">>]}, 1, undefined},
                 {trie_node, {[], [<<"abc">>, <<"xyz">>, <<"+">>]}, 1, [
                     <<"abc">>, <<"xyz">>, <<"+">>
+                ]},
+                {trie_node, {[], [<<"abc">>, <<"xyz">>, <<"+">>, <<"1">>]}, 0, [
+                    <<"abc">>, <<"xyz">>, <<"+">>, <<"1">>
                 ]}
             ],
-            ets:tab2list(vmq_redis_trie_node)
+            lists:usort(ets:tab2list(vmq_redis_trie_node))
         ),
         ?_assertEqual(
             [
+                {trie, {trie_edge, {[], root}, <<"abc">>}, [<<"abc">>]},
+                {trie, {trie_edge, {[], [<<"abc">>]}, <<"xyz">>}, [<<"abc">>, <<"xyz">>]},
                 {trie, {trie_edge, {[], [<<"abc">>, <<"xyz">>]}, <<"+">>}, [
                     <<"abc">>, <<"xyz">>, <<"+">>
                 ]},
                 {trie, {trie_edge, {[], [<<"abc">>, <<"xyz">>, <<"+">>]}, <<"1">>}, [
                     <<"abc">>, <<"xyz">>, <<"+">>, <<"1">>
-                ]},
-                {trie, {trie_edge, {[], root}, <<"abc">>}, [<<"abc">>]},
-                {trie, {trie_edge, {[], [<<"abc">>]}, <<"xyz">>}, [<<"abc">>, <<"xyz">>]}
+                ]}
             ],
-            ets:tab2list(vmq_redis_trie)
+            lists:usort(ets:tab2list(vmq_redis_trie))
         )
     ].
 delete_complex_topic_test(_) ->
@@ -596,28 +596,28 @@ delete_complex_topic_test(_) ->
     [
         ?_assertEqual(
             [
+                {trie_node, {[], root}, 1, undefined},
                 {trie_node, {[], [<<"abc">>]}, 1, undefined},
+                {trie_node, {[], [<<"abc">>, <<"xyz">>]}, 1, undefined},
+                {trie_node, {[], [<<"abc">>, <<"xyz">>, <<"+">>]}, 1, undefined},
                 {trie_node, {[], [<<"abc">>, <<"xyz">>, <<"+">>, <<"1">>]}, 0, [
                     <<"abc">>, <<"xyz">>, <<"+">>, <<"1">>
-                ]},
-                {trie_node, {[], [<<"abc">>, <<"xyz">>]}, 1, undefined},
-                {trie_node, {[], root}, 1, undefined},
-                {trie_node, {[], [<<"abc">>, <<"xyz">>, <<"+">>]}, 1, undefined}
+                ]}
             ],
-            ets:tab2list(vmq_redis_trie_node)
+            lists:usort(ets:tab2list(vmq_redis_trie_node))
         ),
         ?_assertEqual(
             [
+                {trie, {trie_edge, {[], root}, <<"abc">>}, [<<"abc">>]},
+                {trie, {trie_edge, {[], [<<"abc">>]}, <<"xyz">>}, [<<"abc">>, <<"xyz">>]},
                 {trie, {trie_edge, {[], [<<"abc">>, <<"xyz">>]}, <<"+">>}, [
                     <<"abc">>, <<"xyz">>, <<"+">>
                 ]},
                 {trie, {trie_edge, {[], [<<"abc">>, <<"xyz">>, <<"+">>]}, <<"1">>}, [
                     <<"abc">>, <<"xyz">>, <<"+">>, <<"1">>
-                ]},
-                {trie, {trie_edge, {[], root}, <<"abc">>}, [<<"abc">>]},
-                {trie, {trie_edge, {[], [<<"abc">>]}, <<"xyz">>}, [<<"abc">>, <<"xyz">>]}
+                ]}
             ],
-            ets:tab2list(vmq_redis_trie)
+            lists:usort(ets:tab2list(vmq_redis_trie))
         )
     ].
 delete_all_complex_topic_test(_) ->
@@ -654,34 +654,34 @@ delete_whitelisted_subtopic_test(_) ->
     [
         ?_assertEqual(
             [
+                {trie_node, {[], root}, 1, undefined},
+                {trie_node, {[], [<<"abc">>]}, 2, undefined},
+                {trie_node, {[], [<<"abc">>, <<"+">>]}, 0, [<<"abc">>, <<"+">>]},
+                {trie_node, {[], [<<"abc">>, <<"xyz">>]}, 1, undefined},
+                {trie_node, {[], [<<"abc">>, <<"xyz">>, <<"+">>]}, 1, undefined},
+                {trie_node, {[], [<<"abc">>, <<"xyz">>, <<"+">>, <<"1">>]}, 1, undefined},
                 {trie_node, {[], [<<"abc">>, <<"xyz">>, <<"+">>, <<"1">>, <<"+">>]}, 0, [
                     <<"abc">>, <<"xyz">>, <<"+">>, <<"1">>, <<"+">>
-                ]},
-                {trie_node, {[], [<<"abc">>, <<"+">>]}, 0, [<<"abc">>, <<"+">>]},
-                {trie_node, {[], [<<"abc">>]}, 2, undefined},
-                {trie_node, {[], [<<"abc">>, <<"xyz">>, <<"+">>, <<"1">>]}, 1, undefined},
-                {trie_node, {[], [<<"abc">>, <<"xyz">>]}, 1, undefined},
-                {trie_node, {[], root}, 1, undefined},
-                {trie_node, {[], [<<"abc">>, <<"xyz">>, <<"+">>]}, 1, undefined}
+                ]}
             ],
-            ets:tab2list(vmq_redis_trie_node)
+            lists:usort(ets:tab2list(vmq_redis_trie_node))
         ),
         ?_assertEqual(
             [
+                {trie, {trie_edge, {[], root}, <<"abc">>}, [<<"abc">>]},
+                {trie, {trie_edge, {[], [<<"abc">>]}, <<"+">>}, [<<"abc">>, <<"+">>]},
+                {trie, {trie_edge, {[], [<<"abc">>]}, <<"xyz">>}, [<<"abc">>, <<"xyz">>]},
                 {trie, {trie_edge, {[], [<<"abc">>, <<"xyz">>]}, <<"+">>}, [
                     <<"abc">>, <<"xyz">>, <<"+">>
                 ]},
                 {trie, {trie_edge, {[], [<<"abc">>, <<"xyz">>, <<"+">>]}, <<"1">>}, [
                     <<"abc">>, <<"xyz">>, <<"+">>, <<"1">>
                 ]},
-                {trie, {trie_edge, {[], root}, <<"abc">>}, [<<"abc">>]},
                 {trie, {trie_edge, {[], [<<"abc">>, <<"xyz">>, <<"+">>, <<"1">>]}, <<"+">>}, [
                     <<"abc">>, <<"xyz">>, <<"+">>, <<"1">>, <<"+">>
-                ]},
-                {trie, {trie_edge, {[], [<<"abc">>]}, <<"+">>}, [<<"abc">>, <<"+">>]},
-                {trie, {trie_edge, {[], [<<"abc">>]}, <<"xyz">>}, [<<"abc">>, <<"xyz">>]}
+                ]}
             ],
-            ets:tab2list(vmq_redis_trie)
+            lists:usort(ets:tab2list(vmq_redis_trie))
         )
     ].
 delete_whitelisted_parent_topic_test(_) ->
@@ -693,24 +693,24 @@ delete_whitelisted_parent_topic_test(_) ->
     [
         ?_assertEqual(
             [
+                {trie_node, {[], root}, 1, undefined},
                 {trie_node, {[], [<<"abc">>]}, 1, undefined},
                 {trie_node, {[], [<<"abc">>, <<"xyz">>]}, 1, undefined},
-                {trie_node, {[], root}, 1, undefined},
                 {trie_node, {[], [<<"abc">>, <<"xyz">>, <<"+">>]}, 0, [
                     <<"abc">>, <<"xyz">>, <<"+">>
                 ]}
             ],
-            ets:tab2list(vmq_redis_trie_node)
+            lists:usort(ets:tab2list(vmq_redis_trie_node))
         ),
         ?_assertEqual(
             [
+                {trie, {trie_edge, {[], root}, <<"abc">>}, [<<"abc">>]},
+                {trie, {trie_edge, {[], [<<"abc">>]}, <<"xyz">>}, [<<"abc">>, <<"xyz">>]},
                 {trie, {trie_edge, {[], [<<"abc">>, <<"xyz">>]}, <<"+">>}, [
                     <<"abc">>, <<"xyz">>, <<"+">>
-                ]},
-                {trie, {trie_edge, {[], root}, <<"abc">>}, [<<"abc">>]},
-                {trie, {trie_edge, {[], [<<"abc">>]}, <<"xyz">>}, [<<"abc">>, <<"xyz">>]}
+                ]}
             ],
-            ets:tab2list(vmq_redis_trie)
+            lists:usort(ets:tab2list(vmq_redis_trie))
         )
     ].
 delete_non_whitelisted_subtopic_test(_) ->
@@ -723,28 +723,28 @@ delete_non_whitelisted_subtopic_test(_) ->
     [
         ?_assertEqual(
             [
+                {trie_node, {[], root}, 1, undefined},
                 {trie_node, {[], [<<"abc">>]}, 1, undefined},
+                {trie_node, {[], [<<"abc">>, <<"xyz">>]}, 1, undefined},
+                {trie_node, {[], [<<"abc">>, <<"xyz">>, <<"+">>]}, 1, undefined},
                 {trie_node, {[], [<<"abc">>, <<"xyz">>, <<"+">>, <<"1">>]}, 0, [
                     <<"abc">>, <<"xyz">>, <<"+">>, <<"1">>
-                ]},
-                {trie_node, {[], [<<"abc">>, <<"xyz">>]}, 1, undefined},
-                {trie_node, {[], root}, 1, undefined},
-                {trie_node, {[], [<<"abc">>, <<"xyz">>, <<"+">>]}, 1, undefined}
+                ]}
             ],
-            ets:tab2list(vmq_redis_trie_node)
+            lists:usort(ets:tab2list(vmq_redis_trie_node))
         ),
         ?_assertEqual(
             [
+                {trie, {trie_edge, {[], root}, <<"abc">>}, [<<"abc">>]},
+                {trie, {trie_edge, {[], [<<"abc">>]}, <<"xyz">>}, [<<"abc">>, <<"xyz">>]},
                 {trie, {trie_edge, {[], [<<"abc">>, <<"xyz">>]}, <<"+">>}, [
                     <<"abc">>, <<"xyz">>, <<"+">>
                 ]},
                 {trie, {trie_edge, {[], [<<"abc">>, <<"xyz">>, <<"+">>]}, <<"1">>}, [
                     <<"abc">>, <<"xyz">>, <<"+">>, <<"1">>
-                ]},
-                {trie, {trie_edge, {[], root}, <<"abc">>}, [<<"abc">>]},
-                {trie, {trie_edge, {[], [<<"abc">>]}, <<"xyz">>}, [<<"abc">>, <<"xyz">>]}
+                ]}
             ],
-            ets:tab2list(vmq_redis_trie)
+            lists:usort(ets:tab2list(vmq_redis_trie))
         )
     ].
 delete_non_existing_topic_test(_) ->
@@ -757,28 +757,28 @@ delete_non_existing_topic_test(_) ->
     [
         ?_assertEqual(
             [
+                {trie_node, {[], root}, 1, undefined},
                 {trie_node, {[], [<<"abc">>]}, 1, undefined},
+                {trie_node, {[], [<<"abc">>, <<"xyz">>]}, 1, undefined},
+                {trie_node, {[], [<<"abc">>, <<"xyz">>, <<"+">>]}, 1, undefined},
                 {trie_node, {[], [<<"abc">>, <<"xyz">>, <<"+">>, <<"1">>]}, 0, [
                     <<"abc">>, <<"xyz">>, <<"+">>, <<"1">>
-                ]},
-                {trie_node, {[], [<<"abc">>, <<"xyz">>]}, 1, undefined},
-                {trie_node, {[], root}, 1, undefined},
-                {trie_node, {[], [<<"abc">>, <<"xyz">>, <<"+">>]}, 1, undefined}
+                ]}
             ],
-            ets:tab2list(vmq_redis_trie_node)
+            lists:usort(ets:tab2list(vmq_redis_trie_node))
         ),
         ?_assertEqual(
             [
+                {trie, {trie_edge, {[], root}, <<"abc">>}, [<<"abc">>]},
+                {trie, {trie_edge, {[], [<<"abc">>]}, <<"xyz">>}, [<<"abc">>, <<"xyz">>]},
                 {trie, {trie_edge, {[], [<<"abc">>, <<"xyz">>]}, <<"+">>}, [
                     <<"abc">>, <<"xyz">>, <<"+">>
                 ]},
                 {trie, {trie_edge, {[], [<<"abc">>, <<"xyz">>, <<"+">>]}, <<"1">>}, [
                     <<"abc">>, <<"xyz">>, <<"+">>, <<"1">>
-                ]},
-                {trie, {trie_edge, {[], root}, <<"abc">>}, [<<"abc">>]},
-                {trie, {trie_edge, {[], [<<"abc">>]}, <<"xyz">>}, [<<"abc">>, <<"xyz">>]}
+                ]}
             ],
-            ets:tab2list(vmq_redis_trie)
+            lists:usort(ets:tab2list(vmq_redis_trie))
         )
     ].
 show_complex_topics_test(_) ->
