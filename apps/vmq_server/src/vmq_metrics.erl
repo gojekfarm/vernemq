@@ -660,7 +660,7 @@ incr_matched_topic(Name, Type, Qos) ->
             write -> publish;
             _ -> Type
         end,
-    _ = incr_topic_counter(
+    incr_topic_counter(
         {topic_matches, OperationName, [
             {acl_matched, Name}, {qos, integer_to_list(Qos)}
         ]}
