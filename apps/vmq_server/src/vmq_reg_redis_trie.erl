@@ -416,6 +416,7 @@ trie_delete_path(MP, [{Node, Word, _} | RestPath]) ->
             ignore
     end.
 
+-spec parse_topic_list(Topics :: [string()]) -> [[binary()]].
 parse_topic_list(Topics) ->
     lists:foldl(
         fun(T, Acc) ->
@@ -423,10 +424,14 @@ parse_topic_list(Topics) ->
             case vmq_topic:validate_topic(subscribe, Topic) of
                 {ok, ParsedTopic} ->
                     case vmq_topic:contains_wildcard(ParsedTopic) of
-                        true -> [ParsedTopic | Acc];
-                        false -> Acc
+                        true ->
+                            [ParsedTopic | Acc];
+                        false ->
+                            lager:error("couldn't parse topic ~p", [Topic]),
+                            Acc
                     end;
                 _ ->
+                    lager:error("couldn't parse topic ~p", [Topic]),
                     Acc
             end
         end,
