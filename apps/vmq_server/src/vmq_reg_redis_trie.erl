@@ -805,9 +805,17 @@ delete_non_existing_topic_test(_) ->
     ].
 show_complex_topics_test(_) ->
     Topic1 = [<<"abc">>, <<"xyz">>, <<"+">>, <<"1">>, <<"+">>],
+    Topic2 = [<<"abc">>, <<"xyz">>, <<"+">>, <<"2">>],
     Topic3 = [<<"abc">>, <<"+">>, <<"1">>, <<"2">>],
     Topic4 = [<<"#">>],
     SubTopic1 = [<<"abc">>, <<"xyz">>, <<"+">>, <<"1">>],
+    SubTopic2 = [<<"abc">>, <<"xyz">>, <<"+">>],
+    add_complex_topic("", Topic1),
+    add_complex_topic("", Topic2),
+    add_complex_topic("", SubTopic2),
+    add_complex_topic("", Topic3),
+    add_complex_topic("", Topic4),
+    add_complex_topic("", SubTopic1),
     delete_complex_topic("", SubTopic2),
     [
         ?_assertEqual(
