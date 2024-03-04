@@ -213,10 +213,9 @@ init() ->
 set_acl_version_metrics(File) ->
     case vmq_util:extract_version(File) of
         Version when is_list(Version) ->
-            vmq_metrics:update_config_version_metric({acl_version, [{version, Version}]});
+            vmq_metrics:update_config_version_metric(acl_version, Version);
         nomatch ->
-            vmq_metrics:update_config_version_metric({acl_version, [{version, "N/A"}]}),
-            error_logger:error_msg("no valid acl version found in the file ~p", [File]);
+            vmq_metrics:update_config_version_metric(acl_version, "N/A");
         {error, Reason} ->
             error_logger:error_msg("can't load acl file ~p due to ~p", [File, Reason]),
             ok

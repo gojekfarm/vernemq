@@ -103,7 +103,7 @@
 
     incr_events_sampled/2,
     incr_events_dropped/2,
-    update_config_version_metric/1
+    update_config_version_metric/2
 ]).
 
 -export([
@@ -686,15 +686,15 @@ config_version_metrics() ->
     ).
 
 -spec update_config_version_metric(
-    Metric :: {acl_version | complex_trie_version, Labels :: [{atom(), list()}]}
+    MetricName :: acl_version | complex_trie_version, Version :: list()
 ) -> ok.
-update_config_version_metric(Metric) ->
+update_config_version_metric(MetricName, Version) ->
+    Metric = {MetricName, [{version, Version}]},
     case ets:lookup(?CONFIG_VERION_TABLE, Metric) of
         [_] ->
             ok;
         _ ->
             try
-                {MetricName, _} = Metric,
                 ets:match_delete(?CONFIG_VERION_TABLE, {{MetricName, '_'}, 1}),
                 ets:insert_new(?CONFIG_VERION_TABLE, {Metric, 1})
             catch

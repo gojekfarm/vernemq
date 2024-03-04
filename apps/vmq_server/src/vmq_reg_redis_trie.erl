@@ -139,10 +139,9 @@ fold_local_shared_subscriber_info(
 set_complex_trie_version_metrics(File) ->
     case vmq_util:extract_version(File) of
         Version when is_list(Version) ->
-            vmq_metrics:update_config_version_metric({complex_trie_version, [{version, Version}]});
+            vmq_metrics:update_config_version_metric(complex_trie_version, Version);
         nomatch ->
-            vmq_metrics:update_config_version_metric({complex_trie_version, [{version, "N/A"}]}),
-            lager:error("no valid trie version found in the file ~p", [File]);
+            vmq_metrics:update_config_version_metric(complex_trie_version, "N/A");
         {error, Reason} ->
             lager:error("can't load complex topics trie acl file ~p due to ~p", [File, Reason]),
             ok

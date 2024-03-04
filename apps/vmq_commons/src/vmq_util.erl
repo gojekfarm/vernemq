@@ -39,7 +39,7 @@ set_interval(Interval, Pid) ->
             {IinMs, NTRef}
     end.
 
--spec extract_version(BinaryData :: binary()) -> string() | atom() | {error, any()}.
+-spec extract_version(BinaryData :: binary()) -> string() | nomatch | {error, any()}.
 extract_version(File) ->
     case file:read_file(File) of
         {ok, BinaryData} when byte_size(BinaryData) > 0 ->
