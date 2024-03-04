@@ -349,7 +349,9 @@ on_message_drop(SubscriberId, Fun, Reason) ->
                 on_message_drop, {MP, ClientId, QoS, unword(Topic), Payload, Reason}
             );
         _ ->
-            lager:error("unexpected pattern in on_message_drop: ~p", [{SubscriberId, Reason}]),
+            lager:error("unexpected pattern in on_message_drop hook for ~p due to reason ~p", [
+                SubscriberId, Reason
+            ]),
             next
     end.
 
