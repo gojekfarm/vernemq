@@ -118,8 +118,8 @@
  {<<"syslog">>,{pkg,<<"syslog">>,<<"1.1.0">>},0},
  {<<"unicode_util_compat">>,{pkg,<<"unicode_util_compat">>,<<"0.7.0">>},1},
  {<<"vernemq_dev">>,
-  {git,"https://github.com/VivekPipaliya23/vernemq_dev.git",
-       {ref,"0f9ae6f1ad3b6ffc33732faeb62e5a53c0944b7f"}},
+  {git,"https://github.com/gojekfarm/vernemq_dev.git",
+       {ref,"fdbce09179bf60de67326f8fb66b3162bfb34fc8"}},
   0}]}.
 [
 {pkg_hash,[
