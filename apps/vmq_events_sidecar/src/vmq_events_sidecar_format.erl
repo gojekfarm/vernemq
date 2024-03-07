@@ -104,10 +104,7 @@ encode({on_unsubscribe, Timestamp, {MP, ClientId, UserName, Topics}}) ->
 encode(
     {on_deliver, Timestamp,
         {MP, ClientId, UserName, QoS, Topic, Payload, IsRetain,
-            #matched_acl{
-                name = Name, pattern = Pattern
-            },
-            Persisted}}
+            #matched_acl{name = Name, pattern = Pattern}, Persisted}}
 ) ->
     encode_envelope(
         "OnDeliver",
@@ -129,10 +126,7 @@ encode(
 encode(
     {on_delivery_complete, Timestamp,
         {MP, ClientId, UserName, QoS, Topic, Payload, IsRetain,
-            #matched_acl{
-                name = Name, pattern = Pattern
-            },
-            Persisted}}
+            #matched_acl{name = Name, pattern = Pattern}, Persisted}}
 ) ->
     encode_envelope(
         "OnDeliveryComplete",
