@@ -61,3 +61,41 @@ extract_version(File) ->
         {error, Reason} ->
             {error, Reason}
     end.
+
+-ifdef(TEST).
+-include_lib("eunit/include/eunit.hrl").
+-define(setup(F), {setup, fun setup/0, fun teardown/1, F}).
+
+extract_version_test_() ->
+    [
+        {"Extract config version", ?setup(fun extract_version_test/1)}
+    ].
+
+setup() ->
+    %% Create a test file with some content
+    {ok, File} = file:open("test_file.acl", [write]),
+    file:write(File, "# v1.2.3\nSome text\n"),
+    file:close(File),
+    {ok, NoVersionFile} = file:open("no_version_file.acl", [write]),
+    file:write(NoVersionFile, "Some text\nRandom text\n"),
+    file:close(NoVersionFile),
+    {ok, EmptyFile} = file:open("empty_test_file.acl", [write]),
+    file:close(EmptyFile),
+    {ok, NewLineFile} = file:open("new_line_test_file.acl", [write]),
+    file:write(NewLineFile, "\n"),
+    file:close(NewLineFile).
+
+teardown(_) ->
+    file:delete("test_file.acl"),
+    file:delete("no_version_file.acl"),
+    file:delete("empty_test_file.acl"),
+    file:delete("new_line_test_file.acl").
+
+extract_version_test(_) ->
+    [
+        ?_assertEqual("v1.2.3", extract_version("test_file.acl")),
+        ?_assertEqual(nomatch, extract_version("no_version_file.acl")),
+        ?_assertEqual(nomatch, extract_version("empty_test_file.acl")),
+        ?_assertEqual(nomatch, extract_version("new_line_test_file.acl"))
+    ].
+-endif.
