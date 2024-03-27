@@ -43,10 +43,18 @@ set_interval(Interval, Pid) ->
 extract_version(File) ->
     case file:read_file(File) of
         {ok, BinaryData} when byte_size(BinaryData) > 0 ->
-            Line = hd(string:tokens(binary_to_list(BinaryData), "\n")),
-            case re:run(Line, "#\\s*(v\\d+\\.\\d+\\.\\d+)", [{capture, [1], list}]) of
-                {match, [Version]} -> Version;
-                nomatch -> nomatch
+            Lines = string:tokens(binary_to_list(BinaryData), "\n"),
+            case Lines of
+                % If Lines is empty, return nomatch
+                [] ->
+                    nomatch;
+                [FirstLine | _Rest] ->
+                    case re:run(FirstLine, "#\\s*(v\\d+\\.\\d+\\.\\d+)", [{capture, [1], list}]) of
+                        {match, [Version]} ->
+                            Version;
+                        nomatch ->
+                            nomatch
+                    end
             end;
         {ok, _} ->
             nomatch;
