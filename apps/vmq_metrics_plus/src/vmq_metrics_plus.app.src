@@ -9,6 +9,7 @@
         lager
     ]},
     {env, [
+        {vmq_metrics_mfa, {vmq_metrics_plus, metrics, []}},
         {vmq_plugin_hooks, [
             {vmq_metrics_plus_plugin, on_subscribe, 3, []},
             {vmq_metrics_plus_plugin, on_publish, 7, []},

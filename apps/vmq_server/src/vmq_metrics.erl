@@ -441,14 +441,13 @@ metrics(Opts) ->
     {HistogramMetricDefs, HistogramMetricValues} = histogram_metrics(),
     {EventsSamplingMetricsDefs, EventsSamplingMetricsValues} = events_sampling_metrics(),
     {ConfigVersionMetricsDefs, ConfigVersionMetricsValues} = config_version_metrics(),
-    {PluginMetricDef, PluginMetricValues} = vmq_metrics_plus:metrics(),
 
     MetricDefs =
         metric_defs() ++ PluggableMetricDefs ++ HistogramMetricDefs ++
-            EventsSamplingMetricsDefs ++ ConfigVersionMetricsDefs ++ PluginMetricDef,
+            EventsSamplingMetricsDefs ++ ConfigVersionMetricsDefs,
     MetricValues =
         metric_values() ++ PluggableMetricValues ++ HistogramMetricValues ++
-            EventsSamplingMetricsValues ++ ConfigVersionMetricsValues ++ PluginMetricValues,
+            EventsSamplingMetricsValues ++ ConfigVersionMetricsValues,
 
     %% Create id->metric def map
     IdDef = lists:foldl(

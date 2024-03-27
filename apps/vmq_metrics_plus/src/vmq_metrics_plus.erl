@@ -49,21 +49,15 @@
 start_link() ->
     gen_server:start_link({local, ?SERVER}, ?MODULE, [], []).
 
-metrics() ->
-    {TopicMetricsDefs, TopicMetricsValues} = topic_metrics(),
-    MetricDefs = TopicMetricsDefs,
-    MetricValues = TopicMetricsValues,
-    {MetricDefs, MetricValues}.
+metrics() -> topic_metrics().
 
 topic_metrics() ->
     ets:foldl(
-        fun({Metric, TotalCount}, {DefsAcc, ValsAcc}) ->
+        fun({Metric, TotalCount}, Acc) ->
             {UniqueId, MetricName, Description, Labels} = topic_metric_name(Metric),
-            {[m(counter, Labels, UniqueId, MetricName, Description) | DefsAcc], [
-                {UniqueId, TotalCount} | ValsAcc
-            ]}
+            [{counter, Labels, UniqueId, MetricName, Description, TotalCount} | Acc]
         end,
-        {[], []},
+        [],
         ?TOPIC_LABEL_TABLE
     ).
 
@@ -119,15 +113,6 @@ code_change(_OldVsn, State, _Extra) ->
     {ok, State}.
 
 %%%===================================================================
-
-m(Type, Labels, UniqueId, Name, Description) ->
-    #metric_def{
-        type = Type,
-        labels = Labels,
-        id = UniqueId,
-        name = Name,
-        description = Description
-    }.
 
 topic_metric_name({Metric, SubMetric, Labels}) ->
     LMetric = atom_to_list(Metric),
