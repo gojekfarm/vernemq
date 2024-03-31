@@ -42,7 +42,7 @@ stop() ->
 %%%===================================================================
 %% called as an all_till_ok hook
 %%
--spec on_subscribe(username(), subscriber_id(), [{topic(), qos(), matched_acl()}]) -> 'next'.
+-spec on_subscribe(username(), subscriber_id(), [{topic(), qos(), matched_acl()}]) -> 'ok'.
 on_subscribe(_UserName, _SubscriberId, Topics) ->
     lists:foreach(
         fun(T) ->
@@ -50,14 +50,13 @@ on_subscribe(_UserName, _SubscriberId, Topics) ->
             vmq_metrics_plus:incr_matched_topic(Name, subscribe, QoS)
         end,
         Topics
-    ),
-    next.
+    ).
 
 -spec on_publish(username(), subscriber_id(), qos(), topic(), payload(), flag(), matched_acl()) ->
-    'next'.
+    'ok'.
 on_publish(_UserName, _SubscriberId, QoS, _Topic, _Payload, _IsRetain, #matched_acl{name = Name}) ->
     vmq_metrics_plus:incr_matched_topic(Name, publish, QoS),
-    next.
+    ok.
 
 -spec on_deliver(
     username(), subscriber_id(), qos(), topic(), payload(), flag(), matched_acl(), flag()
@@ -74,12 +73,12 @@ on_deliver(
     _Persisted
 ) ->
     vmq_metrics_plus:incr_matched_topic(Name, deliver, QoS),
-    next.
+    ok.
 
 -spec on_delivery_complete(
     username(), subscriber_id(), qos(), topic(), payload(), flag(), matched_acl(), flag()
 ) ->
-    'next'.
+    'ok'.
 on_delivery_complete(
     _UserName,
     _SubscriberId,
@@ -91,14 +90,14 @@ on_delivery_complete(
     _Persisted
 ) ->
     vmq_metrics_plus:incr_matched_topic(Name, delivery_complete, QoS),
-    next.
+    ok.
 
 -spec on_message_drop(subscriber_id(), fun(), reason()) -> 'next'.
 on_message_drop(SubscriberId, Fun, Reason) ->
     case Fun() of
         {_Topic, QoS, _Payload, _Props, #matched_acl{name = Name}} ->
             vmq_metrics_plus:incr_matched_topic(Name, message_drop, QoS),
-            next;
+            ok;
         _ ->
             lager:error("unexpected pattern in on_message_drop hook for ~p due to reason ~p", [
                 SubscriberId, Reason

@@ -13,7 +13,6 @@
 %% limitations under the License.
 
 -module(vmq_metrics_plus).
--include_lib("apps/vmq_server/src/vmq_metrics.hrl").
 
 -behaviour(gen_server).
 
