@@ -60,8 +60,7 @@ on_publish(_UserName, _SubscriberId, QoS, _Topic, _Payload, _IsRetain, #matched_
 
 -spec on_deliver(
     username(), subscriber_id(), qos(), topic(), payload(), flag(), matched_acl(), flag()
-) ->
-    'next' | 'ok' | {'ok', payload() | [on_deliver_hook:msg_modifier()]}.
+) -> 'ok'.
 on_deliver(
     _UserName,
     _SubscriberId,
