@@ -7,11 +7,11 @@
 %% API
 -export([
     start_link/0,
-    msg_store_write/2,
-    msg_store_delete/1,
+    msg_store_write/3,
     msg_store_delete/2,
-    msg_store_read/2,
-    msg_store_find/1
+    msg_store_delete/3,
+    msg_store_read/3,
+    msg_store_find/2
 ]).
 
 %% gen_server callbacks
@@ -37,20 +37,20 @@
 start_link() ->
     gen_server:start_link({local, ?MODULE}, ?MODULE, [], []).
 
-msg_store_write(SubscriberId, Msg) ->
-    safe_call({write, SubscriberId, Msg}).
+msg_store_write(SubscriberId, Msg, Ts1) ->
+    safe_call({write, SubscriberId, Msg, Ts1}).
 
-msg_store_delete(SubscriberId) ->
-    safe_call({delete, SubscriberId}).
+msg_store_delete(SubscriberId, Ts1) ->
+    safe_call({delete, SubscriberId, Ts1}).
 
-msg_store_delete(SubscriberId, MsgRef) ->
-    safe_call({delete, SubscriberId, MsgRef}).
+msg_store_delete(SubscriberId, MsgRef, Ts1) ->
+    safe_call({delete, SubscriberId, MsgRef, Ts1}).
 
-msg_store_read(SubscriberId, MsgRef) ->
-    safe_call({read, SubscriberId, MsgRef}).
-
-msg_store_find(SubscriberId) ->
-    safe_call({find, SubscriberId}).
+msg_store_read(SubscriberId, MsgRef, Ts1) ->
+    safe_call({read, SubscriberId, MsgRef, Ts1}).
+    
+msg_store_find(SubscriberId, Ts1) ->
+    safe_call({find, SubscriberId, Ts1}).
 
 %%%===================================================================
 %%% gen_server callbacks
@@ -176,29 +176,29 @@ safe_call(Request) ->
     end.
 
 handle_req(
-    {write, SId, Msg},
+    {write, SId, Msg, Ts1},
     #state{engine = Engine, engine_module = EngineModule, query_timeout = Timeout}
 ) ->
     apply(EngineModule, write, [
-        Engine, term_to_binary(SId), Msg#vmq_msg.msg_ref, term_to_binary(Msg), Timeout
+        Engine, term_to_binary(SId), Msg#vmq_msg.msg_ref, term_to_binary(Msg), Ts1, Timeout
     ]);
 handle_req(
-    {delete, SId},
+    {delete, SId, Ts1},
     #state{engine = Engine, engine_module = EngineModule, query_timeout = Timeout}
 ) ->
-    apply(EngineModule, delete, [Engine, term_to_binary(SId), Timeout]);
+    apply(EngineModule, delete, [Engine, term_to_binary(SId), Ts1, Timeout]);
 handle_req(
-    {delete, SId, MsgRef},
+    {delete, SId, MsgRef, Ts1},
     #state{engine = Engine, engine_module = EngineModule, query_timeout = Timeout}
 ) ->
-    apply(EngineModule, delete, [Engine, term_to_binary(SId), MsgRef, Timeout]);
+    apply(EngineModule, delete, [Engine, term_to_binary(SId), MsgRef, Ts1, Timeout]);
 handle_req(
-    {read, SId, MsgRef},
+    {read, SId, MsgRef, Ts1},
     #state{engine = Engine, engine_module = EngineModule, query_timeout = Timeout}
 ) ->
-    apply(EngineModule, read, [Engine, term_to_binary(SId), MsgRef, Timeout]);
+    apply(EngineModule, read, [Engine, term_to_binary(SId), MsgRef, Ts1, Timeout]);
 handle_req(
-    {find, SId},
+    {find, SId, Ts1},
     #state{engine = Engine, engine_module = EngineModule, query_timeout = Timeout}
 ) ->
-    apply(EngineModule, find, [Engine, term_to_binary(SId), Timeout]).
+    apply(EngineModule, find, [Engine, term_to_binary(SId), Ts1, Timeout]).

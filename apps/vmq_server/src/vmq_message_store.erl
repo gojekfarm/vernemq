@@ -63,7 +63,8 @@ write(SubscriberId, Msg) ->
         SubscriberId, Msg, ?NR_OF_RETRIES
     ]).
 write_with_retry(SubscriberId, Msg, N) when N >= 0 ->
-    case vmq_plugin:only(msg_store_write, [SubscriberId, Msg]) of
+    Ts1 = vmq_util:ts(),
+    case vmq_plugin:only(msg_store_write, [SubscriberId, Msg, Ts1]) of
         {ok, _Count} ->
             ok;
         {error, no_matching_hook_found} = ErrRes ->
@@ -83,7 +84,8 @@ read(SubscriberId, MsgRef) ->
         SubscriberId, MsgRef, ?NR_OF_RETRIES
     ]).
 read_with_retry(SubscriberId, MsgRef, N) when N >= 0 ->
-    case vmq_plugin:only(msg_store_read, [SubscriberId, MsgRef]) of
+    Ts1 = vmq_util:ts(),
+    case vmq_plugin:only(msg_store_read, [SubscriberId, MsgRef, Ts1]) of
         {ok, _} = OkRes ->
             OkRes;
         {error, no_matching_hook_found} = ErrRes ->
@@ -105,7 +107,8 @@ delete(SubscriberId) ->
         SubscriberId, ?NR_OF_RETRIES
     ]).
 delete_all_with_retry(SubscriberId, N) when N >= 0 ->
-    case vmq_plugin:only(msg_store_delete, [SubscriberId]) of
+    Ts1 = vmq_util:ts(),
+    case vmq_plugin:only(msg_store_delete, [SubscriberId, Ts1]) of
         {ok, _Count} ->
             ok;
         {error, no_matching_hook_found} = ErrRes ->
@@ -125,7 +128,8 @@ delete(SubscriberId, MsgRef) ->
         SubscriberId, MsgRef, ?NR_OF_RETRIES
     ]).
 delete_with_retry(SubscriberId, MsgRef, N) when N >= 0 ->
-    case vmq_plugin:only(msg_store_delete, [SubscriberId, MsgRef]) of
+    Ts1 = vmq_util:ts(),
+    case vmq_plugin:only(msg_store_delete, [SubscriberId, MsgRef, Ts1]) of
         {ok, _Count} ->
             ok;
         {error, no_matching_hook_found} = ErrRes ->
@@ -145,7 +149,8 @@ find(SubscriberId) ->
         SubscriberId, ?NR_OF_RETRIES
     ]).
 find_with_retry(SubscriberId, N) when N >= 0 ->
-    case vmq_plugin:only(msg_store_find, [SubscriberId]) of
+    Ts1 = vmq_util:ts(),
+    case vmq_plugin:only(msg_store_find, [SubscriberId, Ts1]) of
         {ok, _} = OkRes ->
             OkRes;
         {error, no_matching_hook_found} = ErrRes ->
