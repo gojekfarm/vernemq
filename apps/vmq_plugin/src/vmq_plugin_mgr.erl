@@ -522,8 +522,10 @@ set_plugin_priority_order(Plugins) ->
             PriorityA = maps:get(PluginA, PriorityMap, undefined),
             PriorityB = maps:get(PluginB, PriorityMap, undefined),
             case {PriorityA, PriorityB} of
-                % No priority defined for either, keep original order
+                % No priority defined for either, keep original order for internal plugins
                 {undefined, undefined} -> true;
+                % No priority defined for either, keep original order from vernemq.conf
+                {infinity, infinity} -> true;
                 % Keep PluginB before PluginA if PluginB has no priority
                 {_, undefined} -> false;
                 % Keep PluginA before PluginB if PluginA has no priority
@@ -1478,7 +1480,11 @@ call_hooks() ->
 
 plugin_priority_order_test() ->
     application:set_env(vmq_plugin, priority, #{
-        vmq_plugin_one => 1, vmq_plugin_two => 2, vmq_plugin_three => 3, vmq_plugin_four => infinity
+        vmq_plugin_one => 1,
+        vmq_plugin_two => 2,
+        vmq_plugin_three => 3,
+        vmq_plugin_four => infinity,
+        vmq_plugin_five => infinity
     }),
     % set plugin in pritority order
     ?assertEqual(
@@ -1544,6 +1550,25 @@ plugin_priority_order_test() ->
             {application, vmq_hook_one, []},
             {application, vmq_plugin_two, []},
             {module, vmq_hook_two, []}
+        ])
+    ),
+    % no priority set in vernemq.conf maintain the original order for external plugins.
+    ?assertEqual(
+        [
+            {module, vmq_app_one, []},
+            {module, vmq_app_two, []},
+            {application, vmq_hook_one, []},
+            {application, vmq_plugin_two, []},
+            {application, vmq_plugin_four, []},
+            {application, vmq_plugin_five, []}
+        ],
+        set_plugin_priority_order([
+            {module, vmq_app_one, []},
+            {module, vmq_app_two, []},
+            {application, vmq_plugin_four, []},
+            {application, vmq_hook_one, []},
+            {application, vmq_plugin_two, []},
+            {application, vmq_plugin_five, []}
         ])
     ),
     % empty list
