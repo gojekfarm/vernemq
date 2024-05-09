@@ -1478,7 +1478,7 @@ call_hooks() ->
 
 plugin_priority_order_test() ->
     application:set_env(vmq_plugin, priority, #{
-        vmq_plugin_one => 1, vmq_plugin_two => 2, vmq_plugin_three => 3, vmq_plugin_four => infinity 
+        vmq_plugin_one => 1, vmq_plugin_two => 2, vmq_plugin_three => 3, vmq_plugin_four => infinity
     }),
     % set plugin in pritority order
     ?assertEqual(
