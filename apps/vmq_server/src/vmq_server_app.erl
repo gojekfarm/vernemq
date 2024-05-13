@@ -68,5 +68,4 @@ start_user_plugin(
 
 -spec stop(_) -> 'ok'.
 stop(_State) ->
-    _ = vmq_message_store:stop(),
     ok.
