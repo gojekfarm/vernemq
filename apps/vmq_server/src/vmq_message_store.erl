@@ -87,14 +87,16 @@ init([]) ->
         ]}
     ]),
     Redis = proplists:get_value(redis, StoreCfgs),
-    Username = case proplists:get_value(username, Redis, undefined) of
-                    undefined -> undefined;
-                    User when is_atom(User) -> atom_to_list(User)
-                end,
-    Password = case proplists:get_value(password, Redis, undefined) of
-                    undefined -> undefined;
-                    Pass when is_atom(Pass) -> atom_to_list(Pass)
-                end,
+    Username =
+        case proplists:get_value(username, Redis, undefined) of
+            undefined -> undefined;
+            User when is_atom(User) -> atom_to_list(User)
+        end,
+    Password =
+        case proplists:get_value(password, Redis, undefined) of
+            undefined -> undefined;
+            Pass when is_atom(Pass) -> atom_to_list(Pass)
+        end,
 
     {ok,
         {{one_for_one, 5, 10}, [
