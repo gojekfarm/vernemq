@@ -60,7 +60,7 @@ init([]) ->
         {{one_for_one, 5, 10}, [
             ?CHILD(eredis, worker, [
                 [
-                    {sentinel, [{endpoints, SentinelEndpoints}]},
+                    {sentinel, [{endpoints, SentinelEndpoints}, {username, Username}, {password, Password}]},
                     {database, RedisDB},
                     {username, Username},
                     {password, Password},
