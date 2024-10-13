@@ -18,33 +18,80 @@
 ]).
 
 start() ->
-    supervisor:start_link({local, ?MODULE}, ?MODULE, []).
+    Ret = supervisor:start_link({local, ?MODULE}, ?MODULE, []),
+    load_redis_functions(),
+    Ret.
+
+load_redis_functions() ->
+    LuaDir = application:get_env(vmq_server, redis_lua_dir, "./etc/lua"),
+
+    {ok, PopOfflineMessageScript} = file:read_file(LuaDir ++ "/pop_offline_message.lua"),
+    {ok, WriteOfflineMessageScript} = file:read_file(LuaDir ++ "/write_offline_message.lua"),
+    {ok, DeleteSubsOfflineMessagesScript} = file:read_file(LuaDir ++ "/delete_subs_offline_messages.lua"),
+
+    {ok, <<"pop_offline_message">>} = vmq_redis:query(
+        vmq_message_store_redis_client,
+        [?FUNCTION, "LOAD", "REPLACE", PopOfflineMessageScript],
+        ?FUNCTION_LOAD,
+        ?POP_OFFLINE_MESSAGE
+    ),
+    {ok, <<"write_offline_message">>} = vmq_redis:query(
+        vmq_message_store_redis_client,
+        [?FUNCTION, "LOAD", "REPLACE", WriteOfflineMessageScript],
+        ?FUNCTION_LOAD,
+        ?WRITE_OFFLINE_MESSAGE
+    ),
+    {ok, <<"delete_subs_offline_messages">>} = vmq_redis:query(
+        vmq_message_store_redis_client,
+        [?FUNCTION, "LOAD", "REPLACE", DeleteSubsOfflineMessagesScript],
+        ?FUNCTION_LOAD,
+        ?DELETE_SUBS_OFFLINE_MESSAGES
+    ).
 
 write(SubscriberId, Msg) ->
+    %  TODO: Handle the return value(errors & negative) to generate offline messages metrics
     vmq_redis:query(
         vmq_message_store_redis_client,
-        ["RPUSH", term_to_binary(SubscriberId), term_to_binary(Msg)],
-        ?RPUSH,
-        ?MSG_STORE_WRITE
+        [
+            ?FCALL,
+            ?WRITE_OFFLINE_MESSAGE,
+            1,
+            term_to_binary(SubscriberId), 
+            term_to_binary(Msg)
+        ],
+        ?FCALL,
+        ?WRITE_OFFLINE_MESSAGE
     ).
 
 read(_SubscriberId, _MsgRef) ->
     {error, not_supported}.
 
 delete(SubscriberId) ->
+    %  TODO: Handle the return value(errors & negatives) to generate offline messages metrics
     vmq_redis:query(
         vmq_message_store_redis_client,
-        ["DEL", term_to_binary(SubscriberId)],
-        ?DEL,
-        ?MSG_STORE_DELETE
+        [
+            ?FCALL,
+            ?DELETE_SUBS_OFFLINE_MESSAGES,
+            1,
+            term_to_binary(SubscriberId)
+        ],
+        ?FCALL,
+        ?DELETE_SUBS_OFFLINE_MESSAGES
     ).
 
 delete(SubscriberId, _MsgRef) ->
+    %  TODO: Handle the return value(errors & negatives) to generate offline messages metrics
     vmq_redis:query(
         vmq_message_store_redis_client,
-        ["LPOP", term_to_binary(SubscriberId), 1],
-        ?LPOP,
-        ?MSG_STORE_DELETE
+        [
+            ?FCALL,
+            ?POP_OFFLINE_MESSAGE,
+            1,
+            term_to_binary(SubscriberId)
+        ],
+        ?FCALL,
+        ?POP_OFFLINE_MESSAGE
     ).
 
 find(SubscriberId) ->
