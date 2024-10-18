@@ -2158,7 +2158,8 @@ misc_statistics() ->
         {router_memory, SMemory},
         {retain_messages, NrOfRetain},
         {retain_memory, RMemory},
-        {queue_processes, fetch_external_metric(vmq_queue_sup_sup, nr_of_queues, 0)}
+        {queue_processes, fetch_external_metric(vmq_queue_sup_sup, nr_of_queues, 0)},
+        {offline_messages, fetch_external_metric(vmq_message_store, nr_of_offline_messages, 0)}
     ].
 
 -spec misc_stats_def() -> [metric_def()].
@@ -2192,7 +2193,8 @@ misc_stats_def() ->
             retain_memory,
             <<"The number of bytes used for storing retained messages.">>
         ),
-        m(gauge, [], queue_processes, queue_processes, <<"The number of MQTT queue processes.">>)
+        m(gauge, [], queue_processes, queue_processes, <<"The number of MQTT queue processes.">>),
+        m(gauge, [], offline_messages, offline_messages, <<"The number of offline messages">>)
     ].
 
 -spec system_statistics() -> [{metric_id(), any()}].
@@ -2720,18 +2722,9 @@ met2idx({?REDIS_STALE_CMD, ?FCALL, ?ENQUEUE_MSG}) -> 271;
 met2idx({?REDIS_STALE_CMD, ?FCALL, ?POLL_MAIN_QUEUE}) -> 272;
 met2idx({?UNAUTH_REDIS_CMD, ?FCALL, ?ENQUEUE_MSG}) -> 273;
 met2idx({?UNAUTH_REDIS_CMD, ?FCALL, ?POLL_MAIN_QUEUE}) -> 274;
-met2idx({?REDIS_CMD, ?RPUSH, ?MSG_STORE_WRITE}) -> 285;
-met2idx({?REDIS_CMD, ?DEL, ?MSG_STORE_DELETE}) -> 286;
 met2idx({?REDIS_CMD, ?FIND, ?MSG_STORE_FIND}) -> 287;
-met2idx({?REDIS_CMD_ERROR, ?RPUSH, ?MSG_STORE_WRITE}) -> 288;
-met2idx({?REDIS_CMD_ERROR, ?DEL, ?MSG_STORE_DELETE}) -> 289;
 met2idx({?REDIS_CMD_ERROR, ?FIND, ?MSG_STORE_FIND}) -> 290;
-met2idx({?REDIS_CMD_MISS, ?RPUSH, ?MSG_STORE_WRITE}) -> 291;
-met2idx({?REDIS_CMD_MISS, ?DEL, ?MSG_STORE_DELETE}) -> 292;
 met2idx({?REDIS_CMD_MISS, ?FIND, ?MSG_STORE_FIND}) -> 293;
-met2idx({?REDIS_CMD, ?LPOP, ?MSG_STORE_DELETE}) -> 294;
-met2idx({?REDIS_CMD_ERROR, ?LPOP, ?MSG_STORE_DELETE}) -> 295;
-met2idx({?REDIS_CMD_MISS, ?LPOP, ?MSG_STORE_DELETE}) -> 296;
 met2idx({?QOS1_SUBSCRIPTION_OPTS, ?NON_RETRY, ?NON_PERSISTENCE}) -> 297;
 met2idx({?QOS1_SUBSCRIPTION_OPTS, ?RETRY, ?NON_PERSISTENCE}) -> 298;
 met2idx({?QOS1_SUBSCRIPTION_OPTS, ?NON_RETRY, ?PERSISTENCE}) -> 299;
@@ -2811,7 +2804,6 @@ met2idx({?REDIS_STALE_CMD, ?FCALL, ?DELETE_SUBS_OFFLINE_MESSAGES}) -> 372;
 met2idx({?UNAUTH_REDIS_CMD, ?FCALL, ?DELETE_SUBS_OFFLINE_MESSAGES}) -> 373;
 met2idx({?REDIS_CMD, ?FUNCTION_LOAD, ?DELETE_SUBS_OFFLINE_MESSAGES}) -> 374;
 met2idx({?REDIS_CMD_ERROR, ?FUNCTION_LOAD, ?DELETE_SUBS_OFFLINE_MESSAGES}) -> 375.
-
 
 -ifdef(TEST).
 clear_stored_rates() ->
