@@ -191,6 +191,7 @@ handle_info(
                 fun([MP, ClientId]) ->
                     SubscriberId = {binary_to_list(MP), ClientId},
                     {ok, QueuePresent, QPid} = vmq_queue_sup_sup:start_queue(SubscriberId, false),
+                    lager:error("Test: ClientId: ~p, QueuePresent: ~p", [ClientId, QueuePresent]),
                     case QueuePresent of
                         true ->
                             ok;
