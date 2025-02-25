@@ -39,7 +39,7 @@ init(DeadNode) ->
         list_to_atom("redis_queue_consumer_client_" ++ integer_to_list(Id))
      || Id <- lists:seq(0, RedisMsgShards - 1)
     ],
-
+    lager:error("Test: redis_reaper_interval ~p", [Interval]),
     erlang:send_after(0, self(), reap_messages),
 
     {ok, #state{
@@ -101,7 +101,7 @@ handle_info(
     } = State
 ) ->
     MainQueue = "mainQueue::" ++ atom_to_list(DeadNode),
-
+    lager:error("Test: reaping messages from ~p", [DeadNode]),
     NextStep = lists:foldl(
         fun(RedisClient, Acc) ->
             case
@@ -186,6 +186,7 @@ handle_info(
         )
     of
         {ok, ClientList} when is_list(ClientList) ->
+            lager:error("Test: reaping subscribers from ~p", [DeadNode]),
             Duration = vmq_config:get_env(persistent_client_expiration, 0),
             lists:foreach(
                 fun([MP, ClientId]) ->
@@ -205,8 +206,10 @@ handle_info(
             erlang:send_after(Interval, self(), reap_subscribers),
             {noreply, State};
         {ok, undefined} ->
+            lager:error("Test: undefined"),
             {stop, normal, State};
         Res ->
+            lager:error("Test: Res: ~p", [Res]),
             lager:warning("~p", [Res]),
             {stop, normal, State}
     end;

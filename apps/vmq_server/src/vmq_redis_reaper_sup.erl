@@ -28,11 +28,14 @@ start_link() ->
     supervisor:start_link({local, ?MODULE}, ?MODULE, []).
 
 ensure_reaper(Node) ->
+    lager:error("ensure_reaper ~p", [Node]),
     case get_reaper(Node) of
         {error, not_found} ->
+            lager:error("starting reaper for node ~p", [Node]),
             {ok, _} = supervisor:start_child(?MODULE, child_spec(Node)),
             ok;
         {ok, _} ->
+            lager:error("reaper for node ~p already running", [Node]),
             ok
     end.
 

@@ -173,6 +173,7 @@ handle_info(recheck, State) ->
         )
     of
         {ok, LiveNodes} when is_list(LiveNodes) ->
+            lager:error("Test: LiveNodes: ~p", [LiveNodes]),
             LiveNodesAtom = update_cluster_status(LiveNodes, []),
             filter_dead_nodes(LiveNodesAtom, State#state.fall);
         Res ->
