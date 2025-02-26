@@ -191,10 +191,15 @@ handle_info(
                 fun([MP, ClientId]) ->
                     SubscriberId = {binary_to_list(MP), ClientId},
                     {ok, QueuePresent, QPid} = vmq_queue_sup_sup:start_queue(SubscriberId, false),
+                    lager:error("Test: QueuePresent: ~p", [QueuePresent]),
                     case QueuePresent of
                         true ->
-                            ok;
+                            lager:error("Test:true ClientId: ~p", [ClientId]),
+                            ExpireAfter = Duration + rand:uniform(Duration + 1),
+                            vmq_queue:update_session_expiry(QPid, ExpireAfter);
+                            % ok;
                         false ->
+                            lager:error("Test:false ClientId: ~p", [ClientId]),
                             ExpireAfter = Duration + rand:uniform(Duration + 1),
                             vmq_queue:update_session_expiry(QPid, ExpireAfter)
                     end
